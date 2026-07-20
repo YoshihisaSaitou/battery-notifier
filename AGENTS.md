@@ -145,7 +145,76 @@ Update `state.yaml`:
 
 Never write `pass`, `complete`, or `done` without evidence. Use repository-relative artifact paths and exact commands/results where practical. Do not store secrets, tokens, personal data, or large raw logs in state files.
 
-## 9. Handoff requirements
+## 9. Loop termination and escalation
+
+Automated implementation, review-fix, and test-fix loops are bounded. The goal is to avoid repeated speculative changes while preserving enough evidence for a human or another agent to resume safely.
+
+### Attempt counting
+
+- One failed attempt means one material corrective change followed by rerunning the same failing check under equivalent conditions.
+- Rerunning a check without a corrective change does not consume another attempt, but record it when it provides evidence that a failure is intermittent.
+- “Same cause” means the same failure signature or the same supported root-cause hypothesis, even if superficial error text or affected test names differ.
+- Store the command/test ID, failure signature, root-cause hypothesis, corrective change, and result for every counted attempt in `state.yaml`.
+
+### Same-cause limit
+
+- After 3 consecutive failed corrective attempts for the same cause, stop the automatic loop.
+- Do not make a fourth speculative change.
+- Set the work item to `status: blocked` and record the termination reason and concrete resume condition.
+- Report the three attempts, exact results, likely cause, remaining uncertainty, files changed, and the smallest next action requiring human direction or new evidence.
+- Keep the attempt history when work resumes. Reset the active consecutive counter only after human direction, a verified external-state change, or an approved materially different approach.
+
+### Different causes and phase-return limit
+
+- A genuinely different failure cause starts a new same-cause counter at 1; it does not increment the previous cause's consecutive count. Preserve both histories.
+- Count every failure-driven transition from a later phase back to an earlier owning phase as one `total_phase_returns` event.
+- After 5 total failure-driven phase returns for one work item, stop the loop regardless of cause, set `status: blocked`, set `current_role: human`, and request human prioritization or scope/architecture direction.
+- A normal clarification before a phase gate, or a handoff that is not caused by a failed check/finding, does not count as a phase return.
+
+### Immediate-stop conditions
+
+Stop immediately without waiting for the numeric limits when any of the following is found or would be required:
+
+- Critical risk of data loss, DataStore corruption, destructive workspace/device action, or unrecoverable notification/state duplication;
+- security or privacy exposure, leaked credential/signing material, or unexpected personal-data collection;
+- a new permission, external service, distribution-policy change, final application ID change, or signing change that lacks human approval;
+- a change that materially expands product scope or contradicts an invariant/accepted decision;
+- a test action that could damage a real device, user data, account, or production environment.
+
+Record the condition and evidence, set `status: blocked`, and request human direction. Do not perform a “confirmation attempt” that increases the risk.
+
+### Environment and hardware failures
+
+- Missing emulator images, unavailable Pixel hardware, network/service outages, permission to access a required resource, and broken external tooling do not count as corrective failures.
+- Mark the affected test `blocked` or `not_run` and record the exact environment condition and unblock requirement.
+- Set the whole work item to `blocked` only when no other in-scope work can make meaningful progress; otherwise continue unaffected tasks.
+
+### Required state fields
+
+Every active work item must maintain a `loop_control` section with at least:
+
+```yaml
+loop_control:
+  same_cause_failure_limit: 3
+  phase_return_limit: 5
+  current_failure_signature: null
+  consecutive_same_cause_failures: 0
+  total_phase_returns: 0
+  attempts: []
+  termination_reason: null
+  resume_condition: null
+```
+
+An agent must update these fields before reporting a failed attempt, returning a work item to an earlier phase, blocking the item, ending a session with an active failure, or resuming a terminated loop.
+
+### Resume rules
+
+- Resume a terminated loop only after the recorded resume condition is satisfied.
+- Record who authorized or what external state changed, the new approach, and which check will be run first.
+- Historical attempts and phase returns are append-only evidence; do not erase or renumber them when resetting the active counter.
+- If the first post-resume attempt reproduces the same unchanged cause without new evidence, count it as the next attempt rather than starting from zero.
+
+## 10. Handoff requirements
 
 Before handing off, the current role must record:
 
@@ -157,7 +226,7 @@ Before handing off, the current role must record:
 
 The receiving role must verify the handoff against the repository before changing status to `in_progress`.
 
-## 10. Documentation rules
+## 11. Documentation rules
 
 - Update the relevant specification before or with behavior-changing code.
 - Use existing IDs (`PR-*`, `FR-*`, `NFR-*`, `AC-*`, `TC-*`, `ADR-*`) for traceability.
@@ -166,7 +235,7 @@ The receiving role must verify the handoff against the repository before changin
 - Keep DataMap keys, paths, default values, freshness boundaries, and notification expiry consistent across data, integration, functional, and test documents.
 - Use official Android/Google documentation for platform behavior that can change. Record the verification date when it affects compatibility or permissions.
 
-## 11. Verification rules
+## 12. Verification rules
 
 Run the smallest relevant checks while iterating, then the full affected-project gate before handoff.
 
@@ -188,7 +257,7 @@ Also run targeted instrumented, Compose UI, contract, and emulator tests require
 
 Real-device checks cannot be replaced by emulator evidence for Pixel 10 Pro Fold or Pixel Watch 4 release gates.
 
-## 12. Change safety
+## 13. Change safety
 
 - Preserve unrelated user changes and do not rewrite or delete them.
 - Do not use destructive Git or filesystem commands to clean the workspace.
@@ -196,7 +265,7 @@ Real-device checks cannot be replaced by emulator evidence for Pixel 10 Pro Fold
 - Do not commit generated build output, local SDK paths, signing material, credentials, or device identifiers.
 - Stop and request human direction when a change requires a new permission, external service, distribution policy, final application ID, signing change, or material product-scope expansion not already approved.
 
-## 13. Definition of done
+## 14. Definition of done
 
 A feature is done only when:
 
@@ -208,4 +277,3 @@ A feature is done only when:
 - Pixel 10 Pro Fold and Pixel Watch 4 checks are recorded when applicable;
 - battery impact and notification latency are human-reviewed when applicable;
 - `state.yaml` contains the final handoff, evidence, approval actor, and timestamp.
-

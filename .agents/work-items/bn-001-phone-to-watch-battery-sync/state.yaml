@@ -303,6 +303,16 @@ decisions_needed:
 
 blockers: []
 
+loop_control:
+  same_cause_failure_limit: 3
+  phase_return_limit: 5
+  current_failure_signature: null
+  consecutive_same_cause_failures: 0
+  total_phase_returns: 0
+  attempts: []
+  termination_reason: null
+  resume_condition: null
+
 risks:
   - id: "RISK-001"
     severity: "high"
@@ -319,11 +329,17 @@ risks:
 
 evidence:
   documents:
+    - "AGENTS.md"
     - "docs/documentation-index.md"
     - "docs/data-design.md"
     - "docs/wear-os-integration-specification.md"
     - "docs/test-plan-and-cases.md"
-  commands: []
+  commands:
+    - command: >-
+        PowerShell required-pattern validation for AGENTS.md loop termination
+        rules and this state.yaml loop_control section
+      result: "pass"
+      output: "AGENTS_MISSING=0; STATE_MISSING=0"
   automated_checks:
     - name: "Mobile unit tests"
       result: "not_run"
@@ -359,4 +375,3 @@ next_actions:
 
 updated_at: "2026-07-20T00:00:00+09:00"
 updated_by: "codex"
-

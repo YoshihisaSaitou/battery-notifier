@@ -1,0 +1,220 @@
+# テスト計画書・テストケース
+
+文書ID: TPC-001  
+版: 0.1  
+状態: Draft  
+最終更新: 2026-07-20
+
+## 1. 目的
+
+電池しきい値判定、バックグラウンド監視、Mobile/Wear同期、通知、表示、再起動、異常系、必須端末互換性を検証し、v1.0のリリース可否を判断する。
+
+## 2. テストレベル
+
+| レベル | 対象 | 主な手段 |
+|---|---|---|
+| JVM単体 | domain rule、validator、mapper、freshness、順序 | JUnit、parameterized/property-based test |
+| Android単体/統合 | DataStore、Receiver adapter、notification builder、Repository | Robolectricまたはinstrumented test |
+| UI | Mobile/Wear Compose、Fold、文字列、アクセシビリティ | Compose UI test、screenshot test |
+| Contract | Mobile senderとWear receiverのDataMap契約 | 共通fixture、境界値、旧schema |
+| Emulator E2E | OS別、切断、再起動、権限 | Android/Wear emulator、ADB |
+| 実機E2E | Pixel 10 Pro Fold + Pixel Watch 4 | 手動および実機ログ |
+| 非機能 | 消費、遅延、安定性 | Battery Historian/Android Studio Profiler、時刻計測 |
+
+## 3. 役割
+
+### 仕様担当
+
+- 同期データ形式、接続/切断/再接続、Stale表示、受け入れ条件を確定する。
+- 未確定仕様があるテストを開始可能と偽らない。
+
+### 実装担当
+
+- Data Layer送信、Wear受信、DataStore、domain単体テストを実装する。
+- テスト用fake clock、fake battery source、fake notifier、fixture builderを提供する。
+
+### レビュー担当
+
+- タイムスタンプ、連続更新競合、再接続、DataItem path、Android lifecycleを重点確認する。
+- テストが実装詳細ではなく受け入れ結果を検証しているか確認する。
+
+### テスト担当
+
+- 通常同期、切断中更新、再接続、両端末再起動、Stale、連続更新、異常データを実施する。
+- OS版、端末、権限、時刻、接続条件と証跡を記録する。
+
+### 人間
+
+- Pixel 10 Pro FoldとPixel Watch 4実機で確認する。
+- バッテリー消費、通知遅延、振動/音、ウォッチフェイス表示を評価する。
+- FGSのユーザー体験と配布ポリシーを含め最終承認する。
+
+## 4. テスト環境
+
+| ID | Mobile | Wear | 用途 |
+|---|---|---|---|
+| ENV-01 | API 33 emulator | API 30+ Wear emulator | 最低SDK回帰 |
+| ENV-02 | API 34 emulator | Wear OS 4/5 emulator | FGS/permission |
+| ENV-03 | API 35 emulator | Wear emulator | boot/FGS回帰 |
+| ENV-04 | API 36 foldable emulator | Wear OS 6 emulator 41/45mm | target 36、adaptive UI |
+| ENV-05 | Pixel 10 Pro Fold実機 | Pixel Watch 4 41mm実機 | 必須実機。入手構成に応じる |
+| ENV-06 | Pixel 10 Pro Fold実機 | Pixel Watch 4 45mm実機 | 必須実機。入手構成に応じる |
+
+41mm/45mm両方の実機を用意できない場合、未実施を明記し、片方をエミュレーターだけで代替して最終合格にしない。
+
+## 5. テストデータと観測
+
+- domain testでは任意の`BatterySnapshot`を注入する。
+- E2EではADBの電池状態変更機能を使える環境と、実放電の両方で確認する。
+- fake clockでFresh境界`2:00`、`2:00.001`、Stale境界`5:00`、`5:00.001`を検証する。
+- DataMap fixtureは最小/最大、欠落、型違い、未知key、旧/未来schema、順不同を用意する。
+- 証跡にはbuild SHA、application ID、署名種別、OS build、時刻、Mobile/Wearログ分類、スクリーンショットを含める。
+- release buildでは機密値をログに出さず、テスト用debug診断画面からsequenceと結果を確認する。
+
+## 6. 単体テストケース
+
+| ID | 対象 | 入力/操作 | 期待結果 |
+|---|---|---|---|
+| TC-U001 | 残量計算 | level=1, scale=3 | 33%へ正規化 |
+| TC-U002 | 入力検証 | scale=0、level=-1、項目欠落 | invalidとして破棄、クラッシュなし |
+| TC-U003 | 下降交差 | threshold=20、21→20 | eventを1件生成、disarm |
+| TC-U004 | 非交差 | 20→19、19→20、20→21 | eventなし |
+| TC-U005 | ジャンプ下降 | 25→18 | eventを1件生成 |
+| TC-U006 | 初回低残量 | 初回18、threshold=20、既定設定 | eventなし、disarm |
+| TC-U007 | ヒステリシス | 通知後21→20（hysteresis=2） | rearmせずeventなし |
+| TC-U008 | 再アーム | 通知後22→21→20 | 22でarm、20で新event1件 |
+| TC-U009 | 充電中 | armed、21→20、charging=true | eventなし、状態更新 |
+| TC-U010 | 設定変更 | level=18でthreshold 15→20 | 変更だけではeventなし |
+| TC-U011 | 順序 | stored sequence=10、受信9/10/11 | 9/10破棄、11採用 |
+| TC-U012 | Freshness | 2分、2分超、5分超 | Fresh、Delayed、Stale |
+| TC-U013 | event期限 | 期限直前/同時/超過 | 仕様どおり有効境界、超過は通知なし |
+| TC-U014 | event重複 | 同じeventIdを10回 | 処理は1回 |
+| TC-U015 | state validator | level=-1/101、threshold=4/101 | 全体を拒否 |
+| TC-U016 | schema | v1、未来v2 | v1採用、v2をunsupportedとして保持値維持 |
+| TC-U017 | 時刻 | capturedAtが受信より6分未来 | 異常として拒否/時刻警告 |
+| TC-U018 | Locale | ja/enで同じevent数値 | 各Localeの文言、payloadに文言なし |
+
+## 7. 統合・E2Eテストケース
+
+### 7.1 通常同期
+
+| ID | 前提・操作 | 期待結果 | 対応 |
+|---|---|---|---|
+| TC-E001 | 両アプリ接続、Mobile 67%非充電を送信 | Wear画面/Tile/Complicationが67%、Fresh | FR-030, FR-034, FR-050 |
+| TC-E002 | 21→20%、threshold=20 | Mobile/Wear各1通知、値20% | AC-002 |
+| TC-E003 | 充電開始 | 両画面とComplicationに充電状態、低残量eventなし | FR-016, FR-051 |
+| TC-E004 | しきい値20→15を保存 | Mobile保存、Wear表示15、通知なし | FR-006 |
+
+### 7.2 切断中の更新と再接続
+
+| ID | 前提・操作 | 期待結果 | 対応 |
+|---|---|---|---|
+| TC-E010 | 接続後Bluetooth/Wi-Fiを切り、70→65→60 | Mobileは60を保持、Wearは時間経過でStale | AC-005 |
+| TC-E011 | TC-E010から再接続 | Wearは中間値で止まらず60へ収束、Fresh | AC-006 |
+| TC-E012 | 切断中21→20、2分以内に再接続 | Mobile即時通知、Wearは期限内に1通知 | FR-040 |
+| TC-E013 | 切断中21→20、6分後に再接続 | Mobileのみ通知、Wearは最新状態表示のみ | AC-007 |
+| TC-E014 | DataItem送信Taskを意図的に逆順完了 | WearとlastSyncedは最大sequence | FR-062 |
+
+### 7.3 再起動・プロセス
+
+| ID | 前提・操作 | 期待結果 | 対応 |
+|---|---|---|---|
+| TC-E020 | 監視ONでMobile通常再起動 | OS許可範囲で監視復旧。失敗時はresumeRequiredを正しく表示 | UC-007 |
+| TC-E021 | 監視OFFでMobile再起動 | FGSを開始しない | FR-003 |
+| TC-E022 | Wear再起動 | 保存値を読み、経過時間に応じStale。更新後Fresh | UC-007 |
+| TC-E023 | Mobile process kill（強制停止ではない） | Service/OS挙動後に状態復元、重複通知なし | NFR-011 |
+| TC-E024 | ユーザーがアプリを強制停止 | 監視不能を仕様どおり扱い、再起動したと偽らない | NBS-001 |
+| TC-E025 | Mobile/Wearアプリ更新 | 設定保持、schema v1読込、過去event重複なし | FR-066 |
+
+### 7.4 古いデータ表示
+
+| ID | 前提・操作 | 期待結果 | 対応 |
+|---|---|---|---|
+| TC-E030 | 最終受信から2分以内 | Fresh | FR-031 |
+| TC-E031 | 2分超5分以内 | Delayedと相対時刻 | FR-031 |
+| TC-E032 | 5分超 | 値維持+Stale+最終更新+再試行 | AC-005 |
+| TC-E033 | 一度も受信なし | `--%`、接続ヘルプ、NoData complication | FR-033, FR-052 |
+| TC-E034 | 端末時刻を前後へ変更 | クラッシュやFresh誤固定がなく、疑わしい時刻を表示 | Review項目 |
+
+### 7.5 連続更新・競合
+
+| ID | 前提・操作 | 期待結果 | 対応 |
+|---|---|---|---|
+| TC-E040 | 100ms間隔で30件、sequence 1..30 | Wear最終値は30のpayload、ANRなし | FR-018, FR-062 |
+| TC-E041 | 同じevent callbackを並行10回 | Wear通知1件 | FR-041 |
+| TC-E042 | しきい値sliderを連続操作後保存 | 保存値だけを同期し、送信stormなし | UI仕様 |
+| TC-E043 | DataItem A/Bを順不同受信 | 最大sequenceのみ保存 | Review項目 |
+
+### 7.6 異常データ
+
+| ID | 入力 | 期待結果 | 対応 |
+|---|---|---|---|
+| TC-E050 | 未知path | 無視 | FR-065 |
+| TC-E051 | 必須key欠落/型違い | 全体拒否、直前正常値維持 | AC-008 |
+| TC-E052 | level=-1/101 | 全体拒否、診断count増加 | AC-008 |
+| TC-E053 | 未来schemaVersion | 更新案内、クラッシュなし | FR-066 |
+| TC-E054 | eventId 1,000文字/非UUID | event拒否、通知なし | Data設計 |
+| TC-E055 | expiresAt < occurredAt | event拒否、通知なし | Data設計 |
+| TC-E056 | DataStore破損fixture | corruption policyに従い安全に回復、重複通知なし | ADR-003 |
+
+### 7.7 権限と通知
+
+| ID | 操作 | 期待結果 |
+|---|---|---|
+| TC-E060 | Mobile通知許可、Wear許可 | 各1件 |
+| TC-E061 | Mobile拒否、Wear許可 | Wearのみ、Mobileに案内 |
+| TC-E062 | Mobile許可、Wear拒否 | Mobileのみ、Wearに案内 |
+| TC-E063 | 両方拒否 | 通知なし、状態/イベントは更新 |
+| TC-E064 | battery_alerts channelを無効化 | クラッシュせず、画面に通知不可を表示 |
+| TC-E065 | ongoing通知の停止をタップ | FGS停止、監視OFF、Wearへ反映 |
+| TC-E066 | Mobile notification bridgeを観測 | Mobile通知の自動ミラー重複なし |
+
+### 7.8 UI・多言語・互換性
+
+| ID | 操作 | 期待結果 |
+|---|---|---|
+| TC-E070 | Pixel Fold外側→内側→外側 | 入力、監視状態、navigationを保持、clipなし |
+| TC-E071 | 分割画面幅を連続変更 | Window Size Classへ追従、操作可能 |
+| TC-E072 | Pixel Watch 4 41/45mm | 主要情報、スクロール、操作が欠けない |
+| TC-E073 | 日英切替 | 全画面・通知・Tile・Complication labelが切替 |
+| TC-E074 | Mobile=ja、Wear=en | 各端末のLocaleで表示/通知 |
+| TC-E075 | TalkBack + 最大フォント | 意味順に読み上げ、色のみ依存なし、操作可能 |
+| TC-E076 | 対応/非対応watch face | 対応slotで選択可、非対応faceは正常に対象外 |
+
+## 8. 非機能テスト
+
+### バッテリー消費
+
+1. Pixel 10 Pro Foldを同じOS build、通信、画面、利用条件にする。
+2. 監視OFFで24時間の消費を記録する。
+3. 満充電・同等条件で監視ONを24時間記録する。
+4. FGS CPU時間、wakeups、Data Layer送信回数、追加消費ポイントを比較する。
+5. 目安3ポイント未満を初期判定とし、ばらつきを考慮して人間が承認する。
+
+### 通知・同期遅延
+
+- 接続中のしきい値到達時刻、Mobile通知時刻、Wear受信/通知時刻を30回計測する。
+- Wear通知の95パーセンタイル60秒以内を目標とする。
+- Bluetooth、Wi-Fi、画面OFF、Doze相当で分けて記録する。
+- 絶対保証ではなく、外れ値と原因を記録して人間が許容可否を判断する。
+
+### 安定性
+
+- 8時間監視、100回の状態更新、10回の接続切替、両端末各5回再起動を行う。
+- crash、ANR、通知重複、DataStore例外、FGS例外が0件であること。
+
+## 9. 合否基準
+
+- Must要件に紐づくテストがすべてPass。
+- Pixel 10 Pro Fold + Pixel Watch 4実機の必須シナリオがPass。
+- Critical/High不具合0件。
+- Medium不具合は回避策、影響、期限を人間が承認。
+- バッテリー消費と通知遅延を人間が承認。
+- テスト証跡と`state.yaml`が更新されている。
+
+## 10. 中止・再開基準
+
+- application ID/署名不一致、FGS開始不能、DataStore破損で状態喪失、再現性ある通知重複が見つかった場合はE2Eを中止する。
+- 原因修正、影響範囲の単体/統合テスト追加、レビュー完了後に該当環境から再開する。
+- 未実施をPassとして扱わず、`blocked`または`not_run`で記録する。
+

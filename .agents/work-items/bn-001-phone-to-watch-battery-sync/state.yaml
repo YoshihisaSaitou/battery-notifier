@@ -1,0 +1,362 @@
+schema_version: 1
+
+work_item:
+  id: "BN-001"
+  slug: "bn-001-phone-to-watch-battery-sync"
+  title: "Phone battery state and threshold event synchronization to Wear OS"
+  scope: >-
+    Implement the version 1 phone-to-watch battery state contract, local
+    persistence, Wear reception, threshold notification event bridge, and the
+    automated evidence required before independent review.
+
+status: "ready"
+current_phase: "implementation"
+current_role: "implementation"
+current_actor:
+  type: "unassigned"
+  id: null
+
+last_transition:
+  from_phase: "specification"
+  to_phase: "implementation"
+  reason: >-
+    The draft sync format, connected/disconnected/reconnected behavior, stale
+    display rules, and acceptance criteria are recorded. Implementation has not
+    started and must verify the draft handoff before changing status to
+    in_progress.
+
+spec_refs:
+  - "docs/product-requirements.md"
+  - "docs/functional-requirements.md"
+  - "docs/data-design.md"
+  - "docs/wear-os-integration-specification.md"
+  - "docs/notification-background-monitoring-specification.md"
+  - "docs/notification-bridge-specification.md"
+  - "docs/wear-os-display-specification.md"
+  - "docs/complication-specification.md"
+  - "docs/system-architecture-design.md"
+  - "docs/test-plan-and-cases.md"
+  - "docs/compatibility-matrix.md"
+  - "docs/architecture-decision-records.md"
+
+affected_components:
+  - "BatteryNotifierAndroidMobileApp"
+  - "BatteryNotifierAndroidWearApp"
+  - "docs"
+  - "specs"
+
+traceability:
+  product_requirements:
+    - "PR-002"
+    - "PR-003"
+    - "PR-004"
+    - "PR-005"
+    - "PR-009"
+    - "PR-010"
+  functional_requirements:
+    - "FR-010"
+    - "FR-012"
+    - "FR-014"
+    - "FR-015"
+    - "FR-030"
+    - "FR-031"
+    - "FR-032"
+    - "FR-040"
+    - "FR-041"
+    - "FR-042"
+    - "FR-050"
+    - "FR-051"
+    - "FR-052"
+    - "FR-053"
+    - "FR-060"
+    - "FR-061"
+    - "FR-062"
+    - "FR-063"
+    - "FR-064"
+    - "FR-065"
+    - "FR-066"
+  acceptance_criteria:
+    - "AC-002"
+    - "AC-003"
+    - "AC-004"
+    - "AC-005"
+    - "AC-006"
+    - "AC-007"
+    - "AC-008"
+    - "AC-010"
+
+phases:
+  specification:
+    status: "completed_draft"
+    owner: "codex"
+    tasks:
+      - id: "SPEC-001"
+        title: "Define the versioned sync data format and fixed DataItem paths"
+        status: "done"
+        evidence:
+          - "docs/data-design.md"
+      - id: "SPEC-002"
+        title: "Define connected, disconnected, and reconnected behavior"
+        status: "done"
+        evidence:
+          - "docs/wear-os-integration-specification.md"
+      - id: "SPEC-003"
+        title: "Define Fresh, Delayed, Stale, and No Data display behavior"
+        status: "done"
+        evidence:
+          - "docs/wear-os-display-specification.md"
+          - "docs/functional-requirements.md"
+      - id: "SPEC-004"
+        title: "Define acceptance criteria and test traceability"
+        status: "done"
+        evidence:
+          - "docs/functional-requirements.md"
+          - "docs/test-plan-and-cases.md"
+
+  implementation:
+    status: "ready"
+    owner: "unassigned"
+    tasks:
+      - id: "IMP-001"
+        title: "Unify Mobile and Wear application ID and signing assumptions"
+        status: "pending_decision"
+        requirement_refs:
+          - "ADR-005"
+      - id: "IMP-002"
+        title: "Implement Mobile Proto DataStore and atomic alert/sync state"
+        status: "pending"
+        requirement_refs:
+          - "FR-004"
+          - "FR-018"
+          - "FR-060"
+          - "FR-061"
+      - id: "IMP-003"
+        title: "Implement the Mobile Data Layer state and event sender"
+        status: "pending"
+        requirement_refs:
+          - "FR-060"
+          - "FR-061"
+          - "FR-063"
+          - "FR-064"
+      - id: "IMP-004"
+        title: "Implement Wear Data Layer reception, validation, and persistence"
+        status: "pending"
+        requirement_refs:
+          - "FR-041"
+          - "FR-042"
+          - "FR-062"
+          - "FR-065"
+          - "FR-066"
+      - id: "IMP-005"
+        title: "Connect Wear persisted state to app, Tile, complication, and notification updates"
+        status: "pending"
+        requirement_refs:
+          - "FR-030"
+          - "FR-031"
+          - "FR-032"
+          - "FR-040"
+          - "FR-050"
+          - "FR-053"
+      - id: "IMP-006"
+        title: "Add deterministic domain, DataStore, mapper, sender, and receiver unit tests"
+        status: "pending"
+        test_refs:
+          - "TC-U003"
+          - "TC-U006"
+          - "TC-U008"
+          - "TC-U011"
+          - "TC-U012"
+          - "TC-U013"
+          - "TC-U014"
+          - "TC-U015"
+          - "TC-U016"
+          - "TC-U017"
+
+  review:
+    status: "pending"
+    owner: "unassigned"
+    focus:
+      - id: "REV-001"
+        title: "Timestamp, expiry, clock-change, and freshness semantics"
+        status: "pending"
+      - id: "REV-002"
+        title: "Consecutive update races and atomic ordering"
+        status: "pending"
+      - id: "REV-003"
+        title: "Disconnected and reconnected convergence"
+        status: "pending"
+      - id: "REV-004"
+        title: "DataItem paths, filters, package identity, and schema validation"
+        status: "pending"
+      - id: "REV-005"
+        title: "Android service, receiver, coroutine, and UI lifecycle behavior"
+        status: "pending"
+    findings: []
+
+  test:
+    status: "pending"
+    owner: "unassigned"
+    scenarios:
+      - id: "TEST-001"
+        title: "Normal synchronization"
+        status: "not_run"
+        test_refs:
+          - "TC-E001"
+          - "TC-E002"
+          - "TC-E003"
+          - "TC-E004"
+      - id: "TEST-002"
+        title: "Updates while disconnected"
+        status: "not_run"
+        test_refs:
+          - "TC-E010"
+          - "TC-E012"
+          - "TC-E013"
+      - id: "TEST-003"
+        title: "Reconnection and latest-state convergence"
+        status: "not_run"
+        test_refs:
+          - "TC-E011"
+          - "TC-E014"
+      - id: "TEST-004"
+        title: "Smartphone restart and monitoring recovery"
+        status: "not_run"
+        test_refs:
+          - "TC-E020"
+          - "TC-E021"
+      - id: "TEST-005"
+        title: "Watch restart and surface recovery"
+        status: "not_run"
+        test_refs:
+          - "TC-E022"
+      - id: "TEST-006"
+        title: "Fresh, Delayed, Stale, and No Data display"
+        status: "not_run"
+        test_refs:
+          - "TC-E030"
+          - "TC-E031"
+          - "TC-E032"
+          - "TC-E033"
+          - "TC-E034"
+      - id: "TEST-007"
+        title: "Consecutive updates, duplicate callbacks, and reverse ordering"
+        status: "not_run"
+        test_refs:
+          - "TC-E040"
+          - "TC-E041"
+          - "TC-E043"
+      - id: "TEST-008"
+        title: "Invalid DataItem reception"
+        status: "not_run"
+        test_refs:
+          - "TC-E050"
+          - "TC-E051"
+          - "TC-E052"
+          - "TC-E053"
+          - "TC-E054"
+          - "TC-E055"
+          - "TC-E056"
+    results: []
+
+  human_verification:
+    status: "pending"
+    owner: "human"
+    tasks:
+      - id: "HUM-001"
+        title: "Verify the release candidate on Google Pixel 10 Pro Fold and Google Pixel Watch 4"
+        status: "not_run"
+      - id: "HUM-002"
+        title: "Measure and judge battery consumption and notification latency"
+        status: "not_run"
+      - id: "HUM-003"
+        title: "Record final approval or required changes"
+        status: "not_run"
+    approval:
+      decision: null
+      approver: null
+      build_identity: null
+      decided_at: null
+      rationale: null
+
+decisions_needed:
+  - id: "DEC-001"
+    title: "Select the final common application ID for Mobile and Wear"
+    owner: "human"
+    status: "open"
+    blocks:
+      - "IMP-001"
+      - "Data Layer end-to-end testing"
+    proposed_value: "com.magicitengineer.batterynotifier"
+    notes: >-
+      The current Mobile and Wear template application IDs differ. Data Layer
+      requires the same package identity and signing identity.
+  - id: "DEC-002"
+    title: "Confirm the first distribution channel and foreground-service policy path"
+    owner: "human"
+    status: "open"
+    blocks:
+      - "Release approval"
+    notes: >-
+      Initial implementation may proceed, but Google Play publication requires
+      the specialUse foreground-service declaration and policy evidence defined
+      in the privacy and background-monitoring specifications.
+
+blockers: []
+
+risks:
+  - id: "RISK-001"
+    severity: "high"
+    summary: "Data Layer will not function until package and signing identities match."
+    mitigation: "Resolve DEC-001 before integration testing and test matching debug/release pairs."
+  - id: "RISK-002"
+    severity: "high"
+    summary: "The continuous battery-monitoring specialUse FGS may require distribution-policy changes."
+    mitigation: "Resolve DEC-002 and perform policy review before release approval."
+  - id: "RISK-003"
+    severity: "medium"
+    summary: "Disconnected event delivery can create a misleading late Wear notification."
+    mitigation: "Enforce event expiry and verify reconnect before/after expiry."
+
+evidence:
+  documents:
+    - "docs/documentation-index.md"
+    - "docs/data-design.md"
+    - "docs/wear-os-integration-specification.md"
+    - "docs/test-plan-and-cases.md"
+  commands: []
+  automated_checks:
+    - name: "Mobile unit tests"
+      result: "not_run"
+      reason: "Implementation has not started."
+    - name: "Mobile lint"
+      result: "not_run"
+      reason: "Implementation has not started."
+    - name: "Wear unit tests"
+      result: "not_run"
+      reason: "Implementation has not started."
+    - name: "Wear lint"
+      result: "not_run"
+      reason: "Implementation has not started."
+
+handoff:
+  from_role: "specification"
+  to_role: "implementation"
+  summary: >-
+    Version 1 uses fixed state and event DataItem paths, sequence-first ordering,
+    local Proto DataStore on both devices, a five-minute stale boundary, and a
+    five-minute notification-event expiry. The implementation role must first
+    read all spec_refs, assign an actor, and resolve or explicitly defer DEC-001.
+  first_action: >-
+    Assign an implementation actor, verify the specification handoff against
+    the repository, then implement the domain models and Proto DataStore schema
+    with the boundary unit tests before adding Data Layer side effects.
+
+next_actions:
+  - "Assign Codex, Claude Code, or a human developer as the implementation actor."
+  - "Human selects or approves the common application ID in DEC-001."
+  - "Implementation completes IMP-002 and its unit tests."
+  - "Implementation proceeds through IMP-003 to IMP-006 and records exact Gradle evidence."
+
+updated_at: "2026-07-20T00:00:00+09:00"
+updated_by: "codex"
+

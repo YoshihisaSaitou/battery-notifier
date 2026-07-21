@@ -9,12 +9,12 @@ work_item:
     persistence, Wear reception, threshold notification event bridge, and the
     automated evidence required before independent review.
 
-status: "ready"
+status: "in_progress"
 current_phase: "implementation"
 current_role: "implementation"
 current_actor:
-  type: "unassigned"
-  id: null
+  type: "agent"
+  id: "codex"
 
 last_transition:
   from_phase: "specification"
@@ -114,8 +114,8 @@ phases:
           - "docs/test-plan-and-cases.md"
 
   implementation:
-    status: "ready"
-    owner: "unassigned"
+    status: "in_progress"
+    owner: "codex"
     tasks:
       - id: "IMP-001"
         title: "Unify Mobile and Wear application ID and signing assumptions"
@@ -124,7 +124,7 @@ phases:
           - "ADR-005"
       - id: "IMP-002"
         title: "Implement Mobile Proto DataStore and atomic alert/sync state"
-        status: "pending"
+        status: "done"
         requirement_refs:
           - "FR-004"
           - "FR-018"
@@ -132,7 +132,7 @@ phases:
           - "FR-061"
       - id: "IMP-003"
         title: "Implement the Mobile Data Layer state and event sender"
-        status: "pending"
+        status: "in_progress"
         requirement_refs:
           - "FR-060"
           - "FR-061"
@@ -159,7 +159,7 @@ phases:
           - "FR-053"
       - id: "IMP-006"
         title: "Add deterministic domain, DataStore, mapper, sender, and receiver unit tests"
-        status: "pending"
+        status: "in_progress"
         test_refs:
           - "TC-U003"
           - "TC-U006"
@@ -175,6 +175,13 @@ phases:
   review:
     status: "pending"
     owner: "unassigned"
+    preparation:
+      status: "prepared_not_started"
+      checklist: ".agents/work-items/bn-001-phone-to-watch-battery-sync/review-checklist.md"
+      independence_requirement: >-
+        The reviewer actor must differ from implementation actor codex. The
+        reviewer records findings and does not patch production code while in
+        the review role.
     focus:
       - id: "REV-001"
         title: "Timestamp, expiry, clock-change, and freshness semantics"
@@ -256,7 +263,20 @@ phases:
           - "TC-E054"
           - "TC-E055"
           - "TC-E056"
-    results: []
+    results:
+      - id: "DATASTORE-INSTRUMENTED-001"
+        title: "Real Mobile Proto DataStore persistence, concurrency, and corruption recovery"
+        status: "not_run"
+        compile_result: "pass"
+        compile_command: >-
+          From BatteryNotifierAndroidMobileApp: .\gradlew.bat
+          '-Dorg.gradle.jvmargs=-Xmx2048m -XX:TieredStopAtLevel=1'
+          '-Pkotlin.compiler.execution.strategy=in-process'
+          compileDebugAndroidTestKotlin --no-daemon --offline
+          --max-workers=1 --console=plain
+        reason: >-
+          No Android device or emulator was attached. Run the three compiled
+          cases with connectedDebugAndroidTest before the Test phase gate.
 
   human_verification:
     status: "pending"
@@ -331,28 +351,252 @@ evidence:
   documents:
     - "AGENTS.md"
     - "docs/documentation-index.md"
+    - "docs/development-workflow.md"
     - "docs/data-design.md"
     - "docs/wear-os-integration-specification.md"
     - "docs/test-plan-and-cases.md"
+    - ".agents/roles/implementation.md"
+    - ".agents/work-items/bn-001-phone-to-watch-battery-sync/review-checklist.md"
+  handoff_verification:
+    - checked_at: "2026-07-20T20:48:10+09:00"
+      actor: "codex"
+      result: "accepted"
+      notes: >-
+        Read every spec_ref and verified both affected projects are unchanged
+        Android Studio templates. DEC-001 is explicitly deferred; IMP-002 can
+        proceed without changing application ID, signing, permissions, or
+        distribution policy.
+  implementation_progress:
+    - started_at: "2026-07-21T08:35:32+09:00"
+      last_updated_at: "2026-07-21T09:17:49+09:00"
+      actor: "codex"
+      task: "IMP-003"
+      status: "sender_core_complete_runtime_triggers_pending"
+      scope: >-
+        Implement the fixed-path v1 payload mapper, urgent DataClient gateway,
+        atomic outbox confirmation, and deterministic sender tests. DEC-001
+        remains open, so application ID/signing changes and Data Layer E2E are
+        explicitly excluded from this increment.
+      summary: >-
+        Added the v1 state/event contract, exact typed DataMap payload mapper,
+        play-services-wearable DataClient adapter, concurrent pending-outbox
+        sender, atomic partial-success confirmation, failure classification,
+        and seven new JVM tests. Battery/reconnect/manual/request-state trigger
+        wiring remains before IMP-003 can be marked done.
+      requirement_refs:
+        - "FR-060"
+        - "FR-061"
+        - "FR-063"
+        - "FR-064"
+      files:
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/application/sync/MobileDataLayerSender.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/data/wearable/DataLayerContract.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/data/wearable/GooglePlayServicesMobileSyncGateway.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/domain/sync/SyncModels.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/platform/time/SystemEpochMillisClock.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/data/datastore/MobileStateRepository.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/application/sync/MobileDataLayerSenderTest.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/data/wearable/MobileDataLayerPayloadMapperTest.kt"
+    - completed_at: "2026-07-20T21:58:55+09:00"
+      actor: "codex"
+      task: "IMP-002"
+      requirement_refs:
+        - "FR-004"
+        - "FR-012"
+        - "FR-014"
+        - "FR-015"
+        - "FR-018"
+        - "FR-060"
+        - "FR-061"
+      summary: >-
+        Added the Mobile Proto schema, serializer, corruption replacement,
+        safe-value sanitization, repository boundary, deterministic threshold
+        evaluator, atomic sequence/alert/outbox updates, and ten JVM tests.
+      files:
+        - "BatteryNotifierAndroidMobileApp/app/src/main/proto/mobile_state.proto"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/domain/"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/data/datastore/"
+        - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/domain/"
+        - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/data/datastore/"
+    - completed_at: "2026-07-21T07:56:55+09:00"
+      actor: "codex"
+      task: "IMP-006 quality increment"
+      summary: >-
+        Added a read-only environment preflight with JSON output, made persisted
+        sequence and timestamp assertions explicitly Long-typed, added three
+        production DataStore instrumented cases, and prepared a separate-actor
+        review checklist without starting or self-approving review.
+      files:
+        - "scripts/preflight.ps1"
+        - "docs/development-workflow.md"
+        - ".agents/work-items/bn-001-phone-to-watch-battery-sync/review-checklist.md"
+        - "BatteryNotifierAndroidMobileApp/app/src/androidTest/java/com/magicitengineer/batterynotifierandroidmobileapp/data/datastore/RealMobileDataStoreInstrumentedTest.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/data/datastore/MobileStateSanitizerTest.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/data/datastore/ProtoMobileStateRepositoryTest.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/domain/alert/ThresholdEvaluatorTest.kt"
+  dependency_verification:
+    - checked_at: "2026-07-21"
+      source: "https://developers.google.com/android/guides/releases"
+      result: >-
+        Selected official play-services-wearable 20.0.1. Google documents this
+        artifact for phone and Wear OS and the DataItem guide requires a
+        leading-slash path, DataMap, putDataItem, and setUrgent when delay harms
+        the user experience.
+    - checked_at: "2026-07-20"
+      source: "https://developer.android.com/jetpack/androidx/releases/datastore"
+      result: >-
+        Selected stable DataStore 1.2.1 and the documented Protobuf plugin
+        0.9.5 / protobuf-kotlin-lite 4.32.1 setup.
   commands:
+    - command: >-
+        From repository root: powershell -ExecutionPolicy Bypass -File
+        .\scripts\preflight.ps1
+      result: "pass_with_warnings"
+      output: >-
+        Exit 0; pass=9, warn=5, fail=0. DEC-001 application ID mismatch remains
+        an explicit warning and blocks Data Layer E2E, not JVM implementation.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: targeted debug tests for
+        '*MobileDataLayer*' and '*ProtoMobileStateRepositoryTest' with --offline
+      result: "environment_missing_dependency"
+      output: >-
+        BUILD FAILED because play-services-wearable 20.0.1 was not cached for
+        offline mode. No code corrective attempt was counted.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: targeted debug tests for
+        '*MobileDataLayer*' and '*ProtoMobileStateRepositoryTest' after approved
+        Google Maven dependency retrieval
+      result: "pass"
+      output: "BUILD SUCCESSFUL in 9m 31s; 32 actionable tasks."
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: .\gradlew.bat
+        '-Dorg.gradle.jvmargs=-Xmx2048m -XX:TieredStopAtLevel=1'
+        '-Pkotlin.compiler.execution.strategy=in-process' test --no-daemon
+        --offline --max-workers=1 --console=plain
+      result: "pass"
+      output: >-
+        BUILD SUCCESSFUL in 4m 24s; debug and release each executed 17 tests
+        with 0 failures, 0 errors, and 0 skipped.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: .\gradlew.bat
+        '-Dorg.gradle.jvmargs=-Xmx2048m -XX:TieredStopAtLevel=1'
+        '-Pkotlin.compiler.execution.strategy=in-process' lint --no-daemon
+        --offline --max-workers=1 --console=plain
+      result: "pass_with_warnings"
+      output: >-
+        BUILD SUCCESSFUL in 3m 18s; 0 errors and 19 non-blocking warnings. No
+        warning points to the new sender, gateway, contract, clock, or tests.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: .\gradlew.bat
+        '-Dorg.gradle.jvmargs=-Xmx2048m -XX:TieredStopAtLevel=1'
+        '-Pkotlin.compiler.execution.strategy=in-process'
+        compileDebugAndroidTestKotlin --no-daemon --offline
+        --max-workers=1 --console=plain
+      result: "pass"
+      output: "BUILD SUCCESSFUL in 5m 23s; 36 actionable tasks."
+    - command: >-
+        From repository root: powershell -ExecutionPolicy Bypass -File
+        .\scripts\preflight.ps1 and the same command with -Json
+      result: "pass_with_warnings"
+      output: >-
+        Both text and JSON modes exited 0 with pass=9, warn=5, fail=0. Warnings
+        cover unset JAVA_HOME, the dirty worktree, unresolved Mobile/Wear
+        application ID mismatch, offline dependencies, and Kotlin daemon IPC.
     - command: >-
         PowerShell required-pattern validation for AGENTS.md loop termination
         rules and this state.yaml loop_control section
       result: "pass"
       output: "AGENTS_MISSING=0; STATE_MISSING=0"
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: .\gradlew.bat
+        '-Dorg.gradle.jvmargs=-Xmx2048m -XX:TieredStopAtLevel=1'
+        '-Pkotlin.compiler.execution.strategy=in-process' test
+        --no-daemon --offline --max-workers=1 --console=plain
+      result: "pass"
+      output: >-
+        BUILD SUCCESSFUL in 5m 4s; 63 actionable tasks; debug and release each
+        executed 10 tests with 0 failures and 0 errors.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: .\gradlew.bat
+        '-Dorg.gradle.jvmargs=-Xmx2048m -XX:TieredStopAtLevel=1'
+        '-Pkotlin.compiler.execution.strategy=in-process' lint
+        --no-daemon --offline --max-workers=1 --console=plain
+      result: "pass_with_warnings"
+      output: >-
+        BUILD SUCCESSFUL in 4m 48s; 0 errors and 19 warnings. No warning points
+        to the added Kotlin or Proto sources; warnings are dependency update
+        notices and existing template resource findings.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: host-JVM
+        testDebugUnitTest --tests '*RealMobileDataStoreTest'
+      result: "environment_incompatible"
+      output: >-
+        Three real-file cases reproduced AndroidX issue 203087070 on Windows:
+        existing .pb files could not be atomically renamed. The unsuitable JVM
+        suite was replaced by Android instrumented coverage; this is not a
+        corrective-failure attempt against production code.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: .\gradlew.bat
+        assembleDebugAndroidTest --no-daemon --offline --max-workers=1
+        --console=plain
+      result: "environment_timeout"
+      output: >-
+        No Gradle result after 15m. jstack showed the JVM C2 compiler had used
+        about 310 seconds of CPU. The two command-owned Java processes were
+        stopped before the scoped retry.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: .\gradlew.bat
+        '-Dorg.gradle.jvmargs=-Xmx2048m -XX:TieredStopAtLevel=1'
+        '-Pkotlin.compiler.execution.strategy=in-process'
+        compileDebugAndroidTestKotlin --no-daemon --offline
+        --max-workers=1 --console=plain
+      result: "pass"
+      output: "BUILD SUCCESSFUL in 2m 33s; 36 actionable tasks up-to-date."
+    - command: "adb devices"
+      result: "not_run_no_target"
+      output: "ADB started successfully; no attached device or emulator was listed."
+    - command: >-
+        git -c safe.directory=C:/Users/yoshihisa/Desktop/www/battery-notifier
+        diff --check
+      result: "pass"
+      output: "No whitespace errors."
+  environment_notes:
+    - >-
+      JAVA_HOME was absent. Checks used the Android Studio JBR at
+      C:\Program Files\Android\Android Studio\jbr.
+    - >-
+      Kotlin compile daemon IPC was unavailable in the sandbox. Successful
+      checks used the in-process compiler project property and one worker.
+    - >-
+      AndroidX issue 203087070 makes real-file DataStore replacement unsuitable
+      as a Windows host-JVM gate. Real DataStore coverage is an Android
+      instrumented suite and must run on a connected emulator or device.
+    - >-
+      This environment showed pathological C2 JIT cost during Android-test
+      compilation. A diagnosed command-local TieredStopAtLevel=1 override made
+      the scoped compile, unit-test, and lint checks complete; no Gradle project
+      setting was changed.
   automated_checks:
     - name: "Mobile unit tests"
-      result: "not_run"
-      reason: "Implementation has not started."
+      result: "pass"
+      details: "Debug 17/17 and release 17/17 passed."
     - name: "Mobile lint"
+      result: "pass_with_warnings"
+      details: "0 errors, 19 non-blocking warnings; added source has no lint finding."
+    - name: "Mobile real DataStore instrumented test compilation"
+      result: "pass"
+      details: >-
+        Three cases compile: real .pb persistence, 30 concurrent serialized
+        updates with exact Long sequence allocation, and corruption recovery.
+    - name: "Mobile real DataStore instrumented test execution"
       result: "not_run"
-      reason: "Implementation has not started."
+      reason: "No Android device or emulator was attached."
     - name: "Wear unit tests"
       result: "not_run"
-      reason: "Implementation has not started."
+      reason: "This increment affected only Mobile IMP-002; Wear implementation remains pending."
     - name: "Wear lint"
       result: "not_run"
-      reason: "Implementation has not started."
+      reason: "This increment affected only Mobile IMP-002; Wear implementation remains pending."
 
 handoff:
   from_role: "specification"
@@ -363,15 +607,15 @@ handoff:
     five-minute notification-event expiry. The implementation role must first
     read all spec_refs, assign an actor, and resolve or explicitly defer DEC-001.
   first_action: >-
-    Assign an implementation actor, verify the specification handoff against
-    the repository, then implement the domain models and Proto DataStore schema
-    with the boundary unit tests before adding Data Layer side effects.
+    Implement the Mobile domain models and Proto DataStore schema with boundary
+    unit tests before adding Data Layer side effects.
 
 next_actions:
-  - "Assign Codex, Claude Code, or a human developer as the implementation actor."
   - "Human selects or approves the common application ID in DEC-001."
-  - "Implementation completes IMP-002 and its unit tests."
-  - "Implementation proceeds through IMP-003 to IMP-006 and records exact Gradle evidence."
+  - "Implementation wires MobileDataLayerSender to battery changes, settings changes, reconnection, manual sync, restart recovery, and request-state handling to finish IMP-003."
+  - "Implementation proceeds through IMP-004 to IMP-006 and records exact Wear Gradle evidence."
+  - "Run RealMobileDataStoreInstrumentedTest on an attached emulator or device."
+  - "After implementation exit evidence is complete, assign an independent reviewer actor different from codex and use the prepared checklist."
 
-updated_at: "2026-07-20T00:00:00+09:00"
+updated_at: "2026-07-21T09:17:49+09:00"
 updated_by: "codex"

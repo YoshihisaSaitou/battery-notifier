@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+option java_package = "com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto";
+option java_multiple_files = true;
+
+message MobileStateProto {
+  int32 storage_schema_version = 1;
+
+  int32 threshold_percent = 10;
+  bool monitoring_enabled = 11;
+  bool onboarding_completed = 12;
+  bool notify_if_already_below_on_start = 13;
+  int32 rearm_hysteresis_percent = 14;
+
+  BatterySnapshotProto last_snapshot = 20;
+  int64 sequence = 21;
+
+  AlertStateProto alert_state = 30;
+  string last_mobile_notified_event_id = 31;
+
+  int64 pending_state_sequence = 40;
+  ThresholdReachedEventProto pending_event = 41;
+  int64 last_sync_success_at_epoch_millis = 42;
+  string last_sync_error_classification = 43;
+
+  int64 invalid_input_count = 50;
+  int64 unsupported_schema_count = 51;
+}
+
+message BatterySnapshotProto {
+  int32 level_percent = 1;
+  bool is_charging = 2;
+  int64 captured_at_epoch_millis = 3;
+  int64 sequence = 4;
+}
+
+message AlertStateProto {
+  bool armed = 1;
+  bool has_previous_level = 2;
+  int32 previous_level_percent = 3;
+  string last_event_id = 4;
+  int64 last_triggered_at_epoch_millis = 5;
+}
+
+message ThresholdReachedEventProto {
+  string event_id = 1;
+  int32 level_percent = 2;
+  int32 threshold_percent = 3;
+  int64 occurred_at_epoch_millis = 4;
+  int64 expires_at_epoch_millis = 5;
+  int64 sequence = 6;
+}

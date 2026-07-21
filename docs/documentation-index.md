@@ -1,6 +1,6 @@
 # Battery Notifier ドキュメント索引
 
-最終更新: 2026-07-20  
+最終更新: 2026-07-21
 文書状態: Draft
 
 ## 目的
@@ -37,6 +37,7 @@
 | [test-plan-and-cases.md](test-plan-and-cases.md) | テスト方針、端末試験、テストケース |
 | [compatibility-matrix.md](compatibility-matrix.md) | OS・端末・画面・接続の互換性 |
 | [architecture-decision-records.md](architecture-decision-records.md) | ADR一覧と決定内容 |
+| [development-workflow.md](development-workflow.md) | 環境プリフライト、Gradle実行、数値型テスト、実DataStore試験、独立レビュー準備 |
 
 ## 仕様変更ルール
 
@@ -58,6 +59,7 @@
 | [test.md](../.agents/roles/test.md) | テスト担当の必須シナリオと証跡ルール |
 | [human.md](../.agents/roles/human.md) | 実機確認、消費・遅延評価、最終承認 |
 | [BN-001 state.yaml](../.agents/work-items/bn-001-phone-to-watch-battery-sync/state.yaml) | スマートフォンからWearへの同期機能の現在工程、担当、証跡、次アクション |
+| [BN-001 review checklist](../.agents/work-items/bn-001-phone-to-watch-battery-sync/review-checklist.md) | 独立レビュアーの適格性、再現コマンド、重点確認、finding形式 |
 
 ## 用語
 

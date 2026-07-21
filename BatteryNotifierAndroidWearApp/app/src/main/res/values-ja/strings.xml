@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">バッテリー通知</string>
+    <string name="tile_label">スマートフォンの電池</string>
+    <string name="complication_label">スマートフォンの電池</string>
+    <string name="phone_battery_percent">スマートフォンの電池残量%1$d%%</string>
+    <string name="phone_battery_no_data">スマートフォンの電池残量--%%</string>
+    <string name="charging">充電中</string>
+    <string name="discharging">充電していません</string>
+    <string name="fresh_updated">たった今更新</string>
+    <string name="delayed_updated">%1$d分前に更新</string>
+    <string name="stale_data">古いデータの可能性があります</string>
+    <string name="no_phone_data">スマートフォンのデータがありません</string>
+    <string name="open_phone_app_hint">スマートフォン側アプリと接続を確認してください</string>
+    <string name="monitoring_off">監視停止中</string>
+    <string name="threshold_value">通知しきい値%1$d%%</string>
+    <string name="incompatible_schema">互換性を戻すため両方のアプリを更新してください</string>
+    <string name="clock_warning">スマートフォンとウォッチの時刻を確認してください</string>
+    <string name="stale_short">%1$d%%!</string>
+    <string name="battery_short">%1$d%%</string>
+    <string name="no_data_short">--%%</string>
+    <string name="phone_label">スマートフォン</string>
+    <string name="retry_sync">同期を再試行</string>
+    <string name="retrying_sync">要求中…</string>
+    <string name="retry_sent">同期を要求しました</string>
+    <string name="retry_no_connection">現在スマートフォンとの接続を確認できません</string>
+    <string name="retry_failed">更新を要求できませんでした</string>
+</resources>

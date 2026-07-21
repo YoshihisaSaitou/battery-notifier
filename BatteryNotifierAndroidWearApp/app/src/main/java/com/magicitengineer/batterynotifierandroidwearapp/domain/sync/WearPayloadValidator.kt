@@ -1,0 +1,160 @@
+package com.magicitengineer.batterynotifierandroidwearapp.domain.sync
+
+import java.util.UUID
+
+object WearDataLayerContract {
+    const val PHONE_STATE_PATH = "/battery-notifier/v1/phone-state"
+    const val THRESHOLD_EVENT_PATH = "/battery-notifier/v1/threshold-event"
+    const val REQUEST_STATE_PATH = "/battery-notifier/v1/request-state"
+    const val PATH_PREFIX = "/battery-notifier/v1/"
+
+    const val KEY_SCHEMA_VERSION = "schemaVersion"
+    const val KEY_SEQUENCE = "sequence"
+    const val KEY_LEVEL_PERCENT = "levelPercent"
+    const val KEY_IS_CHARGING = "isCharging"
+    const val KEY_CAPTURED_AT = "capturedAtEpochMillis"
+    const val KEY_THRESHOLD_PERCENT = "thresholdPercent"
+    const val KEY_MONITORING_ENABLED = "monitoringEnabled"
+    const val KEY_SENT_AT = "sentAtEpochMillis"
+    const val KEY_EVENT_ID = "eventId"
+    const val KEY_OCCURRED_AT = "occurredAtEpochMillis"
+    const val KEY_EXPIRES_AT = "expiresAtEpochMillis"
+}
+
+sealed interface PayloadValidationResult {
+    data class ValidState(val state: ReceivedPhoneState) : PayloadValidationResult
+
+    data class ValidEvent(val event: ReceivedThresholdEvent) : PayloadValidationResult
+
+    data object UnknownPath : PayloadValidationResult
+
+    data class UnsupportedSchema(val receivedVersion: Int) : PayloadValidationResult
+
+    data class Invalid(
+        val classification: ReceiveErrorClassification,
+    ) : PayloadValidationResult
+}
+
+object WearPayloadValidator {
+    fun validate(
+        path: String,
+        values: Map<String, Any?>,
+        receivedAtEpochMillis: Long,
+    ): PayloadValidationResult {
+        require(receivedAtEpochMillis > 0)
+        if (
+            path != WearDataLayerContract.PHONE_STATE_PATH &&
+            path != WearDataLayerContract.THRESHOLD_EVENT_PATH
+        ) {
+            return PayloadValidationResult.UnknownPath
+        }
+
+        val schemaVersion = values[WearDataLayerContract.KEY_SCHEMA_VERSION] as? Int
+            ?: return invalidType()
+        if (schemaVersion != SUPPORTED_SCHEMA_VERSION) {
+            return PayloadValidationResult.UnsupportedSchema(schemaVersion)
+        }
+        return when (path) {
+            WearDataLayerContract.PHONE_STATE_PATH -> validateState(
+                values = values,
+                schemaVersion = schemaVersion,
+                receivedAtEpochMillis = receivedAtEpochMillis,
+            )
+
+            WearDataLayerContract.THRESHOLD_EVENT_PATH -> validateEvent(
+                values = values,
+                schemaVersion = schemaVersion,
+            )
+
+            else -> PayloadValidationResult.UnknownPath
+        }
+    }
+
+    private fun validateState(
+        values: Map<String, Any?>,
+        schemaVersion: Int,
+        receivedAtEpochMillis: Long,
+    ): PayloadValidationResult {
+        val sequence = values[WearDataLayerContract.KEY_SEQUENCE] as? Long ?: return invalidType()
+        val levelPercent = values[WearDataLayerContract.KEY_LEVEL_PERCENT] as? Int
+            ?: return invalidType()
+        val isCharging = values[WearDataLayerContract.KEY_IS_CHARGING] as? Boolean
+            ?: return invalidType()
+        val capturedAt = values[WearDataLayerContract.KEY_CAPTURED_AT] as? Long
+            ?: return invalidType()
+        val thresholdPercent = values[WearDataLayerContract.KEY_THRESHOLD_PERCENT] as? Int
+            ?: return invalidType()
+        val monitoringEnabled = values[WearDataLayerContract.KEY_MONITORING_ENABLED] as? Boolean
+            ?: return invalidType()
+        val sentAt = values[WearDataLayerContract.KEY_SENT_AT] as? Long ?: return invalidType()
+
+        if (sequence < 1 || levelPercent !in 0..100 || thresholdPercent !in 5..100) {
+            return PayloadValidationResult.Invalid(ReceiveErrorClassification.OUT_OF_RANGE)
+        }
+        if (
+            capturedAt <= 0 ||
+            sentAt <= 0 ||
+            (capturedAt > receivedAtEpochMillis &&
+                capturedAt - receivedAtEpochMillis > MAX_FUTURE_SKEW_MILLIS)
+        ) {
+            return PayloadValidationResult.Invalid(ReceiveErrorClassification.INVALID_TIME)
+        }
+        return PayloadValidationResult.ValidState(
+            ReceivedPhoneState(
+                schemaVersion = schemaVersion,
+                sequence = sequence,
+                levelPercent = levelPercent,
+                isCharging = isCharging,
+                capturedAtEpochMillis = capturedAt,
+                thresholdPercent = thresholdPercent,
+                monitoringEnabled = monitoringEnabled,
+                sentAtEpochMillis = sentAt,
+            )
+        )
+    }
+
+    private fun validateEvent(
+        values: Map<String, Any?>,
+        schemaVersion: Int,
+    ): PayloadValidationResult {
+        val eventId = values[WearDataLayerContract.KEY_EVENT_ID] as? String ?: return invalidType()
+        val sequence = values[WearDataLayerContract.KEY_SEQUENCE] as? Long ?: return invalidType()
+        val levelPercent = values[WearDataLayerContract.KEY_LEVEL_PERCENT] as? Int
+            ?: return invalidType()
+        val thresholdPercent = values[WearDataLayerContract.KEY_THRESHOLD_PERCENT] as? Int
+            ?: return invalidType()
+        val occurredAt = values[WearDataLayerContract.KEY_OCCURRED_AT] as? Long
+            ?: return invalidType()
+        val expiresAt = values[WearDataLayerContract.KEY_EXPIRES_AT] as? Long
+            ?: return invalidType()
+
+        if (eventId.length > MAX_EVENT_ID_LENGTH || runCatching { UUID.fromString(eventId) }.isFailure) {
+            return PayloadValidationResult.Invalid(ReceiveErrorClassification.INVALID_EVENT_ID)
+        }
+        if (sequence < 1 || levelPercent !in 0..100 || thresholdPercent !in 5..100) {
+            return PayloadValidationResult.Invalid(ReceiveErrorClassification.OUT_OF_RANGE)
+        }
+        if (
+            occurredAt <= 0 ||
+            expiresAt <= occurredAt ||
+            expiresAt - occurredAt > MAX_EVENT_EXPIRY_MILLIS
+        ) {
+            return PayloadValidationResult.Invalid(ReceiveErrorClassification.INVALID_TIME)
+        }
+        return PayloadValidationResult.ValidEvent(
+            ReceivedThresholdEvent(
+                schemaVersion = schemaVersion,
+                eventId = eventId,
+                sequence = sequence,
+                levelPercent = levelPercent,
+                thresholdPercent = thresholdPercent,
+                occurredAtEpochMillis = occurredAt,
+                expiresAtEpochMillis = expiresAt,
+            )
+        )
+    }
+
+    private fun invalidType() = PayloadValidationResult.Invalid(
+        ReceiveErrorClassification.MISSING_OR_WRONG_TYPE
+    )
+}

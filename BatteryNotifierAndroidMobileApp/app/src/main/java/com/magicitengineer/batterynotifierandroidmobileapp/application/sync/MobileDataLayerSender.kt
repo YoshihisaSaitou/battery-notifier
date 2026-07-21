@@ -34,12 +34,16 @@ data class MobileSyncBatchResult(
     val persistedState: MobilePersistentState,
 )
 
+fun interface PendingSyncSender {
+    suspend fun syncPending(): MobileSyncBatchResult
+}
+
 class MobileDataLayerSender(
     private val repository: MobileStateRepository,
     private val gateway: MobileSyncGateway,
     private val clock: EpochMillisClock,
-) {
-    suspend fun syncPending(): MobileSyncBatchResult = coroutineScope {
+) : PendingSyncSender {
+    override suspend fun syncPending(): MobileSyncBatchResult = coroutineScope {
         val state = repository.state.first()
         val sentAtEpochMillis = clock.now().also { require(it > 0) }
         val stateDeferred = async { putPendingState(state, sentAtEpochMillis) }

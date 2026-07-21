@@ -140,7 +140,7 @@ phases:
           - "FR-064"
       - id: "IMP-004"
         title: "Implement Wear Data Layer reception, validation, and persistence"
-        status: "pending"
+        status: "done"
         requirement_refs:
           - "FR-041"
           - "FR-042"
@@ -149,7 +149,7 @@ phases:
           - "FR-066"
       - id: "IMP-005"
         title: "Connect Wear persisted state to app, Tile, complication, and notification updates"
-        status: "pending"
+        status: "in_progress"
         requirement_refs:
           - "FR-030"
           - "FR-031"
@@ -336,7 +336,7 @@ loop_control:
 progress_reporting:
   format_version: 1
   current:
-    reported_at: "2026-07-21T17:22:08+09:00"
+    reported_at: "2026-07-21T22:06:53+09:00"
     work_item_id: "BN-001"
     role: "implementation"
     phase: "implementation"
@@ -345,18 +345,27 @@ progress_reporting:
     completed:
       - "IMP-002 Mobile Proto DataStore and atomic alert/sync state."
       - "IMP-003 sender contract, gateway, atomic confirmation, and deterministic sender tests."
+      - "IMP-003 current battery normalization, recapture, and serialized trigger coordination increment."
+      - "IMP-003/IMP-005 Wear request-state UI, MessageClient request, exact Mobile routing, and current-state resend runtime increment."
+      - "IMP-004 Wear Data Layer reception, validation, ordering, deduplication, and Proto DataStore persistence."
+      - "IMP-005 deterministic freshness mapping plus Wear app, Tile, complication, and post-persistence surface refresh increment."
       - "Role-aware progress reporting rules added to the operating documentation."
     in_progress:
-      - "IMP-003 runtime trigger wiring."
+      - "IMP-003 Android lifecycle wiring for battery, settings, reconnect, manual, and restore triggers."
+      - "IMP-005 Wear display state, app, Tile, complication, and surface refresh wiring."
       - "IMP-006 remaining deterministic coverage and implementation exit evidence."
     next:
-      - "Wire MobileDataLayerSender to the specified runtime triggers to finish IMP-003."
-      - "Run the remaining applicable checks and record their exact results."
+      - "Add notification orchestration without declaring an unapproved runtime permission or claiming notification delivery."
+      - "Continue the non-blocked IMP-003 Android lifecycle wiring without changing application identity or FGS policy."
     checks:
-      - "Mobile unit tests pass: debug 17/17 and release 17/17."
-      - "Mobile lint passes with 0 errors and 19 non-blocking warnings."
-      - "Mobile real DataStore instrumented tests compile but are not run because no target is attached."
-      - "Role-aware reporting required-pattern validation and git diff --check pass."
+      - "Mobile unit tests pass: debug 29/29 and release 29/29."
+      - "Mobile lint passes with 0 errors and 17 non-blocking warnings."
+      - "Mobile Android test Kotlin, including real DataStore instrumented coverage, compiles successfully."
+      - "Instrumented tests are not run because adb lists no attached target."
+      - "Wear unit tests pass: debug 18/18 and release 18/18."
+      - "Wear lint passes with 0 errors and 7 non-blocking warnings."
+      - "Merged Mobile manifest contains the exact request-state MessageClient filter."
+      - "Request-state increment git diff --check passes."
     blockers:
       - "DEC-001 blocks application ID unification and Data Layer end-to-end testing."
       - "No emulator or device is attached for instrumented execution."
@@ -379,6 +388,90 @@ progress_reporting:
         Confirmed all required operating files contain their reporting rule,
         the current progress identity matches BN-001, and git diff --check
         reports no whitespace errors.
+    - reported_at: "2026-07-21T17:36:44+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "imp003_trigger_increment_started"
+      summary: >-
+        Re-verified the active specifications and started the bounded IMP-003
+        increment for current battery recapture and serialized sync trigger
+        coordination without changing application ID, signing, or permissions.
+    - reported_at: "2026-07-21T18:41:59+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "imp003_trigger_increment_verified"
+      summary: >-
+        Added deterministic battery normalization, sticky current-value reading,
+        atomic refresh processing, serialized trigger coordination, and ten JVM
+        tests. Mobile debug/release tests, lint, and Android-test compilation pass;
+        runtime lifecycle wiring remains before IMP-003 can be completed.
+    - reported_at: "2026-07-21T19:48:42+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "imp004_wear_receiver_started"
+      summary: >-
+        Started Wear payload validation, ordering, deduplication, and local
+        Proto DataStore persistence. Application ID, signing, permissions, and
+        unresolved Mobile FGS policy are excluded from this increment.
+    - reported_at: "2026-07-21T20:09:42+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "imp004_wear_receiver_verified"
+      summary: >-
+        Completed Wear Data Layer reception through a path-filtered listener,
+        complete-payload validation, sequence ordering, event deduplication and
+        expiry reservation, unsupported-schema diagnostics, and local Proto
+        DataStore persistence. Debug/release tests and Wear lint pass.
+    - reported_at: "2026-07-21T20:55:45+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "imp005_wear_surfaces_started"
+      summary: >-
+        Started deterministic freshness mapping and Wear DataStore connections
+        for the app, Tile, complication, and post-persistence refresh boundary.
+        New runtime permissions are excluded pending explicit human approval.
+    - reported_at: "2026-07-21T21:18:10+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "imp005_wear_surfaces_verified"
+      summary: >-
+        Added and verified deterministic Fresh, Delayed, Stale, No Data, and
+        clock-rollback mapping; localized Wear app rendering; DataStore-backed
+        Tile and SHORT_TEXT/RANGED_VALUE complication data; explicit immutable
+        complication tap handling; and refresh requests after applied payloads.
+        The Tile now uses a full-size clickable root that opens W-001.
+        Retry/request-state and Wear notification orchestration remain, so
+        IMP-005 stays in progress.
+    - reported_at: "2026-07-21T21:39:59+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "request_state_runtime_wiring_started"
+      summary: >-
+        Started the fixed-path best-effort request-state runtime increment:
+        Wear sends a manual MessageClient request, Mobile validates the exact
+        path, recaptures the current battery, increments sequence atomically,
+        and reuses the pending DataItem sender. Application identity, signing,
+        notification permission, and FGS policy remain excluded.
+    - reported_at: "2026-07-21T22:06:53+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "request_state_runtime_wiring_verified"
+      summary: >-
+        Completed the request-state runtime path from the Wear Stale/No Data
+        retry control through connected-node MessageClient delivery to an
+        exact-path Mobile listener. Mobile reuses the process-shared serialized
+        coordinator to recapture battery state, allocate the next sequence, and
+        send the pending fixed-path DataItems. Mobile debug/release each pass 29
+        tests; Wear debug/release each pass 18 tests; both lint gates have zero
+        errors. End-to-end execution remains blocked by DEC-001 and no device.
 
 risks:
   - id: "RISK-001"
@@ -419,21 +512,27 @@ evidence:
         distribution policy.
   implementation_progress:
     - started_at: "2026-07-21T08:35:32+09:00"
-      last_updated_at: "2026-07-21T09:17:49+09:00"
+      last_updated_at: "2026-07-21T22:06:53+09:00"
       actor: "codex"
       task: "IMP-003"
-      status: "sender_core_complete_runtime_triggers_pending"
+      status: "request_state_wired_other_runtime_lifecycle_triggers_pending"
       scope: >-
-        Implement the fixed-path v1 payload mapper, urgent DataClient gateway,
-        atomic outbox confirmation, and deterministic sender tests. DEC-001
-        remains open, so application ID/signing changes and Data Layer E2E are
-        explicitly excluded from this increment.
+        Implement the fixed-path v1 sender plus current battery recapture and
+        serialized application trigger coordination. DEC-001 remains open, so
+        application ID/signing changes and Data Layer E2E are explicitly
+        excluded from this increment.
       summary: >-
         Added the v1 state/event contract, exact typed DataMap payload mapper,
         play-services-wearable DataClient adapter, concurrent pending-outbox
         sender, atomic partial-success confirmation, failure classification,
-        and seven new JVM tests. Battery/reconnect/manual/request-state trigger
-        wiring remains before IMP-003 can be marked done.
+        and seven sender JVM tests. Added pure battery normalization, a sticky
+        Android current-value source, repository-backed refresh processing, and
+        serialized trigger coordination with ten more JVM tests. Added a
+        process-shared manual DI container, exact request-state message router,
+        and background WearableListenerService that invokes REQUEST_STATE.
+        Battery callback, settings, reconnect, manual Mobile UI, and process
+        restore entry points still need to call the coordinator before IMP-003
+        can be marked done.
       requirement_refs:
         - "FR-060"
         - "FR-061"
@@ -445,9 +544,80 @@ evidence:
         - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/data/wearable/GooglePlayServicesMobileSyncGateway.kt"
         - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/domain/sync/SyncModels.kt"
         - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/platform/time/SystemEpochMillisClock.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/domain/battery/BatteryReadingSource.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/application/battery/CurrentBatteryStateRefresher.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/application/sync/MobileSyncCoordinator.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/platform/battery/AndroidCurrentBatteryReadingSource.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/platform/identity/RandomUuidEventIdFactory.kt"
         - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/data/datastore/MobileStateRepository.kt"
         - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/application/sync/MobileDataLayerSenderTest.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/domain/battery/BatteryReadingNormalizerTest.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/application/battery/CurrentBatteryStateRefresherTest.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/application/sync/MobileSyncCoordinatorTest.kt"
         - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/data/wearable/MobileDataLayerPayloadMapperTest.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/application/sync/MobileDataLayerMessageHandler.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/data/datastore/MobileAppContainer.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/data/wearable/MobileDataLayerListenerService.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/application/sync/MobileDataLayerMessageHandlerTest.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/AndroidManifest.xml"
+    - completed_at: "2026-07-21T20:09:42+09:00"
+      actor: "codex"
+      task: "IMP-004"
+      requirement_refs:
+        - "FR-041"
+        - "FR-042"
+        - "FR-062"
+        - "FR-065"
+        - "FR-066"
+      summary: >-
+        Added the Wear v1 payload contract and strict whole-payload validator,
+        separate state/event sequence cursors, eventId deduplication, expiry and
+        clock-skew notification reservation, unsupported-schema diagnostics,
+        Proto DataStore persistence and corruption recovery, and a path-filtered
+        WearableListenerService. Added thirteen deterministic JVM tests.
+      files:
+        - "BatteryNotifierAndroidWearApp/app/src/main/proto/wear_state.proto"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/domain/"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/application/sync/ProcessWearDataItem.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/wearable/"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/platform/time/"
+        - "BatteryNotifierAndroidWearApp/app/src/main/AndroidManifest.xml"
+        - "BatteryNotifierAndroidWearApp/app/src/test/"
+    - started_at: "2026-07-21T20:55:45+09:00"
+      last_updated_at: "2026-07-21T22:06:53+09:00"
+      actor: "codex"
+      task: "IMP-005"
+      status: "display_and_retry_verified_notification_pending"
+      requirement_refs:
+        - "FR-030"
+        - "FR-031"
+        - "FR-032"
+        - "FR-040"
+        - "FR-050"
+        - "FR-053"
+      summary: >-
+        Added pure freshness presentation mapping with exact two- and
+        five-minute boundaries and clock-rollback handling. Connected the
+        local Wear repository to lifecycle-aware app UI, Tile, and SHORT_TEXT
+        and RANGED_VALUE complication providers, including post-persistence
+        refresh requests and Japanese/English strings. The Tile uses a
+        full-size click target to open the explicit Wear main Activity.
+        Added Stale/No Data retry UI with explicit result states and a
+        connected-node MessageClient request gateway using the fixed
+        request-state path. Permission-gated notification posting remains
+        intentionally pending.
+      files:
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/domain/presentation/WearDisplayState.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/tile/MainTileService.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/complication/MainComplicationService.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/application/presentation/WearSurfaceUpdater.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/platform/presentation/AndroidWearSurfaceUpdater.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/domain/presentation/WearDisplayStateMapperTest.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/application/sync/RequestPhoneState.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/platform/wearable/GooglePlayServicesPhoneStateRequestGateway.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/application/sync/RequestPhoneStateTest.kt"
     - completed_at: "2026-07-20T21:58:55+09:00"
       actor: "codex"
       task: "IMP-002"
@@ -627,6 +797,131 @@ evidence:
         PyYAML is not installed in the bundled Python runtime
         (ModuleNotFoundError: yaml). No corrective-failure attempt was counted;
         required-pattern and whitespace validation remain passed.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: .\gradlew.bat
+        testDebugUnitTest --tests '*BatteryReadingNormalizerTest' --tests
+        '*CurrentBatteryStateRefresherTest' --tests '*MobileSyncCoordinatorTest'
+      result: "pass"
+      output: >-
+        BUILD SUCCESSFUL in 22m 35s; 10 tests across three suites, 0 failures
+        and 0 errors. The command client timed out before delayed Gradle output,
+        so the daemon result and XML reports were used as exact evidence.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: .\gradlew.bat test --offline
+        --max-workers=1 --console=plain
+        '-Pkotlin.compiler.execution.strategy=in-process'
+      result: "pass"
+      output: >-
+        BUILD SUCCESSFUL in 11m 32s; 63 actionable tasks. Debug and release each
+        executed 27 tests with 0 failures and 0 errors.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: .\gradlew.bat lint --offline
+        --max-workers=1 --console=plain
+        '-Pkotlin.compiler.execution.strategy=in-process'
+      result: "pass_with_warnings"
+      output: "BUILD SUCCESSFUL in 2m 44s; 0 errors and 19 warnings."
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: .\gradlew.bat
+        compileDebugAndroidTestKotlin --offline --max-workers=1 --console=plain
+        '-Pkotlin.compiler.execution.strategy=in-process'
+      result: "pass"
+      output: "BUILD SUCCESSFUL in 1m 27s; 36 actionable tasks."
+    - command: "adb devices"
+      result: "not_run_no_target"
+      output: "ADB started successfully; no attached device or emulator was listed."
+    - command: >-
+        git -c safe.directory=C:/Users/yoshihisa/Desktop/www/battery-notifier
+        diff --check
+      result: "pass"
+      output: "No whitespace errors after the IMP-003 trigger increment."
+    - command: >-
+        From BatteryNotifierAndroidWearApp: .\gradlew.bat testDebugUnitTest
+        --tests '*WearPayloadValidatorTest' --tests
+        '*ProtoWearStateRepositoryTest' --tests '*ProcessWearDataItemTest'
+        --offline --max-workers=1 --console=plain
+        '-Pkotlin.compiler.execution.strategy=in-process'
+      result: "initial_fixture_failure_then_pass"
+      output: >-
+        Initial run executed 13 tests with one failure because the repository
+        test fixture used an event occurrence time more than five minutes after
+        its synthetic receive time. Production code was unchanged; corrected
+        fixture timestamps passed the same 13 tests in 27 seconds. This baseline
+        detection did not consume a corrective-failure attempt.
+    - command: >-
+        From BatteryNotifierAndroidWearApp: .\gradlew.bat test lint --offline
+        --max-workers=1 --console=plain
+        '-Pkotlin.compiler.execution.strategy=in-process'
+      result: "pass_with_warnings"
+      output: >-
+        BUILD SUCCESSFUL in 1m 22s; debug and release each executed 13 tests
+        with 0 failures and 0 errors. Lint reported 0 errors and 2 non-blocking
+        warnings: one dependency update notice and one template unused resource.
+    - command: >-
+        Inspect merged debug AndroidManifest.xml for WearDataLayerListenerService,
+        com.google.android.gms.wearable.DATA_CHANGED, and the fixed path prefix
+      result: "pass"
+      output: >-
+        Merged manifest contains the exported listener service with scheme=wear,
+        host=*, and pathPrefix=/battery-notifier/v1/.
+    - command: >-
+        From BatteryNotifierAndroidWearApp: .\gradlew.bat testDebugUnitTest
+        --offline --max-workers=1 --console=plain
+        '-Pkotlin.compiler.execution.strategy=in-process'
+      result: "initial_compile_failure_then_pass"
+      output: >-
+        Initial compilation found a TilePreviewData resource-provider function
+        type mismatch. The preview lambda was corrected and the same command
+        passed in 3m 28s. This baseline compile detection did not consume a
+        corrective-failure attempt.
+    - command: >-
+        From BatteryNotifierAndroidWearApp: .\gradlew.bat test lint --offline
+        --max-workers=1 --console=plain
+        '-Pkotlin.compiler.execution.strategy=in-process'
+      result: "pass_with_warnings"
+      output: >-
+        BUILD SUCCESSFUL in 3m 1s after adding the full-Tile app-launch action;
+        debug and release each executed 17 tests
+        with 0 failures, 0 errors, and 0 skipped. Lint reported 0 errors and 7
+        non-blocking warnings: dependency update notices and template or
+        typography resource findings.
+    - command: >-
+        PowerShell IMP-005 required-state pattern validation followed by git
+        -c safe.directory=C:/Users/yoshihisa/Desktop/www/battery-notifier
+        diff --check
+      result: "pass"
+      output: "STATE_REQUIRED_MISSING=0; no whitespace errors."
+    - command: >-
+        From BatteryNotifierAndroidWearApp: .\gradlew.bat test lint --offline
+        --max-workers=1 --console=plain
+        '-Pkotlin.compiler.execution.strategy=in-process'
+      result: "initial_compile_failure_then_pass_with_warnings"
+      output: >-
+        Initial compilation found one Composable resource lookup inside a
+        non-Compose lazy-list builder. Moving the lookup to the Composable body
+        passed the same debug check; the full gate then succeeded in 6m 13s.
+        Debug and release each passed 18 tests; lint reported 0 errors and 7
+        non-blocking warnings. This baseline detection did not consume a
+        corrective-failure attempt.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: .\gradlew.bat test lint --offline
+        --max-workers=1 --console=plain
+        '-Pkotlin.compiler.execution.strategy=in-process'
+      result: "pass_with_warnings"
+      output: >-
+        BUILD SUCCESSFUL in 4m 33s; debug and release each passed 29 tests with
+        0 failures, errors, or skips. Lint reported 0 errors and 17
+        non-blocking warnings; none points to the new request router, service,
+        or DI container.
+    - command: >-
+        Aggregate Mobile/Wear JUnit and lint XML, inspect the merged Mobile
+        manifest for MobileDataLayerListenerService, MESSAGE_RECEIVED, and the
+        exact /battery-notifier/v1/request-state path; then git diff --check
+      result: "pass"
+      output: >-
+        Mobile debug/release 29/29 each and Wear debug/release 18/18 each; all
+        have 0 failures, errors, or skips. Mobile lint 0 errors/17 warnings;
+        Wear lint 0 errors/7 warnings. Merged manifest contains all three exact
+        service/filter markers and diff --check reports no whitespace errors.
   environment_notes:
     - >-
       JAVA_HOME was absent. Checks used the Android Studio JBR at
@@ -643,13 +938,18 @@ evidence:
       compilation. A diagnosed command-local TieredStopAtLevel=1 override made
       the scoped compile, unit-test, and lint checks complete; no Gradle project
       setting was changed.
+    - >-
+      Gradle output was substantially delayed. In PowerShell the
+      -Pkotlin.compiler.execution.strategy=in-process argument must be quoted;
+      an unquoted diagnostic retry was parsed as a nonexistent Gradle task and
+      did not reach code compilation.
   automated_checks:
     - name: "Mobile unit tests"
       result: "pass"
-      details: "Debug 17/17 and release 17/17 passed."
+      details: "Debug 29/29 and release 29/29 passed."
     - name: "Mobile lint"
       result: "pass_with_warnings"
-      details: "0 errors, 19 non-blocking warnings; added source has no lint finding."
+      details: "0 errors, 17 non-blocking warnings; added request-state source has no lint finding."
     - name: "Mobile real DataStore instrumented test compilation"
       result: "pass"
       details: >-
@@ -659,11 +959,14 @@ evidence:
       result: "not_run"
       reason: "No Android device or emulator was attached."
     - name: "Wear unit tests"
-      result: "not_run"
-      reason: "This increment affected only Mobile IMP-002; Wear implementation remains pending."
+      result: "pass"
+      details: "Debug 18/18 and release 18/18 passed."
     - name: "Wear lint"
-      result: "not_run"
-      reason: "This increment affected only Mobile IMP-002; Wear implementation remains pending."
+      result: "pass_with_warnings"
+      details: >-
+        0 errors and 7 non-blocking warnings: three dependency notices, one
+        template launcher resource, one old template string, and two no-data
+        placeholder typography notices.
 
 handoff:
   from_role: "specification"
@@ -679,10 +982,11 @@ handoff:
 
 next_actions:
   - "Human selects or approves the common application ID in DEC-001."
-  - "Implementation wires MobileDataLayerSender to battery changes, settings changes, reconnection, manual sync, restart recovery, and request-state handling to finish IMP-003."
-  - "Implementation proceeds through IMP-004 to IMP-006 and records exact Wear Gradle evidence."
+  - "Implementation wires MobileSyncCoordinator to battery changes, settings changes, reconnection, manual Mobile sync, and restart recovery entry points to finish IMP-003."
+  - "Implementation proceeds with IMP-005 Wear app, Tile, complication, and notification surfaces using the persisted IMP-004 state."
+  - "Implementation completes remaining IMP-006 receiver, freshness, and notification tests and records exact evidence."
   - "Run RealMobileDataStoreInstrumentedTest on an attached emulator or device."
   - "After implementation exit evidence is complete, assign an independent reviewer actor different from codex and use the prepared checklist."
 
-updated_at: "2026-07-21T17:22:08+09:00"
+updated_at: "2026-07-21T22:06:53+09:00"
 updated_by: "codex"

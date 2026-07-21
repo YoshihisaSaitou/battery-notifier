@@ -1,10 +1,32 @@
 <resources>
-    <string name="app_name">BatteryNotifierAndroidWearApp</string>
+    <string name="app_name">Battery Notifier</string>
     <!--
     This string is used for square devices and overridden by hello_world in
     values-round/strings.xml for round devices.
     -->
     <string name="hello_world">From the Square world,\nHello, %1$s!</string>
-    <string name="tile_label">Example tile</string>
-    <string name="complication_label">Example complication</string>
+    <string name="tile_label">Phone battery</string>
+    <string name="complication_label">Phone battery</string>
+    <string name="phone_battery_percent">Phone battery %1$d%%</string>
+    <string name="phone_battery_no_data">Phone battery --%%</string>
+    <string name="charging">Charging</string>
+    <string name="discharging">Not charging</string>
+    <string name="fresh_updated">Updated just now</string>
+    <string name="delayed_updated">Updated %1$d min ago</string>
+    <string name="stale_data">Data may be outdated</string>
+    <string name="no_phone_data">No phone data yet</string>
+    <string name="open_phone_app_hint">Open the phone app and check the connection</string>
+    <string name="monitoring_off">Monitoring off</string>
+    <string name="threshold_value">Alert threshold %1$d%%</string>
+    <string name="incompatible_schema">Update the apps to restore compatibility</string>
+    <string name="clock_warning">Check the phone and watch clocks</string>
+    <string name="stale_short">%1$d%%!</string>
+    <string name="battery_short">%1$d%%</string>
+    <string name="no_data_short">--%%</string>
+    <string name="phone_label">Phone</string>
+    <string name="retry_sync">Retry sync</string>
+    <string name="retrying_sync">Requesting…</string>
+    <string name="retry_sent">Sync requested</string>
+    <string name="retry_no_connection">No phone connection is currently available</string>
+    <string name="retry_failed">Could not request an update</string>
 </resources>

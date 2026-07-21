@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+option java_package = "com.magicitengineer.batterynotifierandroidwearapp.data.datastore.proto";
+option java_multiple_files = true;
+
+message WearStateProto {
+  int32 storage_schema_version = 1;
+
+  PhoneStateProto last_phone_state = 10;
+  int64 phone_state_received_at_epoch_millis = 11;
+
+  ThresholdEventProto last_event = 20;
+  int64 last_event_sequence = 21;
+  string last_processed_event_id = 22;
+  int64 event_processed_at_epoch_millis = 23;
+  string notification_disposition = 24;
+
+  int64 invalid_payload_count = 30;
+  int64 unsupported_schema_count = 31;
+  int64 duplicate_count = 32;
+  int64 out_of_order_count = 33;
+  string last_receive_error = 34;
+  bool has_last_unsupported_schema_version = 35;
+  int32 last_unsupported_schema_version = 36;
+}
+
+message PhoneStateProto {
+  int32 schema_version = 1;
+  int64 sequence = 2;
+  int32 level_percent = 3;
+  bool is_charging = 4;
+  int64 captured_at_epoch_millis = 5;
+  int32 threshold_percent = 6;
+  bool monitoring_enabled = 7;
+  int64 sent_at_epoch_millis = 8;
+}
+
+message ThresholdEventProto {
+  int32 schema_version = 1;
+  string event_id = 2;
+  int64 sequence = 3;
+  int32 level_percent = 4;
+  int32 threshold_percent = 5;
+  int64 occurred_at_epoch_millis = 6;
+  int64 expires_at_epoch_millis = 7;
+}

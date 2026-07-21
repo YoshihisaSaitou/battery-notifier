@@ -89,6 +89,15 @@ Never include personal device identifiers, tokens, or large raw logs in `state.y
 - An environment failure remains Blocked/Not Run and does not count as Pass.
 - Add a regression test for every resolved defect, then rerun the affected scenario and relevant surrounding suite.
 
+## Progress reporting
+
+- At start, report the active work item, identified build, environment/devices, selected `TC-*` cases, and first scenario.
+- At each material milestone, report executed case IDs and Pass/Fail/Blocked/Not Run totals with concise evidence and remaining cases.
+- Distinguish product failures from environment/hardware blockers and report whether the loop counter or phase-return counter changed.
+- Do not report a suite as passed when required cases are blocked, not run, or executed against an unidentified build.
+- Before handoff, report the test gate result, defect dispositions, mandatory real-device cases still pending, and the human role's first action.
+- Keep the user-facing report and `progress_reporting.current` in `state.yaml` consistent with test results and evidence.
+
 ## Exit gate
 
 Hand off to human verification only when required automated/emulator cases pass, all failures have disposition, and real-device cases are clearly separated from emulator evidence.
@@ -101,4 +110,3 @@ Set `status: awaiting_human`, `current_phase: human_verification`, and `current_
 - Do not replace mandatory real-device results with emulator results.
 - Do not mark a skipped or unavailable case as passed.
 - Do not infer notification latency or battery impact without measurements.
-

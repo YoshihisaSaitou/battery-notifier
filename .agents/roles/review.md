@@ -69,6 +69,15 @@ Record every actionable finding in state or an artifact referenced from state wi
 
 Critical/High findings block test handoff. Medium findings require documented disposition. Low findings may be deferred with rationale.
 
+## Progress reporting
+
+- At start, report the active work item, reviewed build/worktree scope, checklist areas, and independence from the implementation actor.
+- At each review milestone, report the areas reviewed, finding IDs and severity totals, fixes awaiting verification, and remaining review scope.
+- When returning work, report the owning earlier role, violated requirement or risk, required outcome, phase-return count, and first corrective action.
+- Do not report approval while any Critical/High finding is open or required review evidence is missing.
+- Before handoff, report the review gate recommendation, reviewed evidence, accepted dispositions, unresolved risks, and the test role's first action.
+- Keep the user-facing report and `progress_reporting.current` in `state.yaml` consistent with recorded findings and gate status.
+
 ## Exit gate
 
 - If fixes are required, set `current_phase: implementation`, `current_role: implementation`, list the findings, and name the first fix.
@@ -80,4 +89,3 @@ Critical/High findings block test handoff. Medium findings require documented di
 - Do not silently patch findings while remaining the reviewer.
 - Do not accept comments or documentation as proof when the runtime path contradicts them.
 - Do not downgrade a finding merely because the required real device is unavailable.
-

@@ -37,7 +37,7 @@
 | [test-plan-and-cases.md](test-plan-and-cases.md) | テスト方針、端末試験、テストケース |
 | [compatibility-matrix.md](compatibility-matrix.md) | OS・端末・画面・接続の互換性 |
 | [architecture-decision-records.md](architecture-decision-records.md) | ADR一覧と決定内容 |
-| [development-workflow.md](development-workflow.md) | 環境プリフライト、Gradle実行、数値型テスト、実DataStore試験、独立レビュー準備 |
+| [development-workflow.md](development-workflow.md) | 環境プリフライト、Gradle実行、数値型テスト、実DataStore試験、独立レビュー、役割別進捗報告 |
 
 ## 仕様変更ルール
 
@@ -46,6 +46,7 @@
 3. 未決事項は暗黙に実装せず、文書内の「未決事項」または新しいADRとして記録する。
 4. 実装状態は`.agents/work-items/*/state.yaml`、恒久ルールは`AGENTS.md`、役割別ルールは`.agents/roles/*.md`で管理する。
 5. CodexとClaude Codeは同じ仕様文書と状態ファイルを参照し、会話履歴だけを引き継ぎ情報にしない。
+6. 作業中は現在の役割、工程、完了内容、進行中の作業、次アクション、検証・阻害事項をユーザー向け報告と`state.yaml`の両方へ記録する。
 
 ## エージェント運用ファイル
 

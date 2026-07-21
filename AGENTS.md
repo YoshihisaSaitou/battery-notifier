@@ -214,7 +214,58 @@ An agent must update these fields before reporting a failed attempt, returning a
 - Historical attempts and phase returns are append-only evidence; do not erase or renumber them when resetting the active counter.
 - If the first post-resume attempt reproduces the same unchanged cause without new evidence, count it as the next attempt rather than starting from zero.
 
-## 10. Handoff requirements
+## 10. Role-aware progress reporting
+
+Work must be performed while reporting which role is active and what that role is doing. Progress reporting has two destinations: a concise user-facing update during the session and durable evidence in the active work item's `state.yaml`. Neither destination replaces the other.
+
+### Required report timing
+
+Report at these points:
+
+1. **Start**: after reading the required inputs and before changing files, state the work item, current role, current phase, actor, scope, and first action.
+2. **Material milestone**: after completing a meaningful specification, implementation, review, test, or human-verification task, state what completed and what remains.
+3. **Verification**: after a check finishes, state the command or test ID and `pass`, `fail`, `blocked`, or `not_run`. Never imply an unrun check passed.
+4. **Failure or blocker**: state the active role, failure signature or blocker, loop attempt/phase-return count when applicable, and the next safe action.
+5. **Handoff**: before changing roles, state the outgoing and incoming roles, gate result, evidence, unresolved items, and the incoming role's first action.
+6. **Session end**: summarize the last durable state, completed work, current work, checks, blockers, and concrete next action.
+
+During tool-based work, provide a user-facing update after each material milestone and at least once every 60 seconds while work is actively continuing. Do not emit duplicate reports when no material state changed.
+
+### User-facing report format
+
+Use the user's language and start with this compact identity line:
+
+```text
+[Role: <role> | Phase: <phase> | Work item: <id> | Actor: <actor>]
+Completed: <completed result or none>
+In progress: <current task>
+Next: <next concrete action>
+Checks/Blockers: <results, blockers, or none>
+```
+
+The report may be shortened when only one result changed, but role, work item, and changed result must remain clear. Do not paste large raw logs, secrets, personal data, or device identifiers.
+
+### Role-specific report content
+
+| Role | Must report |
+|---|---|
+| Specification | Contract/specification IDs changed, decisions made or needed, acceptance criteria status, and the next specification task or gate. |
+| Implementation | Implementation task IDs, behavior/files completed, checks and exact outcomes, remaining work, and known limitations. |
+| Review | Reviewed scope/build, findings by ID and severity, fix-verification status, unresolved risks, and gate recommendation. |
+| Test | Environment/build, test case IDs, Pass/Fail/Blocked/Not Run totals and evidence, defects, and remaining scenarios. |
+| Human | Device/build identity without personal identifiers, real-device scenarios, battery/latency measurements, observations, and approval decision. |
+
+### Durable progress record
+
+Each active `state.yaml` must contain a `progress_reporting` section with:
+
+- `format_version`;
+- `current`, including report timestamp, work item, role, phase, actor, status, completed work, in-progress work, next actions, checks, and blockers;
+- append-only `history` entries for material milestones, failures, blockers, resumptions, and role handoffs.
+
+Update `progress_reporting.current` whenever a required report is made. Append to `history` only for a material event; routine heartbeat updates do not need a history entry. The values must agree with the top-level status, phase, role, actor, evidence, handoff, and next actions. An unassigned actor or pending task must never be presented as active or complete.
+
+## 11. Handoff requirements
 
 Before handing off, the current role must record:
 
@@ -226,7 +277,7 @@ Before handing off, the current role must record:
 
 The receiving role must verify the handoff against the repository before changing status to `in_progress`.
 
-## 11. Documentation rules
+## 12. Documentation rules
 
 - Update the relevant specification before or with behavior-changing code.
 - Use existing IDs (`PR-*`, `FR-*`, `NFR-*`, `AC-*`, `TC-*`, `ADR-*`) for traceability.
@@ -235,7 +286,7 @@ The receiving role must verify the handoff against the repository before changin
 - Keep DataMap keys, paths, default values, freshness boundaries, and notification expiry consistent across data, integration, functional, and test documents.
 - Use official Android/Google documentation for platform behavior that can change. Record the verification date when it affects compatibility or permissions.
 
-## 12. Verification rules
+## 13. Verification rules
 
 Run the smallest relevant checks while iterating, then the full affected-project gate before handoff.
 
@@ -257,7 +308,7 @@ Also run targeted instrumented, Compose UI, contract, and emulator tests require
 
 Real-device checks cannot be replaced by emulator evidence for Pixel 10 Pro Fold or Pixel Watch 4 release gates.
 
-## 13. Change safety
+## 14. Change safety
 
 - Preserve unrelated user changes and do not rewrite or delete them.
 - Do not use destructive Git or filesystem commands to clean the workspace.
@@ -265,7 +316,7 @@ Real-device checks cannot be replaced by emulator evidence for Pixel 10 Pro Fold
 - Do not commit generated build output, local SDK paths, signing material, credentials, or device identifiers.
 - Stop and request human direction when a change requires a new permission, external service, distribution policy, final application ID, signing change, or material product-scope expansion not already approved.
 
-## 14. Definition of done
+## 15. Definition of done
 
 A feature is done only when:
 

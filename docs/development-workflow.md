@@ -87,3 +87,28 @@ Passing this suite does not replace restart, process-death, migration, emulator,
 ## Independent review
 
 The implementation actor prepares evidence but does not approve its own implementation. The independent reviewer follows the work-item-specific checklist under `.agents/work-items/<id>/review-checklist.md`, records findings without patching production code, and performs the role transition required by `AGENTS.md` only after the implementation exit gate is met.
+
+## Role-aware progress reporting
+
+Every work session reports the active role and work while it proceeds. `AGENTS.md` is the normative rule; this section describes the daily workflow.
+
+Use the same facts in both places:
+
+1. Send a concise user-facing update at work start, after a material milestone or check, on a failure/blocker, before a role handoff, and at session end.
+2. Update `.agents/work-items/<id>/state.yaml` under `progress_reporting.current` so Codex, Claude Code, or a human can resume without chat history.
+3. Append material milestones, failures, blockers, resumptions, and handoffs to `progress_reporting.history`. Do not append routine heartbeat messages.
+4. Keep the report aligned with top-level `current_role`, `current_phase`, `current_actor`, task status, evidence, loop counters, and next actions.
+
+Use this format in the user's language:
+
+```text
+[Role: <role> | Phase: <phase> | Work item: <id> | Actor: <actor>]
+Completed: <completed result or none>
+In progress: <current task>
+Next: <next concrete action>
+Checks/Blockers: <results, blockers, or none>
+```
+
+Specification reports contract and acceptance-criteria changes. Implementation reports `IMP-*` tasks, changed behavior/files, and check outcomes. Review reports scope and findings by severity. Test reports identified environments/builds and `TC-*` result totals. Human verification reports required devices, measurements, observations, and the explicit approval decision.
+
+Do not claim pending, blocked, not-run, or unassigned work as complete or active. Keep reports concise and never include raw secrets, personal device identifiers, or large logs.

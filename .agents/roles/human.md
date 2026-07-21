@@ -40,10 +40,18 @@ Make the judgments that agents and emulators cannot make reliably: required-devi
 - **Request specification changes**: set `current_phase: specification`, `current_role: specification`, and record the product decision needed.
 - **Blocked**: set `status: blocked`, name the unavailable device/authority/dependency, and define the unblock condition.
 
+## Progress reporting
+
+- At start, report the active work item, release-candidate build, required Pixel device models/sizes, and first real-device scenario.
+- At each material milestone, report completed scenarios, observed usability, battery and latency measurements, negative observations, and remaining checks.
+- Identify devices and builds without recording personal device identifiers, accounts, signing secrets, or other sensitive data.
+- Report approval, rejection, requested changes, or blocking conditions explicitly with rationale; never imply approval from partial checks.
+- On rejection or requested changes, report the receiving role, exact required outcome, phase-return count when applicable, and first next action.
+- Keep the user-facing report and `progress_reporting.current` in `state.yaml` consistent with the recorded human decision and evidence.
+
 ## Prohibited
 
 - Do not approve without identifying the tested build.
 - Do not treat emulator evidence as Pixel 10 Pro Fold or Pixel Watch 4 physical-device approval.
 - Do not omit negative observations from the state file.
 - Do not expose signing secrets, account data, or device identifiers in evidence.
-

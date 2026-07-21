@@ -333,6 +333,53 @@ loop_control:
   termination_reason: null
   resume_condition: null
 
+progress_reporting:
+  format_version: 1
+  current:
+    reported_at: "2026-07-21T17:22:08+09:00"
+    work_item_id: "BN-001"
+    role: "implementation"
+    phase: "implementation"
+    actor: "codex"
+    status: "in_progress"
+    completed:
+      - "IMP-002 Mobile Proto DataStore and atomic alert/sync state."
+      - "IMP-003 sender contract, gateway, atomic confirmation, and deterministic sender tests."
+      - "Role-aware progress reporting rules added to the operating documentation."
+    in_progress:
+      - "IMP-003 runtime trigger wiring."
+      - "IMP-006 remaining deterministic coverage and implementation exit evidence."
+    next:
+      - "Wire MobileDataLayerSender to the specified runtime triggers to finish IMP-003."
+      - "Run the remaining applicable checks and record their exact results."
+    checks:
+      - "Mobile unit tests pass: debug 17/17 and release 17/17."
+      - "Mobile lint passes with 0 errors and 19 non-blocking warnings."
+      - "Mobile real DataStore instrumented tests compile but are not run because no target is attached."
+      - "Role-aware reporting required-pattern validation and git diff --check pass."
+    blockers:
+      - "DEC-001 blocks application ID unification and Data Layer end-to-end testing."
+      - "No emulator or device is attached for instrumented execution."
+  history:
+    - reported_at: "2026-07-21T17:14:17+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "reporting_policy_initialized"
+      summary: >-
+        Added a project-wide reporting contract, role-specific reporting rules,
+        the daily workflow, and a durable current progress snapshot without
+        changing product implementation status.
+    - reported_at: "2026-07-21T17:18:49+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "reporting_policy_validated"
+      summary: >-
+        Confirmed all required operating files contain their reporting rule,
+        the current progress identity matches BN-001, and git diff --check
+        reports no whitespace errors.
+
 risks:
   - id: "RISK-001"
     severity: "high"
@@ -355,7 +402,11 @@ evidence:
     - "docs/data-design.md"
     - "docs/wear-os-integration-specification.md"
     - "docs/test-plan-and-cases.md"
+    - ".agents/roles/specification.md"
     - ".agents/roles/implementation.md"
+    - ".agents/roles/review.md"
+    - ".agents/roles/test.md"
+    - ".agents/roles/human.md"
     - ".agents/work-items/bn-001-phone-to-watch-battery-sync/review-checklist.md"
   handoff_verification:
     - checked_at: "2026-07-20T20:48:10+09:00"
@@ -560,6 +611,22 @@ evidence:
         diff --check
       result: "pass"
       output: "No whitespace errors."
+    - command: >-
+        PowerShell required-pattern validation for AGENTS.md, all five role
+        files, docs/development-workflow.md, and BN-001 state.yaml; followed by
+        git -c safe.directory=C:/Users/yoshihisa/Desktop/www/battery-notifier
+        diff --check
+      result: "pass"
+      output: >-
+        REPORTING_FILES_MISSING=0; STATE_CHECKS_PASS=True; no whitespace
+        errors.
+    - command: >-
+        Bundled Python yaml.safe_load validation for BN-001 state.yaml
+      result: "environment_missing_dependency"
+      output: >-
+        PyYAML is not installed in the bundled Python runtime
+        (ModuleNotFoundError: yaml). No corrective-failure attempt was counted;
+        required-pattern and whitespace validation remain passed.
   environment_notes:
     - >-
       JAVA_HOME was absent. Checks used the Android Studio JBR at
@@ -617,5 +684,5 @@ next_actions:
   - "Run RealMobileDataStoreInstrumentedTest on an attached emulator or device."
   - "After implementation exit evidence is complete, assign an independent reviewer actor different from codex and use the prepared checklist."
 
-updated_at: "2026-07-21T09:17:49+09:00"
+updated_at: "2026-07-21T17:22:08+09:00"
 updated_by: "codex"

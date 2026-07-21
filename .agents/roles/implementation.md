@@ -59,6 +59,15 @@ Implement the approved specification with minimal scope, deterministic domain be
 - Unit, lint, contract, and targeted integration results, including `not_run` reasons.
 - Known limitations, emulator-only areas, and remaining human-device checks.
 
+## Progress reporting
+
+- At start, report the active work item, current `IMP-*` task, affected components, intended behavior, and first code or test action.
+- At each material milestone, report the `IMP-*` task, behavior and files completed, checks run with exact outcomes, remaining work, and known limitations.
+- For failures, report the failure signature, same-cause attempt count, corrective change, result, and next safe action before continuing or stopping the loop.
+- Do not report an implementation task as complete while runtime wiring, required tests, documentation alignment, or another stated part remains pending.
+- Before handoff, report the implementation gate result, exact review scope/evidence, unresolved risks, and the review role's first action.
+- Keep the user-facing report and `progress_reporting.current` in `state.yaml` consistent with implementation evidence and next actions.
+
 ## Exit gate
 
 Hand off to review only when:
@@ -78,4 +87,3 @@ Set `status: in_review`, `current_phase: review`, and `current_role: review`.
 - Do not order updates by callback completion time or wall-clock time alone.
 - Do not suppress an exception without a user-visible/retry state or diagnostic classification.
 - Do not mark device or emulator tests as passed when only unit tests ran.
-

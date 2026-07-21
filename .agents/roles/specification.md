@@ -47,6 +47,14 @@ Turn product intent into an implementable, testable contract before code changes
 - Any contract example/fixture required by implementation and test.
 - Updated `spec_refs`, decisions, risks, phase tasks, handoff, and next actions in `state.yaml`.
 
+## Progress reporting
+
+- At start, report the active work item, specification task, affected contract/specification IDs, and first decision or definition to complete.
+- At each material update, report the behavior defined, acceptance criteria added or changed, decisions resolved, and remaining ambiguities.
+- Report open product or architecture decisions as blockers or `decisions_needed`; never present an assumption as an approved decision.
+- Before handoff, report the specification gate result, implementation-ready artifacts, unresolved exclusions, and the implementation role's first action.
+- Keep the user-facing report and `progress_reporting.current` in `state.yaml` consistent with the current specification task.
+
 ## Exit gate
 
 Hand off to implementation only when:
@@ -65,4 +73,3 @@ Set `current_phase: implementation`, `current_role: implementation`, and identif
 - Do not change application scope solely to make implementation easier.
 - Do not claim Android behavior from memory when an official source can be checked cheaply.
 - Do not implement production code while acting only as specification role; transition the state first.
-

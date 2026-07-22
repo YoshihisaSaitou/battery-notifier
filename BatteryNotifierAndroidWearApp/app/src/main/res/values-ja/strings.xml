@@ -24,4 +24,16 @@
     <string name="retry_sent">同期を要求しました</string>
     <string name="retry_no_connection">現在スマートフォンとの接続を確認できません</string>
     <string name="retry_failed">更新を要求できませんでした</string>
+    <string name="battery_alert_channel_name">スマートフォンの電池通知</string>
+    <string name="battery_alert_channel_description">スマートフォンの電池残量が設定したしきい値に達したときに通知します</string>
+    <string name="phone_battery_alert_title">スマートフォンの電池残量が%1$d%%です</string>
+    <string name="phone_battery_alert_body">設定値%1$d%%以下になりました。充電してください。</string>
+    <string name="notification_permission_missing">ウォッチの通知が許可されていません</string>
+    <string name="notification_delivery_failed">スマートフォンの電池通知を表示できませんでした</string>
+    <string name="notification_permission_description">このウォッチでスマートフォンの電池通知を受け取るには通知を許可してください。拒否しても状態表示と同期は継続します。</string>
+    <string name="notification_permission_enabled">ウォッチの通知は許可されています</string>
+    <string name="notification_permission_not_requested">通知はまだ要求していません</string>
+    <string name="notification_permission_settings_required">通知は許可されていません。システム設定から変更してください</string>
+    <string name="notification_permission_request_action">通知を許可</string>
+    <string name="notification_permission_settings_action">設定を開く</string>
 </resources>

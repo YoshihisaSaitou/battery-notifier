@@ -47,6 +47,7 @@ affected_components:
 
 traceability:
   product_requirements:
+    - "PR-001"
     - "PR-002"
     - "PR-003"
     - "PR-004"
@@ -54,10 +55,23 @@ traceability:
     - "PR-009"
     - "PR-010"
   functional_requirements:
+    - "FR-002"
+    - "FR-003"
+    - "FR-004"
+    - "FR-005"
+    - "FR-006"
     - "FR-010"
+    - "FR-011"
     - "FR-012"
     - "FR-014"
     - "FR-015"
+    - "FR-017"
+    - "FR-018"
+    - "FR-020"
+    - "FR-021"
+    - "FR-022"
+    - "FR-023"
+    - "FR-024"
     - "FR-030"
     - "FR-031"
     - "FR-032"
@@ -76,6 +90,7 @@ traceability:
     - "FR-065"
     - "FR-066"
   acceptance_criteria:
+    - "AC-001"
     - "AC-002"
     - "AC-003"
     - "AC-004"
@@ -119,7 +134,7 @@ phases:
     tasks:
       - id: "IMP-001"
         title: "Unify Mobile and Wear application ID and signing assumptions"
-        status: "pending_decision"
+        status: "done"
         requirement_refs:
           - "ADR-005"
       - id: "IMP-002"
@@ -132,8 +147,15 @@ phases:
           - "FR-061"
       - id: "IMP-003"
         title: "Implement the Mobile Data Layer state and event sender"
-        status: "in_progress"
+        status: "done"
         requirement_refs:
+          - "FR-003"
+          - "FR-006"
+          - "FR-010"
+          - "FR-011"
+          - "FR-017"
+          - "FR-018"
+          - "FR-023"
           - "FR-060"
           - "FR-061"
           - "FR-063"
@@ -159,8 +181,9 @@ phases:
           - "FR-053"
       - id: "IMP-006"
         title: "Add deterministic domain, DataStore, mapper, sender, and receiver unit tests"
-        status: "in_progress"
+        status: "done"
         test_refs:
+          - "TC-U010"
           - "TC-U003"
           - "TC-U006"
           - "TC-U008"
@@ -171,6 +194,14 @@ phases:
           - "TC-U015"
           - "TC-U016"
           - "TC-U017"
+      - id: "IMP-007"
+        title: "Implement the Mobile local threshold notification bridge"
+        status: "done"
+        requirement_refs:
+          - "FR-020"
+          - "FR-021"
+          - "FR-022"
+          - "FR-024"
 
   review:
     status: "pending"
@@ -302,24 +333,68 @@ decisions_needed:
   - id: "DEC-001"
     title: "Select the final common application ID for Mobile and Wear"
     owner: "human"
-    status: "open"
-    blocks:
-      - "IMP-001"
-      - "Data Layer end-to-end testing"
-    proposed_value: "com.magicitengineer.batterynotifier"
+    status: "approved"
+    decided_at: "2026-07-22T13:57:48+09:00"
+    decided_by: "human"
+    decision: >-
+      Use com.magicitengineer.batterynotifier as the common Mobile/Wear
+      application ID while retaining the current Kotlin namespaces. Use the
+      same debug signing identity and the same Play App Signing certificate
+      lineage for release. Distribute both form factors from one Google Play
+      listing with non-overlapping version codes, accept reinstall without
+      development-data migration, and never store signing secrets in the
+      repository.
+    blocks: []
     notes: >-
       The current Mobile and Wear template application IDs differ. Data Layer
       requires the same package identity and signing identity.
   - id: "DEC-002"
     title: "Confirm the first distribution channel and foreground-service policy path"
     owner: "human"
+    status: "approved"
+    decided_at: "2026-07-22T09:05:53+09:00"
+    decided_by: "human"
+    decision: >-
+      Use Google Play distribution and ADR-006 specialUse Foreground Service.
+      Implementation is authorized to add the required FGS permissions,
+      specialUse manifest property, stoppable ongoing notification, runtime
+      ACTION_BATTERY_CHANGED receiver, and reboot/package-update recovery.
+      Play Console declaration, explanation, demo video, and policy review are
+      mandatory before publication.
+    blocks: []
+    notes: >-
+      POST_NOTIFICATIONS declaration and request UX remain outside this
+      approval and require separate DEC-004 human approval.
+  - id: "DEC-003"
+    title: "Define the Wear notification post-failure retry limit and triggers"
+    owner: "specification"
     status: "open"
     blocks:
-      - "Release approval"
+      - "IMP-005 completion"
     notes: >-
-      Initial implementation may proceed, but Google Play publication requires
-      the specialUse foreground-service declaration and policy evidence defined
-      in the privacy and background-monitoring specifications.
+      NBR-001 requires bounded retry after RESERVED_FAILED but does not define
+      the attempt limit or retry triggers. The implementation may post once and
+      persist POSTED, PERMISSION_DENIED, or RESERVED_FAILED, but automatic retry
+      remains excluded until the normative behavior is specified.
+  - id: "DEC-004"
+    title: "Approve POST_NOTIFICATIONS declaration and permission UX"
+    owner: "human"
+    status: "approved"
+    decided_at: "2026-07-22T13:57:48+09:00"
+    decided_by: "human"
+    decision: >-
+      Declare android.permission.POST_NOTIFICATIONS in both apps. Request it
+      separately on each device only after an explanation and an explicit user
+      action, never automatically at initial launch. Continue monitoring,
+      persistence, and synchronization after denial or dismissal; avoid repeat
+      dialogs and provide permission status plus a system notification-settings
+      action. Approval is limited to notification permission and its UX.
+    blocks: []
+    notes: >-
+      Notification posting code checks the runtime permission and persists a
+      user-visible PERMISSION_DENIED outcome, but this increment deliberately
+      does not add the permission declaration or request flow without explicit
+      human approval.
 
 blockers: []
 
@@ -329,14 +404,33 @@ loop_control:
   current_failure_signature: null
   consecutive_same_cause_failures: 0
   total_phase_returns: 0
-  attempts: []
+  attempts:
+    - attempt: 1
+      occurred_at: "2026-07-22T14:23:01+09:00"
+      phase: "implementation"
+      role: "implementation"
+      command: >-
+        From BatteryNotifierAndroidMobileApp: .\gradlew.bat test lint with
+        TieredStopAtLevel=1 and in-process Kotlin compiler.
+      failure_signature: >-
+        compileDebugKotlin: MainActivity.kt onRequestPermissionsResult
+        overrides nothing; Array<out String> did not match Array<String>.
+      root_cause_hypothesis: >-
+        The ComponentActivity callback override requires the invariant Kotlin
+        Array<String> signature.
+      corrective_change: >-
+        Changed the callback parameter to Array<String> in both Mobile and Wear
+        activities before rerunning the same affected-project gate.
+      result: >-
+        pass; the same Mobile test/lint gate completed successfully in 5m 24s
+        after changing both callbacks to Array<String>.
   termination_reason: null
   resume_condition: null
 
 progress_reporting:
   format_version: 1
   current:
-    reported_at: "2026-07-21T22:06:53+09:00"
+    reported_at: "2026-07-22T14:52:48+09:00"
     work_item_id: "BN-001"
     role: "implementation"
     phase: "implementation"
@@ -347,29 +441,184 @@ progress_reporting:
       - "IMP-003 sender contract, gateway, atomic confirmation, and deterministic sender tests."
       - "IMP-003 current battery normalization, recapture, and serialized trigger coordination increment."
       - "IMP-003/IMP-005 Wear request-state UI, MessageClient request, exact Mobile routing, and current-state resend runtime increment."
+      - "IMP-003 Wear reconnection, Mobile process restoration, and localized manual-sync runtime entry points."
+      - "IMP-003 explicit 5-100% threshold persistence, no-event reevaluation, and serialized SETTINGS_CHANGED sync."
+      - "IMP-003 exact ACTION_BATTERY_CHANGED mapping and serialized callback persistence plus BATTERY_CHANGED sync boundary."
+      - "IMP-003 specialUse FGS, runtime battery Receiver, stoppable ongoing notification, atomic monitoring state, and reboot/package-update recovery."
       - "IMP-004 Wear Data Layer reception, validation, ordering, deduplication, and Proto DataStore persistence."
       - "IMP-005 deterministic freshness mapping plus Wear app, Tile, complication, and post-persistence surface refresh increment."
+      - "IMP-005 first Wear notification attempt, atomic outcome completion, stable ID, localization, and user-visible failure states."
+      - "IMP-006 deterministic domain, persistence, mapper, sender, receiver, freshness, ordering, expiry, notification, and concurrency coverage."
+      - "IMP-001 common com.magicitengineer.batterynotifier application ID, retained namespaces, and even-Mobile/odd-Wear versionCode strategy."
+      - "IMP-005/IMP-007 Mobile and Wear POST_NOTIFICATIONS declaration, Proto-backed one-shot request history, user-initiated request, denial/dismiss settings routing, localization, and API 32/33 boundary behavior."
       - "Role-aware progress reporting rules added to the operating documentation."
     in_progress:
-      - "IMP-003 Android lifecycle wiring for battery, settings, reconnect, manual, and restore triggers."
-      - "IMP-005 Wear display state, app, Tile, complication, and surface refresh wiring."
-      - "IMP-006 remaining deterministic coverage and implementation exit evidence."
+      - "IMP-005 bounded Wear notification retry only; permission UX is complete."
     next:
-      - "Add notification orchestration without declaring an unapproved runtime permission or claiming notification delivery."
-      - "Continue the non-blocked IMP-003 Android lifecycle wiring without changing application identity or FGS policy."
+      - "Resolve DEC-003 before adding automatic notification retries."
+      - "Run Mobile/Wear notification permission allow, deny, dismiss, and channel-disabled combinations on attached API 33+ targets."
+      - "Run Mobile FGS, stop-action, callback, reboot, and package-update recovery cases on an attached emulator or device."
+      - "Prepare the Play Console FGS declaration, explanation, demo video, and policy confirmation before publication."
     checks:
-      - "Mobile unit tests pass: debug 29/29 and release 29/29."
-      - "Mobile lint passes with 0 errors and 17 non-blocking warnings."
-      - "Mobile Android test Kotlin, including real DataStore instrumented coverage, compiles successfully."
+      - "Mobile unit tests pass: debug 70/70 and release 70/70."
+      - "Mobile lint passes with 0 errors and 20 non-blocking warnings."
+      - "Mobile Android test Kotlin, including real DataStore, four Intent-mapper cases, FGS notification, and local threshold-notification contracts, compiles successfully."
       - "Instrumented tests are not run because adb lists no attached target."
-      - "Wear unit tests pass: debug 18/18 and release 18/18."
-      - "Wear lint passes with 0 errors and 7 non-blocking warnings."
+      - "Wear unit tests pass: debug 29/29 and release 29/29."
+      - "Wear lint passes with 0 errors and 9 non-blocking warnings."
+      - "Wear Android test Kotlin reports NO-SOURCE after successful Android-test configuration."
       - "Merged Mobile manifest contains the exact request-state MessageClient filter."
-      - "Request-state increment git diff --check passes."
+      - "Merged Mobile manifest contains BatteryNotifierApplication for one-shot process restoration."
+      - "Merged Mobile and Wear manifests both use package com.magicitengineer.batterynotifier and declare POST_NOTIFICATIONS; the Mobile FGS/recovery contract remains present."
+      - "Environment preflight passes with 10 passes, 4 expected warnings, and 0 failures; the application-ID check passes."
+      - "Final git diff --check passes."
     blockers:
-      - "DEC-001 blocks application ID unification and Data Layer end-to-end testing."
+      - "DEC-003 blocks automatic Wear notification retry and IMP-005 completion."
       - "No emulator or device is attached for instrumented execution."
   history:
+    - reported_at: "2026-07-22T14:52:48+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "dec001_dec004_implementation_verified"
+      summary: >-
+        Recorded the human approvals, accepted ADR-005/ADR-013, unified both
+        application IDs, assigned Mobile even and Wear odd version codes, and
+        added POST_NOTIFICATIONS plus user-initiated permission UX on both
+        devices. A Proto-backed request-history flag prevents repeat permission
+        dialogs after denial or dismissal and routes users to system settings;
+        monitoring, persistence, and synchronization remain independent. Mobile
+        debug/release each pass 70 tests with lint 0 errors/20 warnings; Wear
+        debug/release each pass 29 tests with lint 0 errors/9 warnings. Mobile
+        Android tests compile, Wear Android tests are NO-SOURCE, both merged
+        manifests use the common package and permission, and no adb target is
+        attached for runtime permission or real DataStore execution.
+    - reported_at: "2026-07-22T10:35:19+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "mobile_local_notification_first_attempt_verified"
+      summary: >-
+        Implemented an independent durable Mobile notification reservation so
+        Data Layer confirmation cannot erase an unprocessed local alert. Added
+        localized local-only HIGH-channel posting, stable event-derived IDs,
+        terminal POSTED/PERMISSION_DENIED/FAILED persistence, UI failure states,
+        and notification-before-sync orchestration. Mobile debug/release each
+        pass 66 tests, lint has 0 errors/20 warnings, and Android notification
+        contract tests compile. POST_NOTIFICATIONS remains absent, so actual
+        API 33+ posting and permission UX remain blocked by DEC-004. IMP-006 is
+        complete; IMP-007 remains in progress only for the approved permission
+        path and device execution.
+    - reported_at: "2026-07-22T10:07:43+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "mobile_local_notification_bridge_started"
+      summary: >-
+        Re-read the active state, implementation role, and every spec_ref. The
+        audit found that Mobile persists lastMobileNotifiedEventId but has no
+        local threshold-notification adapter or delivery orchestration. Started
+        IMP-007 to add an independent durable Mobile notification reservation,
+        stable event-derived ID, localized local-only posting, and user-visible
+        permission/failure outcome. POST_NOTIFICATIONS declaration and request
+        UX remain excluded pending DEC-004.
+    - reported_at: "2026-07-22T09:43:47+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "mobile_special_use_fgs_verified"
+      summary: >-
+        Implemented the DEC-002-approved Mobile specialUse foreground service,
+        runtime ACTION_BATTERY_CHANGED Receiver, stoppable ongoing notification,
+        atomically persisted monitoring/resume-required state, and exact
+        BOOT_COMPLETED/MY_PACKAGE_REPLACED recovery. Mobile debug/release each
+        pass 60 tests, lint passes with 0 errors/20 warnings, Android tests
+        compile, the merged manifest matches the approved scope, and
+        POST_NOTIFICATIONS remains absent. Device execution is not run because
+        adb lists no attached target.
+    - reported_at: "2026-07-22T09:05:53+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "dec002_special_use_fgs_approved"
+      summary: >-
+        Human approved Google Play distribution and ADR-006 specialUse FGS,
+        including required FGS permissions and subtype property, a stoppable
+        ongoing notification, runtime ACTION_BATTERY_CHANGED Receiver, and
+        reboot/package-update recovery. Play Console declaration, explanation,
+        demo video, and policy review remain mandatory release evidence.
+        POST_NOTIFICATIONS remains excluded pending DEC-004.
+    - reported_at: "2026-07-22T07:41:52+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "mobile_battery_callback_boundary_verified"
+      summary: >-
+        Added exact ACTION_BATTERY_CHANGED Intent mapping and callback-value
+        processing without a sticky-battery reread. DataStore processing and
+        BATTERY_CHANGED sending share the process coordinator mutex; 30
+        concurrent callbacks are covered deterministically. Mobile
+        debug/release each pass 50 tests, lint has zero errors, and four new
+        Android mapper cases compile. Receiver registration, FGS, permissions,
+        and policy declarations remain excluded pending DEC-002.
+    - reported_at: "2026-07-22T07:25:01+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "mobile_battery_callback_boundary_started"
+      summary: >-
+        Started the permission-free callback boundary for exact
+        ACTION_BATTERY_CHANGED values: Android Intent mapping, deterministic
+        validation, and serialized persistence plus BATTERY_CHANGED sync.
+        Receiver registration, FGS, permissions, and policy declarations remain
+        excluded pending DEC-002.
+    - reported_at: "2026-07-22T07:02:37+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "mobile_threshold_settings_wiring_verified"
+      summary: >-
+        Added explicit 5-100 percent threshold editing with one-percent slider
+        and accessible step controls, saved-state draft preservation, atomic
+        Proto DataStore persistence, deterministic no-event alert-state
+        reevaluation, and exactly one serialized SETTINGS_CHANGED send per
+        Save. Mobile debug/release each pass 46 tests, lint has zero errors,
+        and Android test sources compile. Battery monitoring remains excluded
+        pending DEC-002.
+    - reported_at: "2026-07-22T06:41:51+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "mobile_threshold_settings_wiring_started"
+      summary: >-
+        Started the permission-free threshold settings increment: explicit
+        5-100 percent edits, atomic Proto DataStore persistence, deterministic
+        no-event alert-state reevaluation, and one SETTINGS_CHANGED sync only
+        after Save. Continuous battery monitoring, FGS, permissions,
+        application identity, and signing remain excluded.
+    - reported_at: "2026-07-22T06:08:53+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "mobile_runtime_trigger_wiring_verified"
+      summary: >-
+        Connected Wear node reconnection, Mobile process restoration, and a
+        localized user-initiated manual sync screen to the process-shared
+        serialized coordinator. Added deterministic trigger and UI-result
+        tests, corrected the preflight Java/Git probes, and passed Mobile
+        debug/release tests and lint. Battery and settings callbacks remain,
+        so IMP-003 stays in progress.
+    - reported_at: "2026-07-22T05:51:55+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "mobile_runtime_trigger_wiring_started"
+      summary: >-
+        Started the permission-free IMP-003 runtime increment for Wear node
+        reconnection, Mobile process restoration, and user-initiated manual
+        synchronization through the existing process-shared serialized
+        coordinator. Battery monitoring FGS, permissions, application ID, and
+        signing remain excluded.
     - reported_at: "2026-07-21T17:14:17+09:00"
       role: "implementation"
       phase: "implementation"
@@ -472,16 +721,40 @@ progress_reporting:
         send the pending fixed-path DataItems. Mobile debug/release each pass 29
         tests; Wear debug/release each pass 18 tests; both lint gates have zero
         errors. End-to-end execution remains blocked by DEC-001 and no device.
+    - reported_at: "2026-07-22T05:29:32+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "wear_notification_first_attempt_started"
+      summary: >-
+        Started the IMP-005 Wear notification increment for atomic pending-event
+        completion, stable notification IDs, localized Android notification
+        posting, permission-denied UI state, and deterministic orchestration
+        tests. No POST_NOTIFICATIONS declaration is added. DEC-003 records the
+        unspecified automatic retry limit and triggers.
+    - reported_at: "2026-07-22T05:46:25+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "wear_notification_first_attempt_verified"
+      summary: >-
+        Implemented the first Wear notification posting attempt after atomic
+        event reservation. Stable event-derived IDs, localized channel/content,
+        explicit immutable app launch, permission-denied handling, conditional
+        POSTED/PERMISSION_DENIED/RESERVED_FAILED completion, stale-reservation
+        protection, and user-visible failure states are verified. Wear
+        debug/release each pass 24 tests and lint has 0 errors/7 warnings. No
+        notification permission was declared; DEC-003 and DEC-004 remain open.
 
 risks:
   - id: "RISK-001"
-    severity: "high"
-    summary: "Data Layer will not function until package and signing identities match."
-    mitigation: "Resolve DEC-001 before integration testing and test matching debug/release pairs."
+    severity: "medium"
+    summary: "Application IDs now match, but installed Mobile/Wear signature equality still requires end-to-end verification."
+    mitigation: "Test matching debug builds from the shared debug identity and matching Play-signed release artifacts; never mix debug and release."
   - id: "RISK-002"
     severity: "high"
-    summary: "The continuous battery-monitoring specialUse FGS may require distribution-policy changes."
-    mitigation: "Resolve DEC-002 and perform policy review before release approval."
+    summary: "The continuous battery-monitoring specialUse FGS requires Google Play policy review and declaration evidence."
+    mitigation: "Before publication, complete the Play Console FGS declaration, explanation, demo video, and policy confirmation approved in DEC-002."
   - id: "RISK-003"
     severity: "medium"
     summary: "Disconnected event delivery can create a misleading late Wear notification."
@@ -511,11 +784,85 @@ evidence:
         proceed without changing application ID, signing, permissions, or
         distribution policy.
   implementation_progress:
+    - completed_at: "2026-07-22T14:52:48+09:00"
+      actor: "codex"
+      task: "IMP-001, IMP-005 permission increment, IMP-007"
+      status: "done_except_imp005_dec003_retry"
+      requirement_refs:
+        - "ADR-005"
+        - "FR-020"
+        - "FR-022"
+        - "FR-040"
+        - "FR-043"
+        - "FR-071"
+      summary: >-
+        Applied the approved common application identity and versionCode
+        strategy, declared notification permission in both apps, and implemented
+        localized user-initiated request/settings UX with durable request
+        history and API 32/33 boundary handling. Automatic Wear notification
+        retry remains excluded pending DEC-003.
+      files:
+        - "BatteryNotifierAndroidMobileApp/app/build.gradle.kts"
+        - "BatteryNotifierAndroidWearApp/app/build.gradle.kts"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/AndroidManifest.xml"
+        - "BatteryNotifierAndroidWearApp/app/src/main/AndroidManifest.xml"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/MainActivity.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt"
+        - "docs/architecture-decision-records.md"
+        - "docs/compatibility-matrix.md"
+    - started_at: "2026-07-22T10:07:43+09:00"
+      last_updated_at: "2026-07-22T10:35:19+09:00"
+      actor: "codex"
+      task: "IMP-007"
+      status: "first_notification_attempt_verified_permission_pending"
+      requirement_refs:
+        - "FR-020"
+        - "FR-021"
+        - "FR-022"
+        - "FR-024"
+      summary: >-
+        Added a Proto-backed Mobile notification reservation independent of the
+        Data Layer event outbox, terminal notification outcome persistence,
+        stale-reservation protection, notification-before-sync coordination,
+        stable event-derived IDs, a localized local-only HIGH notification, and
+        user-visible permission-denied/failure states. No permission declaration
+        or request flow was added; DEC-004 and device execution remain required
+        before IMP-007 can be completed.
+      files:
+        - "BatteryNotifierAndroidMobileApp/app/src/main/proto/mobile_state.proto"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/domain/notification/MobileNotificationDisposition.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/domain/state/MobilePersistentState.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/data/datastore/MobileStateProtoMapper.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/data/datastore/MobileStateSanitizer.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/data/datastore/MobileStateRepository.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/application/notification/DeliverPendingMobileNotification.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/platform/notification/AndroidMobileAlertNotificationGateway.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/application/sync/MobileSyncCoordinator.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/data/datastore/MobileAppContainer.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/application/settings/ThresholdSettingsController.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/MainActivity.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/res/values/strings.xml"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/res/values-ja/strings.xml"
+        - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/application/notification/DeliverPendingMobileNotificationTest.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/androidTest/java/com/magicitengineer/batterynotifierandroidmobileapp/platform/notification/AndroidMobileAlertNotificationFactoryInstrumentedTest.kt"
+    - completed_at: "2026-07-22T10:35:19+09:00"
+      actor: "codex"
+      task: "IMP-006"
+      status: "done"
+      summary: >-
+        Deterministic JVM coverage now includes threshold changes and crossings,
+        re-arming, ordering, duplicate suppression, expiry, freshness and clock
+        rollback, malformed and future-schema payloads, concurrent callbacks,
+        independent Mobile/Wear notification reservations, stable notification
+        IDs, and persisted notification outcomes. Android real-DataStore,
+        battery Intent, and notification-builder suites compile; execution
+        remains a later device test gate.
     - started_at: "2026-07-21T08:35:32+09:00"
-      last_updated_at: "2026-07-21T22:06:53+09:00"
+      completed_at: "2026-07-22T09:43:47+09:00"
+      last_updated_at: "2026-07-22T09:43:47+09:00"
       actor: "codex"
       task: "IMP-003"
-      status: "request_state_wired_other_runtime_lifecycle_triggers_pending"
+      status: "done"
       scope: >-
         Implement the fixed-path v1 sender plus current battery recapture and
         serialized application trigger coordination. DEC-001 remains open, so
@@ -530,10 +877,31 @@ evidence:
         serialized trigger coordination with ten more JVM tests. Added a
         process-shared manual DI container, exact request-state message router,
         and background WearableListenerService that invokes REQUEST_STATE.
-        Battery callback, settings, reconnect, manual Mobile UI, and process
-        restore entry points still need to call the coordinator before IMP-003
-        can be marked done.
+        Added exact reconnect, process-restored, and manual-sync runtime
+        handlers; one-shot Application restoration; a localized, saveable
+        manual-sync UI; and deterministic trigger/result mapping tests. Added
+        explicit threshold editing and save, repository-backed settings flow,
+        no-event alert-state reevaluation, and a single serialized
+        SETTINGS_CHANGED send after persistence. Added exact
+        ACTION_BATTERY_CHANGED mapping and callback-value processing without
+        re-reading sticky state; persistence and BATTERY_CHANGED delivery share
+        the coordinator mutex. After DEC-002 approval, added the specialUse FGS,
+        runtime battery Receiver, ongoing notification with an explicit stop
+        action, atomic monitoring/resume-required persistence, and exact boot
+        and package-update recovery. Google Play declaration evidence and
+        device execution remain release/test gates rather than implementation
+        omissions.
       requirement_refs:
+        - "FR-002"
+        - "FR-003"
+        - "FR-004"
+        - "FR-005"
+        - "FR-006"
+        - "FR-010"
+        - "FR-011"
+        - "FR-017"
+        - "FR-018"
+        - "FR-023"
         - "FR-060"
         - "FR-061"
         - "FR-063"
@@ -560,6 +928,46 @@ evidence:
         - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/data/wearable/MobileDataLayerListenerService.kt"
         - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/application/sync/MobileDataLayerMessageHandlerTest.kt"
         - "BatteryNotifierAndroidMobileApp/app/src/main/AndroidManifest.xml"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/BatteryNotifierApplication.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/MainActivity.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/application/sync/MobileRuntimeTriggerHandler.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/presentation/ManualSyncUiState.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/res/values/strings.xml"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/res/values-ja/strings.xml"
+        - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/application/sync/MobileRuntimeTriggerHandlerTest.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/presentation/ManualSyncUiStateTest.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/application/settings/ThresholdSettingsController.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/domain/alert/AlertRuleChangeEvaluator.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/presentation/ThresholdSettingsUiState.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/application/settings/ThresholdSettingsControllerTest.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/domain/alert/AlertRuleChangeEvaluatorTest.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/presentation/ThresholdSettingsUiStateTest.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/platform/battery/AndroidBatteryChangedIntentMapper.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/androidTest/java/com/magicitengineer/batterynotifierandroidmobileapp/platform/battery/AndroidBatteryChangedIntentMapperInstrumentedTest.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/application/monitoring/MonitoringController.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/platform/service/AndroidMonitoringServiceGateway.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/platform/service/BatteryMonitoringService.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/platform/service/MonitoringStopReceiver.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/platform/boot/MonitoringRecoveryReceiver.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/platform/notification/AndroidMonitoringNotificationFactory.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/presentation/MonitoringUiState.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/proto/mobile_state.proto"
+        - "BatteryNotifierAndroidMobileApp/app/src/main/res/drawable/ic_battery_monitoring.xml"
+        - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/application/monitoring/MonitoringControllerTest.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/presentation/MonitoringUiStateTest.kt"
+        - "BatteryNotifierAndroidMobileApp/app/src/androidTest/java/com/magicitengineer/batterynotifierandroidmobileapp/platform/notification/AndroidMonitoringNotificationFactoryInstrumentedTest.kt"
+    - completed_at: "2026-07-22T06:08:53+09:00"
+      actor: "codex"
+      task: "IMP-006 environment preflight follow-up"
+      status: "done"
+      summary: >-
+        Replaced shell-dependent Java version capture with redirected .NET
+        process capture and normalized the command-local Git safe.directory
+        path. The JSON preflight now distinguishes the executable sandbox
+        restriction from project failures and passes in the approved Android
+        toolchain environment with 9 passes, 5 warnings, and 0 failures.
+      files:
+        - "scripts/preflight.ps1"
     - completed_at: "2026-07-21T20:09:42+09:00"
       actor: "codex"
       task: "IMP-004"
@@ -588,7 +996,7 @@ evidence:
       last_updated_at: "2026-07-21T22:06:53+09:00"
       actor: "codex"
       task: "IMP-005"
-      status: "display_and_retry_verified_notification_pending"
+      status: "first_notification_attempt_verified_retry_and_permission_pending"
       requirement_refs:
         - "FR-030"
         - "FR-031"
@@ -605,8 +1013,11 @@ evidence:
         full-size click target to open the explicit Wear main Activity.
         Added Stale/No Data retry UI with explicit result states and a
         connected-node MessageClient request gateway using the fixed
-        request-state path. Permission-gated notification posting remains
-        intentionally pending.
+        request-state path. Added atomic pending notification completion,
+        stable notification IDs, localized Android posting, permission and
+        failure UI states, and stale-reservation protection. Automatic retries
+        and the POST_NOTIFICATIONS declaration/request flow remain pending
+        DEC-003 and DEC-004.
       files:
         - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/domain/presentation/WearDisplayState.kt"
         - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt"
@@ -618,6 +1029,9 @@ evidence:
         - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/application/sync/RequestPhoneState.kt"
         - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/platform/wearable/GooglePlayServicesPhoneStateRequestGateway.kt"
         - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/application/sync/RequestPhoneStateTest.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/application/notification/DeliverPendingWearNotification.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/platform/notification/AndroidWearNotificationGateway.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/application/notification/DeliverPendingWearNotificationTest.kt"
     - completed_at: "2026-07-20T21:58:55+09:00"
       actor: "codex"
       task: "IMP-002"
@@ -656,6 +1070,41 @@ evidence:
         - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/data/datastore/ProtoMobileStateRepositoryTest.kt"
         - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/domain/alert/ThresholdEvaluatorTest.kt"
   dependency_verification:
+    - checked_at: "2026-07-22"
+      source: "https://developer.android.com/develop/background-work/services/fgs/service-types#special-use"
+      result: >-
+        Verified the Android 14+ specialUse contract: declare
+        FOREGROUND_SERVICE_SPECIAL_USE, foregroundServiceType=specialUse, and
+        PROPERTY_SPECIAL_USE_FGS_SUBTYPE. Google Play distribution also requires
+        declaring the foreground-service type in Play Console; DEC-002 makes the
+        declaration, explanation, demo video, and policy confirmation mandatory
+        release evidence.
+    - checked_at: "2026-07-22"
+      source: "https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start"
+      result: >-
+        Verified that BOOT_COMPLETED and MY_PACKAGE_REPLACED are documented
+        background-start exception events, subject to foreground-service-type
+        restrictions. The selected specialUse type is not among the cited boot
+        prohibitions; device tests remain required across supported API levels.
+    - checked_at: "2026-07-22"
+      source: "https://developer.android.com/develop/background-work/background-tasks/broadcasts#context-registered-receivers"
+      result: >-
+        Verified that context-registered receivers handling system broadcasts
+        use an explicit export flag. The FGS registers the protected battery
+        broadcast receiver with RECEIVER_EXPORTED and unregisters it on destroy.
+    - checked_at: "2026-07-22"
+      source: "https://developer.android.com/develop/ui/compose/notifications/notification-permission"
+      result: >-
+        Verified that POST_NOTIFICATIONS is not required to launch an FGS, while
+        the service must still supply a notification. The declaration/request UX
+        remains deliberately absent pending DEC-004.
+    - checked_at: "2026-07-22"
+      source: "https://developers.google.com/android/reference/com/google/android/gms/wearable/WearableListenerService"
+      result: >-
+        Verified against the official current reference that
+        WearableListenerService delivers connectivity events and exposes
+        onPeerConnected(Node), allowing the existing manifest-declared Mobile
+        service to handle reconnection without a new permission.
     - checked_at: "2026-07-21"
       source: "https://developers.google.com/android/guides/releases"
       result: >-
@@ -922,6 +1371,291 @@ evidence:
         have 0 failures, errors, or skips. Mobile lint 0 errors/17 warnings;
         Wear lint 0 errors/7 warnings. Merged manifest contains all three exact
         service/filter markers and diff --check reports no whitespace errors.
+    - command: >-
+        From BatteryNotifierAndroidWearApp: targeted testDebugUnitTest for
+        DeliverPendingWearNotificationTest, ProtoWearStateRepositoryTest, and
+        WearDisplayStateMapperTest
+      result: "pass"
+      output: >-
+        BUILD SUCCESSFUL in 1m 17s. Posting outcomes, stable IDs, expiration,
+        stale completion races, one-time completion, and UI outcome mapping pass.
+    - command: >-
+        From BatteryNotifierAndroidWearApp: .\gradlew.bat test lint --offline
+        --max-workers=1 --console=plain
+        '-Pkotlin.compiler.execution.strategy=in-process'
+      result: "initial_lint_failure_then_pass_with_warnings"
+      output: >-
+        Initial full gate completed tests but lint reported NotificationPermission
+        because the deliberately undeclared API 33 permission could not be
+        inferred from the runtime guard. Notification posting was isolated
+        behind that guard with a local suppression; the same gate passed in 3m
+        58s. Removing a WearRecents-flag warning and rerunning the final gate
+        passed in 3m 8s. Debug/release each pass 24 tests; lint reports 0 errors
+        and 7 existing non-blocking warnings. No corrective-failure attempt was
+        consumed because both corrective reruns passed.
+    - command: >-
+        Aggregate final Wear JUnit/lint XML, verify POST_NOTIFICATIONS is absent
+        from the Wear manifest, and run git diff --check
+      result: "pass"
+      output: >-
+        Debug/release each 24/24 with 0 failures, errors, or skips; lint 0
+        errors/7 warnings; POST_NOTIFICATIONS_DECLARED=False; no whitespace
+        errors.
+    - command: >-
+        From repository root: .\scripts\preflight.ps1 -Json after replacing
+        shell-dependent Java capture and normalizing command-local Git
+        safe.directory
+      result: "pass_with_warnings"
+      output: >-
+        Exit 0; pass=9, warn=5, fail=0. Java 21, SDK 36, both wrappers, adb,
+        repository contract, and Git readability pass. Warnings retain unset
+        JAVA_HOME, dirty worktree, DEC-001 identity mismatch, offline network,
+        and in-process Kotlin compiler guidance.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: targeted testDebugUnitTest for
+        MobileRuntimeTriggerHandlerTest and ManualSyncUiStateTest
+      result: "pass"
+      output: >-
+        Four tests passed with 0 failures and 0 errors. The command client hit
+        its 120-second limit before output delivery, but the surviving Gradle
+        process completed and the two JUnit XML reports provided exact results.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: .\gradlew.bat
+        '-Dorg.gradle.jvmargs=-Xmx2048m -XX:TieredStopAtLevel=1'
+        '-Pkotlin.compiler.execution.strategy=in-process' test lint --no-daemon
+        --offline --max-workers=1 --console=plain
+      result: "pass_with_warnings"
+      output: >-
+        BUILD SUCCESSFUL in 3m 58s; debug and release each executed 33 tests
+        with 0 failures and 0 errors. Lint reported 0 errors and 17 existing
+        non-blocking warnings.
+    - command: >-
+        Final Mobile lint after localized delivery-accuracy wording; aggregate
+        JUnit/lint XML; inspect merged manifest for BatteryNotifierApplication,
+        MobileDataLayerListenerService, and MESSAGE_RECEIVED; run adb devices
+        and git diff --check
+      result: "pass_with_warnings"
+      output: >-
+        Lint BUILD SUCCESSFUL in 1m 13s with 0 errors/17 warnings; merged
+        manifest contains all required components; adb lists no attached
+        target; git diff --check reports no whitespace errors.
+    - command: >-
+        Parse BN-001 state.yaml with Gradle-distributed SnakeYAML 2.0 and verify
+        work_item, loop_control, and progress_reporting top-level keys
+      result: "pass"
+      output: "YAML_OK=true; STATUS=in_progress; ROLE=implementation."
+    - command: >-
+        From repository root: .\scripts\preflight.ps1 -Json before the Mobile
+        threshold settings verification
+      result: "pass_with_warnings"
+      output: >-
+        Exit 0; pass=9, warn=5, fail=0. Java 21, Android SDK 36, wrappers, adb,
+        repository contract, and Git readability pass; the expected JAVA_HOME,
+        dirty-worktree, DEC-001, offline-network, and Kotlin IPC warnings remain.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: targeted testDebugUnitTest for
+        AlertRuleChangeEvaluatorTest, ProtoMobileStateRepositoryTest,
+        MobileSyncCoordinatorTest, ThresholdSettingsControllerTest, and
+        ThresholdSettingsUiStateTest
+      result: "initial_compile_failure_then_pass"
+      output: >-
+        Initial compilation identified a missing return in the new locked sync
+        helper and Android resource formatting ambiguity for a two-percent
+        string. Adding the return and marking the literal string unformatted
+        made the same target pass. The final targeted run executed 21 tests
+        with 0 failures and 0 errors. The corrective rerun passed, so no failed
+        corrective attempt was added to loop_control.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: .\gradlew.bat
+        '-Dorg.gradle.jvmargs=-Xmx2048m -XX:TieredStopAtLevel=1'
+        '-Pkotlin.compiler.execution.strategy=in-process' test lint --no-daemon
+        --offline --max-workers=1 --console=plain
+      result: "pass_with_warnings"
+      output: >-
+        BUILD SUCCESSFUL in 3m 39s; debug and release each executed 46 tests
+        with 0 failures, errors, or skips. Lint reported 0 errors and 17
+        existing non-blocking warnings; none points to the settings increment.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: compileDebugAndroidTestKotlin with
+        the scoped JVM and in-process Kotlin compiler options
+      result: "pass"
+      output: >-
+        BUILD SUCCESSFUL in 55s; all 36 tasks completed or were up-to-date.
+        The real Proto DataStore instrumented suite remains compiled but not
+        executed because adb lists no target.
+    - command: >-
+        Aggregate Mobile JUnit/lint XML, run adb devices, verify no permission
+        or foreground-service declaration in the Mobile manifest, and run git
+        diff --check
+      result: "pass"
+      output: >-
+        Debug/release each 46/46 with 0 failures/errors/skips; lint 0 errors and
+        17 warnings; adb lists no attached target; no permission or FGS marker
+        is present; no whitespace errors.
+    - command: >-
+        From repository root: .\scripts\preflight.ps1 before callback-boundary
+        verification
+      result: "environment_sandbox_restricted"
+      output: >-
+        Repository, SDK 36, both wrappers, adb, and Git probes passed; the
+        sandbox denied starting the resolved Android Studio JBR. The same JBR
+        subsequently executed all Gradle checks with approved process-local
+        access. This environment condition is not a production-code failure.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: targeted testDebugUnitTest for
+        CurrentBatteryStateRefresherTest and MobileSyncCoordinatorTest with the
+        process-local Android Studio JBR and quoted in-process compiler option
+      result: "pass"
+      output: >-
+        BUILD SUCCESSFUL in 46s. Callback values are processed without sticky
+        reread, invalid callbacks do not resend cached state, persistence
+        precedes send, and 30 concurrent callbacks remain serialized.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: compileDebugAndroidTestKotlin with
+        the process-local Android Studio JBR and quoted in-process compiler
+        option
+      result: "pass"
+      output: >-
+        BUILD SUCCESSFUL in 16s; all four ACTION_BATTERY_CHANGED Intent mapper
+        cases compile alongside the real Proto DataStore instrumented suite.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: separate .\gradlew.bat test and
+        .\gradlew.bat lint runs after the combined command exceeded the
+        command-client timeout
+      result: "pass_with_warnings"
+      output: >-
+        Unit test BUILD SUCCESSFUL; debug and release each pass 50 tests with
+        0 failures, errors, or skips. Lint BUILD SUCCESSFUL with 0 errors and
+        19 non-blocking dependency/template warnings; none points to the
+        callback sources. The combined-command timeout produced no code
+        failure signature and did not consume a loop attempt.
+    - command: >-
+        Aggregate Mobile JUnit/lint reports, inspect Mobile sources and
+        manifest for permission/Receiver/FGS markers, and run adb devices
+      result: "pass"
+      output: >-
+        Debug/release each 50/50 with 0 failures/errors/skips; lint 0 errors and
+        19 warnings; no uses-permission, Receiver, foregroundServiceType, or
+        FOREGROUND_SERVICE marker was found; adb lists no attached target.
+    - command: >-
+        Parse BN-001 state.yaml with Gradle-distributed SnakeYAML 2.0 and run
+        git -c safe.directory=C:/Users/yoshihisa/Desktop/www/battery-notifier
+        diff --check
+      result: "pass"
+      output: >-
+        YAML_OK=true; STATUS=in_progress; ROLE=implementation; no whitespace
+        errors after the callback-boundary increment.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: .\gradlew.bat compileDebugKotlin
+        with the Android Studio JBR and quoted in-process Kotlin compiler option
+      result: "pass"
+      output: "BUILD SUCCESSFUL in 2m 6s."
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: targeted testDebugUnitTest for
+        CurrentBatteryStateRefresherTest, MobileSyncCoordinatorTest,
+        MonitoringControllerTest, ProtoMobileStateRepositoryTest,
+        MobileStateSanitizerTest, ThresholdSettingsUiStateTest, and
+        MonitoringUiStateTest
+      result: "pass"
+      output: "BUILD SUCCESSFUL in 2m 36s."
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: .\gradlew.bat
+        compileDebugAndroidTestKotlin with the Android Studio JBR and quoted
+        in-process Kotlin compiler option
+      result: "pass"
+      output: >-
+        BUILD SUCCESSFUL in 42s. The real DataStore, battery Intent mapper, and
+        ongoing monitoring-notification contract instrumented tests compile.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: .\gradlew.bat lint with the Android
+        Studio JBR and quoted in-process Kotlin compiler option
+      result: "initial_resource_error_then_pass_with_warnings"
+      output: >-
+        Initial lint found one translated specialUse subtype resource, which
+        would make the policy subtype locale-dependent. Marking the default
+        policy string translatable=false and removing the Japanese duplicate
+        made the rerun BUILD SUCCESSFUL in 1m 17s with 0 errors and 20
+        non-blocking warnings. The corrective rerun passed, so no failed
+        corrective attempt was added to loop_control.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: .\gradlew.bat test
+        '-Pkotlin.compiler.execution.strategy=in-process' with JAVA_HOME set to
+        the Android Studio JBR
+      result: "pass"
+      output: >-
+        BUILD SUCCESSFUL in 3m 44s; 63 actionable tasks. Debug and release each
+        executed 60 tests with 0 failures and 0 errors.
+    - command: >-
+        Aggregate Mobile JUnit/lint XML, inspect the merged debug manifest for
+        FGS permissions/service/property/receivers and POST_NOTIFICATIONS, run
+        adb devices -l, and run git diff --check
+      result: "pass_with_device_tests_not_run"
+      output: >-
+        Debug/release each 60/60 with 0 failures/errors; lint 0 errors/20
+        warnings. The merged manifest has FOREGROUND_SERVICE,
+        FOREGROUND_SERVICE_SPECIAL_USE, RECEIVE_BOOT_COMPLETED, the non-exported
+        specialUse service and subtype property, and non-exported stop/recovery
+        receivers; POST_NOTIFICATIONS is absent. adb lists no target and git
+        diff --check reports no whitespace errors.
+    - command: >-
+        Parse BN-001 state.yaml with Gradle-distributed SnakeYAML 2.0 after the
+        DEC-002 implementation evidence update
+      result: "pass"
+      output: >-
+        YAML_OK=true; STATUS=in_progress; ROLE=implementation; IMP-003 status is
+        done while the implementation phase remains in progress for IMP-001,
+        IMP-005, and IMP-006.
+    - command: >-
+        From repository root after the DEC-002 implementation: powershell
+        -ExecutionPolicy Bypass -File .\scripts\preflight.ps1 -Json
+      result: "pass_with_warnings"
+      output: >-
+        Exit 0; pass=9, warn=5, fail=0. Java 21, SDK 36, both Gradle wrappers,
+        adb availability, repository contract, and Git readability pass. The
+        expected unset JAVA_HOME, dirty worktree, DEC-001 application ID
+        mismatch, offline network, and Kotlin daemon IPC warnings remain.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: .\gradlew.bat compileDebugKotlin
+        '-Pkotlin.compiler.execution.strategy=in-process' after adding the
+        Mobile notification Proto fields, delivery use case, platform adapter,
+        DI, and UI state
+      result: "pass"
+      output: "BUILD SUCCESSFUL in 2m 1s; 20 actionable tasks."
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: targeted testDebugUnitTest for
+        DeliverPendingMobileNotificationTest, ProtoMobileStateRepositoryTest,
+        MobileSyncCoordinatorTest, and ThresholdSettingsControllerTest
+      result: "initial_test_compile_failure_then_pass"
+      output: >-
+        Initial test compilation found an invalid fully-qualified Flow.first
+        helper call in the new test. Importing the extension and invoking
+        state.first() made the same target BUILD SUCCESSFUL in 1m 25s. The
+        corrective rerun passed, so no failed corrective attempt was added to
+        loop_control.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: .\gradlew.bat
+        compileDebugAndroidTestKotlin
+        '-Pkotlin.compiler.execution.strategy=in-process'
+      result: "pass"
+      output: >-
+        BUILD SUCCESSFUL in 38s; the localized, local-only Mobile threshold
+        notification channel/content/explicit-intent contract compiles with the
+        existing FGS, battery Intent, and real DataStore instrumented suites.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: .\gradlew.bat test lint
+        '-Pkotlin.compiler.execution.strategy=in-process'
+      result: "pass_with_warnings"
+      output: >-
+        BUILD SUCCESSFUL in 4m 20s; 73 actionable tasks. Debug and release each
+        pass 66 tests with 0 failures/errors. Lint reports 0 errors and 20
+        non-blocking warnings.
+    - command: >-
+        Aggregate final Mobile JUnit/lint XML, verify POST_NOTIFICATIONS is
+        absent from the Mobile source manifest, and run git diff --check
+      result: "pass"
+      output: >-
+        Debug/release each 66/66 with 0 failures/errors; lint 0 errors/20
+        warnings; POST_NOTIFICATIONS_DECLARED=False; no whitespace errors.
   environment_notes:
     - >-
       JAVA_HOME was absent. Checks used the Android Studio JBR at
@@ -944,12 +1678,24 @@ evidence:
       an unquoted diagnostic retry was parsed as a nonexistent Gradle task and
       did not reach code compilation.
   automated_checks:
+    - name: "Environment preflight"
+      result: "pass_with_warnings"
+      details: >-
+        10 passes, 4 expected warnings, and 0 failures. The common application
+        ID check passes for com.magicitengineer.batterynotifier.
     - name: "Mobile unit tests"
       result: "pass"
-      details: "Debug 29/29 and release 29/29 passed."
+      details: "Debug 70/70 and release 70/70 passed."
     - name: "Mobile lint"
       result: "pass_with_warnings"
-      details: "0 errors, 17 non-blocking warnings; added request-state source has no lint finding."
+      details: >-
+        0 errors and 20 non-blocking warnings after making the specialUse policy
+        subtype non-translatable; no error remains in the FGS increment.
+    - name: "Mobile battery Intent mapper instrumented test compilation"
+      result: "pass"
+      details: >-
+        Four cases compile: action filtering, invalid missing scale, integer
+        floor normalization with callback time, and charging detection.
     - name: "Mobile real DataStore instrumented test compilation"
       result: "pass"
       details: >-
@@ -958,15 +1704,56 @@ evidence:
     - name: "Mobile real DataStore instrumented test execution"
       result: "not_run"
       reason: "No Android device or emulator was attached."
+    - name: "Mobile monitoring notification instrumented test compilation"
+      result: "pass"
+      details: >-
+        The low-importance channel, ongoing/local-only notification, explicit
+        content intent, and exactly one explicit stop action compile.
+    - name: "Mobile threshold notification instrumented test compilation"
+      result: "pass"
+      details: >-
+        Localized title/body, HIGH battery_alerts channel, local-only behavior,
+        and explicit immutable app-launch intent compile.
+    - name: "Mobile threshold notification execution"
+      result: "not_run"
+      reason: >-
+        POST_NOTIFICATIONS is declared and the request UX is implemented, but no
+        Android device or emulator is attached.
+    - name: "Mobile FGS and recovery device execution"
+      result: "not_run"
+      reason: >-
+        No Android device or emulator was attached for start/stop, callback,
+        process restart, BOOT_COMPLETED, or MY_PACKAGE_REPLACED execution.
+    - name: "Merged Mobile FGS manifest contract"
+      result: "pass"
+      details: >-
+        Both FGS permissions and RECEIVE_BOOT_COMPLETED are present; the service
+        is non-exported specialUse with the subtype property; stop and recovery
+        receivers are non-exported; POST_NOTIFICATIONS is declared and the
+        package is com.magicitengineer.batterynotifier.
     - name: "Wear unit tests"
       result: "pass"
-      details: "Debug 18/18 and release 18/18 passed."
+      details: "Debug 29/29 and release 29/29 passed."
     - name: "Wear lint"
       result: "pass_with_warnings"
       details: >-
-        0 errors and 7 non-blocking warnings: three dependency notices, one
-        template launcher resource, one old template string, and two no-data
-        placeholder typography notices.
+        0 errors and 9 non-blocking warnings: dependency, inlined API,
+        typography, and unused template-resource notices.
+    - name: "Wear Android test compilation"
+      result: "pass_no_source"
+      details: >-
+        Android-test configuration and resources completed successfully;
+        compileDebugAndroidTestKotlin reported NO-SOURCE.
+    - name: "Merged Wear notification manifest contract"
+      result: "pass"
+      details: >-
+        Package is com.magicitengineer.batterynotifier and
+        android.permission.POST_NOTIFICATIONS is declared.
+    - name: "Notification permission runtime execution"
+      result: "not_run"
+      reason: >-
+        adb lists no attached target for allow, deny, dismiss, channel-disabled,
+        and Mobile/Wear permission-combination cases.
 
 handoff:
   from_role: "specification"
@@ -981,12 +1768,11 @@ handoff:
     unit tests before adding Data Layer side effects.
 
 next_actions:
-  - "Human selects or approves the common application ID in DEC-001."
-  - "Implementation wires MobileSyncCoordinator to battery changes, settings changes, reconnection, manual Mobile sync, and restart recovery entry points to finish IMP-003."
-  - "Implementation proceeds with IMP-005 Wear app, Tile, complication, and notification surfaces using the persisted IMP-004 state."
-  - "Implementation completes remaining IMP-006 receiver, freshness, and notification tests and records exact evidence."
-  - "Run RealMobileDataStoreInstrumentedTest on an attached emulator or device."
+  - "Specification resolves DEC-003 notification retry limit/triggers before implementation completes IMP-005."
+  - "Run API 33+ Mobile/Wear notification permission allow, deny, dismiss, channel-disabled, and four permission-combination cases on attached targets."
+  - "Run RealMobileDataStoreInstrumentedTest and the Mobile FGS start/stop, battery callback, process restart, boot, and package-update recovery cases on an attached emulator or device."
+  - "Before Google Play publication, complete and approve the Play Console FGS declaration, explanation, demo video, and current policy confirmation."
   - "After implementation exit evidence is complete, assign an independent reviewer actor different from codex and use the prepared checklist."
 
-updated_at: "2026-07-21T22:06:53+09:00"
+updated_at: "2026-07-22T14:52:48+09:00"
 updated_by: "codex"

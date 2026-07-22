@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.MobileStateProto
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.AlertRule
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.battery.BatteryReading
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.notification.MobileNotificationDisposition
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.sync.SyncDeliveryUpdate
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.sync.SyncFailureClassification
 import kotlinx.coroutines.flow.Flow
@@ -14,9 +15,23 @@ import kotlinx.coroutines.sync.withLock
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ProtoMobileStateRepositoryTest {
+    @Test
+    fun notificationPermissionRequestHistoryIsPersistedWithoutChangingMonitoring() = runBlocking {
+        val store = InMemoryDataStore(MobileStateSanitizer.defaultValue())
+        val repository = ProtoMobileStateRepository(store)
+        repository.updateMonitoringState(monitoringEnabled = true, resumeRequired = false)
+
+        val updated = repository.markNotificationPermissionRequested()
+
+        assertTrue(updated.notificationPermissionRequested)
+        assertTrue(updated.alertRule.monitoringEnabled)
+        assertEquals(updated, MobileStateProtoMapper.toDomain(store.current()))
+    }
+
     @Test
     fun batteryProcessingPersistsSequenceAlertAndOutboxAtomically() = runBlocking {
         val store = InMemoryDataStore(MobileStateSanitizer.defaultValue())
@@ -38,6 +53,7 @@ class ProtoMobileStateRepositoryTest {
         assertEquals(SECOND_EVENT_ID, crossing.event?.eventId)
         assertEquals(2L, crossing.state.pendingStateSequence)
         assertEquals(SECOND_EVENT_ID, crossing.state.pendingEvent?.eventId)
+        assertEquals(SECOND_EVENT_ID, crossing.state.pendingMobileNotification?.eventId)
         assertFalse(crossing.state.alertState.armed)
 
         val stored = MobileStateProtoMapper.toDomain(store.current())
@@ -107,12 +123,14 @@ class ProtoMobileStateRepositoryTest {
 
         assertEquals(crossing.snapshot.sequence, afterEvent.pendingStateSequence)
         assertNull(afterEvent.pendingEvent)
+        assertEquals(event.eventId, afterEvent.pendingMobileNotification?.eventId)
         assertEquals(
             SyncFailureClassification.TASK_FAILURE.persistedValue,
             afterEvent.lastSyncErrorClassification,
         )
         assertEquals(0L, afterState.pendingStateSequence)
         assertNull(afterState.pendingEvent)
+        assertEquals(event.eventId, afterState.pendingMobileNotification?.eventId)
         assertNull(afterState.lastSyncErrorClassification)
         assertEquals(4_000L, afterState.lastSyncSuccessAtEpochMillis)
     }
@@ -135,6 +153,94 @@ class ProtoMobileStateRepositoryTest {
         assertEquals(2L, updated.pendingStateSequence)
         assertEquals(15, updated.alertRule.thresholdPercent)
         assertNull(updated.pendingEvent)
+    }
+
+    @Test
+    fun raisingThresholdAboveCurrentLevelDisarmsWithoutCreatingEvent() = runBlocking {
+        val store = InMemoryDataStore(MobileStateSanitizer.defaultValue())
+        val repository = ProtoMobileStateRepository(store)
+        repository.updateAlertRule(
+            AlertRule(thresholdPercent = 15, monitoringEnabled = true)
+        )
+        repository.processBatteryReading(
+            BatteryReading(18, isCharging = false, capturedAtEpochMillis = 1_000L),
+            FIRST_EVENT_ID,
+        )
+
+        val updated = repository.updateAlertRule(
+            AlertRule(thresholdPercent = 20, monitoringEnabled = true)
+        )
+
+        assertFalse(updated.alertState.armed)
+        assertEquals(18, updated.alertState.previousLevelPercent)
+        assertNull(updated.pendingEvent)
+    }
+
+    @Test
+    fun monitoringStateChangePersistsResumeStateAndAdvancesSnapshotSequence() = runBlocking {
+        val store = InMemoryDataStore(MobileStateSanitizer.defaultValue())
+        val repository = ProtoMobileStateRepository(store)
+        repository.processBatteryReading(
+            BatteryReading(67, isCharging = false, capturedAtEpochMillis = 1_000L),
+            FIRST_EVENT_ID,
+        )
+
+        val active = repository.updateMonitoringState(true, false)
+        val recoveryRequired = repository.updateMonitoringState(false, true)
+
+        assertTrue(active.alertRule.monitoringEnabled)
+        assertFalse(active.resumeRequired)
+        assertEquals(2L, active.sequence)
+        assertEquals(2L, active.lastSnapshot?.sequence)
+        assertFalse(recoveryRequired.alertRule.monitoringEnabled)
+        assertTrue(recoveryRequired.resumeRequired)
+        assertEquals(3L, recoveryRequired.sequence)
+        assertEquals(recoveryRequired, MobileStateProtoMapper.toDomain(store.current()))
+    }
+
+    @Test
+    fun mobileNotificationCompletionIsIndependentFromSyncAndRejectsStaleReservation() = runBlocking {
+        val store = InMemoryDataStore(MobileStateSanitizer.defaultValue())
+        val repository = ProtoMobileStateRepository(store)
+        repository.updateAlertRule(AlertRule(monitoringEnabled = true))
+        repository.processBatteryReading(
+            BatteryReading(21, isCharging = false, capturedAtEpochMillis = 1_000L),
+            FIRST_EVENT_ID,
+        )
+        val event = requireNotNull(
+            repository.processBatteryReading(
+                BatteryReading(20, isCharging = false, capturedAtEpochMillis = 2_000L),
+                SECOND_EVENT_ID,
+            ).event
+        )
+
+        repository.applySyncDelivery(
+            SyncDeliveryUpdate(
+                confirmedEventId = event.eventId,
+                confirmedEventSequence = event.sequence,
+                completedAtEpochMillis = 3_000L,
+            )
+        )
+        val completed = repository.completeMobileNotification(
+            event.eventId,
+            MobileNotificationDisposition.PERMISSION_DENIED,
+        )
+        val stale = repository.completeMobileNotification(
+            event.eventId,
+            MobileNotificationDisposition.POSTED,
+        )
+
+        assertEquals(MobileNotificationCompletionOutcome.APPLIED, completed.outcome)
+        assertNull(completed.state.pendingEvent)
+        assertNull(completed.state.pendingMobileNotification)
+        assertEquals(event.eventId, completed.state.lastMobileNotificationEventId)
+        assertNull(completed.state.lastMobileNotifiedEventId)
+        assertEquals(
+            MobileNotificationDisposition.PERMISSION_DENIED,
+            completed.state.mobileNotificationDisposition,
+        )
+        assertEquals(MobileNotificationCompletionOutcome.STALE_RESERVATION, stale.outcome)
+        assertEquals(completed.state, stale.state)
     }
 
     private class InMemoryDataStore<T>(initial: T) : DataStore<T> {

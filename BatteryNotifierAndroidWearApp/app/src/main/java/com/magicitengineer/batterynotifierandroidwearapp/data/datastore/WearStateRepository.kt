@@ -22,6 +22,16 @@ data class WearStateApplyResult(
     val state: WearPersistentState,
 )
 
+enum class WearNotificationCompletionOutcome {
+    APPLIED,
+    STALE_RESERVATION,
+}
+
+data class WearNotificationCompletionResult(
+    val outcome: WearNotificationCompletionOutcome,
+    val state: WearPersistentState,
+)
+
 interface WearStateRepository {
     val state: Flow<WearPersistentState>
 
@@ -40,6 +50,13 @@ interface WearStateRepository {
     ): WearPersistentState
 
     suspend fun recordUnsupportedSchema(receivedVersion: Int): WearPersistentState
+
+    suspend fun completeNotification(
+        eventId: String,
+        disposition: NotificationDisposition,
+    ): WearNotificationCompletionResult
+
+    suspend fun markNotificationPermissionRequested(): WearPersistentState
 }
 
 class ProtoWearStateRepository(
@@ -126,6 +143,36 @@ class ProtoWearStateRepository(
             lastUnsupportedSchemaVersion = receivedVersion,
         )
     }
+
+    override suspend fun completeNotification(
+        eventId: String,
+        disposition: NotificationDisposition,
+    ): WearNotificationCompletionResult {
+        require(eventId.isNotBlank())
+        require(
+            disposition == NotificationDisposition.POSTED ||
+                disposition == NotificationDisposition.PERMISSION_DENIED ||
+                disposition == NotificationDisposition.RESERVED_FAILED
+        )
+        var outcome = WearNotificationCompletionOutcome.APPLIED
+        val updated = update { current ->
+            if (
+                current.lastProcessedEventId != eventId ||
+                current.notificationDisposition != NotificationDisposition.PENDING
+            ) {
+                outcome = WearNotificationCompletionOutcome.STALE_RESERVATION
+                current
+            } else {
+                current.copy(notificationDisposition = disposition)
+            }
+        }
+        return WearNotificationCompletionResult(outcome, updated)
+    }
+
+    override suspend fun markNotificationPermissionRequested(): WearPersistentState =
+        update { current ->
+            current.copy(notificationPermissionRequested = true)
+        }
 
     private suspend fun update(
         transform: (WearPersistentState) -> WearPersistentState,

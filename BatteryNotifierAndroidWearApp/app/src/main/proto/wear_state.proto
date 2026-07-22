@@ -22,6 +22,7 @@ message WearStateProto {
   string last_receive_error = 34;
   bool has_last_unsupported_schema_version = 35;
   int32 last_unsupported_schema_version = 36;
+  bool notification_permission_requested = 37;
 }
 
 message PhoneStateProto {

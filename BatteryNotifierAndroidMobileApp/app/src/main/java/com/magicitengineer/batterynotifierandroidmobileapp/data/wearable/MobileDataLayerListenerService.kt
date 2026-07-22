@@ -1,6 +1,7 @@
 package com.magicitengineer.batterynotifierandroidmobileapp.data.wearable
 
 import com.google.android.gms.wearable.MessageEvent
+import com.google.android.gms.wearable.Node
 import com.google.android.gms.wearable.WearableListenerService
 import com.magicitengineer.batterynotifierandroidmobileapp.application.sync.MobileDataLayerMessageHandler
 import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.MobileAppContainer
@@ -18,10 +19,19 @@ class MobileDataLayerListenerService : WearableListenerService() {
             syncRunner = MobileAppContainer.syncCoordinator(this),
         )
     }
+    private val runtimeTriggerHandler by lazy {
+        MobileAppContainer.runtimeTriggerHandler(this)
+    }
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
         serviceScope.launch {
             messageHandler.handle(messageEvent.path)
+        }
+    }
+
+    override fun onPeerConnected(peer: Node) {
+        serviceScope.launch {
+            runtimeTriggerHandler.onConnectionRecovered()
         }
     }
 

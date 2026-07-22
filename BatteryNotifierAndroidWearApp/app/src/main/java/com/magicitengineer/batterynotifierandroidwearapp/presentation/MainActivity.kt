@@ -1,6 +1,12 @@
 package com.magicitengineer.batterynotifierandroidwearapp.presentation
 
+import android.Manifest
+import android.app.NotificationManager
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -26,6 +32,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.lifecycleScope
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.MaterialTheme
@@ -54,11 +61,13 @@ private enum class RetryUiState {
 }
 
 class MainActivity : ComponentActivity() {
+    private val repository by lazy { WearAppContainer.repository(this) }
+    private var notificationsEnabled by mutableStateOf(false)
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         setTheme(android.R.style.Theme_DeviceDefault)
-        val repository = WearAppContainer.repository(this)
+        refreshNotificationPermissionState()
         val requestPhoneState = RequestPhoneState(
             GooglePlayServicesPhoneStateRequestGateway(this)
         )
@@ -83,9 +92,14 @@ class MainActivity : ComponentActivity() {
                     state = persistentState,
                     nowEpochMillis = nowEpochMillis.coerceAtLeast(1L),
                 )
+            val notificationPermissionState = notificationPermissionUiState(
+                notificationsEnabled = notificationsEnabled,
+                requestPreviouslyCompleted = persistentState.notificationPermissionRequested,
+            )
             WearApp(
                 displayState = displayState,
                 retryUiState = retryUiState,
+                notificationPermissionState = notificationPermissionState,
                 onRetry = {
                     if (retryUiState != RetryUiState.SENDING) {
                         retryUiState = RetryUiState.SENDING
@@ -101,8 +115,61 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 },
+                onNotificationPermissionAction = {
+                    when (notificationPermissionState) {
+                        NotificationPermissionUiState.REQUEST_AVAILABLE ->
+                            requestPermissions(
+                                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                                REQUEST_NOTIFICATION_PERMISSION,
+                            )
+                        NotificationPermissionUiState.ENABLED -> Unit
+                        NotificationPermissionUiState.SETTINGS_REQUIRED ->
+                            openNotificationSettings()
+                    }
+                },
             )
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshNotificationPermissionState()
+    }
+
+    @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_NOTIFICATION_PERMISSION) {
+            lifecycleScope.launch {
+                repository.markNotificationPermissionRequested()
+            }
+            refreshNotificationPermissionState()
+        }
+    }
+
+    private fun refreshNotificationPermissionState() {
+        val manager = getSystemService(NotificationManager::class.java)
+        notificationsEnabled =
+            manager.areNotificationsEnabled() &&
+                (!notificationRuntimePermissionRequired(Build.VERSION.SDK_INT) ||
+                    checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
+                    PackageManager.PERMISSION_GRANTED)
+    }
+
+    private fun openNotificationSettings() {
+        startActivity(
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+            }
+        )
+    }
+
+    private companion object {
+        const val REQUEST_NOTIFICATION_PERMISSION = 1001
     }
 }
 
@@ -110,7 +177,10 @@ class MainActivity : ComponentActivity() {
 private fun WearApp(
     displayState: WearDisplayState,
     retryUiState: RetryUiState = RetryUiState.IDLE,
+    notificationPermissionState: NotificationPermissionUiState =
+        NotificationPermissionUiState.ENABLED,
     onRetry: () -> Unit = {},
+    onNotificationPermissionAction: () -> Unit = {},
 ) {
     BatteryNotifierAndroidWearAppTheme {
         Box(
@@ -122,7 +192,9 @@ private fun WearApp(
             BatteryStateList(
                 displayState = displayState,
                 retryUiState = retryUiState,
+                notificationPermissionState = notificationPermissionState,
                 onRetry = onRetry,
+                onNotificationPermissionAction = onNotificationPermissionAction,
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -133,7 +205,9 @@ private fun WearApp(
 private fun BatteryStateList(
     displayState: WearDisplayState,
     retryUiState: RetryUiState,
+    notificationPermissionState: NotificationPermissionUiState,
     onRetry: () -> Unit,
+    onNotificationPermissionAction: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val batteryDescription = displayState.levelPercent?.let {
@@ -194,6 +268,45 @@ private fun BatteryStateList(
         }
         if (displayState.clockWarning) {
             item { StateText(stringResource(R.string.clock_warning)) }
+        }
+        if (displayState.notificationPermissionMissing) {
+            item { StateText(stringResource(R.string.notification_permission_missing)) }
+        }
+        if (displayState.notificationDeliveryFailed) {
+            item { StateText(stringResource(R.string.notification_delivery_failed)) }
+        }
+        item {
+            StateText(
+                stringResource(
+                    when (notificationPermissionState) {
+                        NotificationPermissionUiState.ENABLED ->
+                            R.string.notification_permission_enabled
+                        NotificationPermissionUiState.REQUEST_AVAILABLE ->
+                            R.string.notification_permission_not_requested
+                        NotificationPermissionUiState.SETTINGS_REQUIRED ->
+                            R.string.notification_permission_settings_required
+                    }
+                )
+            )
+        }
+        if (notificationPermissionState != NotificationPermissionUiState.ENABLED) {
+            item { StateText(stringResource(R.string.notification_permission_description)) }
+            item {
+                Button(onClick = onNotificationPermissionAction) {
+                    Text(
+                        text = stringResource(
+                            if (
+                                notificationPermissionState ==
+                                NotificationPermissionUiState.REQUEST_AVAILABLE
+                            ) {
+                                R.string.notification_permission_request_action
+                            } else {
+                                R.string.notification_permission_settings_action
+                            }
+                        )
+                    )
+                }
+            }
         }
         if (
             displayState.levelPercent == null ||

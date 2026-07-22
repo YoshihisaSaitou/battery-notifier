@@ -37,6 +37,46 @@ class CurrentBatteryStateRefresherTest {
     }
 
     @Test
+    fun providedCallbackReadingIsProcessedWithoutReadingStickyBatteryState() = runBlocking {
+        val reading = BatteryReading(42, true, 2_000L)
+        val repository = RecordingRepository()
+        val refresher = CurrentBatteryStateRefresher(
+            source = BatteryReadingSource { error("must not read sticky battery state") },
+            repository = repository,
+            eventIdFactory = EventIdFactory { EVENT_ID },
+        )
+
+        val result = refresher.process(BatteryReadResult.Available(reading))
+
+        assertTrue(result is BatteryRefreshResult.Refreshed)
+        assertEquals(reading, repository.processedReading)
+        assertEquals(EVENT_ID, repository.candidateEventId)
+    }
+
+    @Test
+    fun duplicateCallbackLevelAndChargingStateIsSkippedWithoutNewSequence() = runBlocking {
+        val repository = RecordingRepository()
+        var eventIdCalls = 0
+        val refresher = CurrentBatteryStateRefresher(
+            source = BatteryReadingSource { error("must not read sticky battery state") },
+            repository = repository,
+            eventIdFactory = EventIdFactory {
+                eventIdCalls += 1
+                EVENT_ID
+            },
+        )
+
+        refresher.process(BatteryReadResult.Available(BatteryReading(42, false, 1_000L)))
+        val duplicate = refresher.process(
+            BatteryReadResult.Available(BatteryReading(42, false, 2_000L)),
+        )
+
+        assertSame(BatteryRefreshResult.Unchanged, duplicate)
+        assertEquals(1, eventIdCalls)
+        assertEquals(1_000L, repository.processedReading?.capturedAtEpochMillis)
+    }
+
+    @Test
     fun invalidReadingIncrementsDiagnosticsAndDoesNotProcessState() = runBlocking {
         val repository = RecordingRepository()
         val refresher = CurrentBatteryStateRefresher(

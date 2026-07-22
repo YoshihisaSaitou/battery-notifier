@@ -11,12 +11,17 @@ message MobileStateProto {
   bool onboarding_completed = 12;
   bool notify_if_already_below_on_start = 13;
   int32 rearm_hysteresis_percent = 14;
+  bool resume_required = 15;
+  bool notification_permission_requested = 16;
 
   BatterySnapshotProto last_snapshot = 20;
   int64 sequence = 21;
 
   AlertStateProto alert_state = 30;
   string last_mobile_notified_event_id = 31;
+  ThresholdReachedEventProto pending_mobile_notification = 32;
+  string last_mobile_notification_event_id = 33;
+  MobileNotificationDispositionProto mobile_notification_disposition = 34;
 
   int64 pending_state_sequence = 40;
   ThresholdReachedEventProto pending_event = 41;
@@ -25,6 +30,13 @@ message MobileStateProto {
 
   int64 invalid_input_count = 50;
   int64 unsupported_schema_count = 51;
+}
+
+enum MobileNotificationDispositionProto {
+  MOBILE_NOTIFICATION_DISPOSITION_NONE = 0;
+  MOBILE_NOTIFICATION_DISPOSITION_POSTED = 1;
+  MOBILE_NOTIFICATION_DISPOSITION_PERMISSION_DENIED = 2;
+  MOBILE_NOTIFICATION_DISPOSITION_FAILED = 3;
 }
 
 message BatterySnapshotProto {

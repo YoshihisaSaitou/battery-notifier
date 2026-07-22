@@ -2,7 +2,7 @@
 
 文書ID: ADR-INDEX  
 版: 0.1  
-最終更新: 2026-07-20
+最終更新: 2026-07-22
 
 ## 運用
 
@@ -46,20 +46,21 @@
 
 ## ADR-005 MobileとWearのapplication ID・署名を統一する
 
-- **状態**: Proposed（Data Layer実装前の必須決定）
+- **状態**: Accepted（2026-07-22、人間承認）
 - **文脈**: 現在の雛形はMobileとWearで異なるapplication IDだが、Data Layerは同一package nameと署名を要求する。
-- **決定**: 両アプリの`applicationId`を共通の最終IDへ変更し、同じdebug/release署名系統を使う。namespaceは端末別でもよい。
+- **決定**: 両アプリの`applicationId`を`com.magicitengineer.batterynotifier`へ統一し、Kotlin namespaceは端末別の現状値を維持する。debugは同一debug署名、releaseは同一Play App Signing証明書系列を使う。同一Google Play掲載で配布し、Mobileは偶数、Wearは奇数の重複しない`versionCode`系列を使う。
 - **理由**: Data Layerのセキュリティ・到達要件を満たすため。
-- **結果**: 既存インストールとの互換性、Play listing、versionCode戦略を実装前に確定する。最終IDは未決。
+- **結果**: 現在の開発版データは移行せず再インストールを許容する。署名秘密情報はリポジトリへ保存しない。debug/release混在を正式対応しない。
 
 ## ADR-006 継続監視にspecialUse Foreground Serviceを採用する
 
-- **状態**: Proposed、Play配布審査の人間承認が条件
+- **状態**: Accepted（2026-07-22、人間がGoogle Play配布方針と実装を承認）
 - **文脈**: 任意しきい値の`ACTION_BATTERY_CHANGED`はManifest Receiverで受信できず、周期WorkManagerでは通知遅延が大きい。
 - **決定**: ユーザー開始・停止可能な`specialUse` FGSでReceiverを実行時登録する。ongoing通知を表示する。
 - **理由**: アプリが非表示でもユーザーの期待する連続監視を維持できる。
 - **代替**: WorkManagerは省電力だが即時性を満たさない。定期Alarm/pollingは不適切。
 - **結果**: Play Console申告・動画・ポリシー審査、boot制限試験、24時間消費試験が必要。承認困難なら本ADRを置換する。
+- **承認範囲**: `FOREGROUND_SERVICE`、`FOREGROUND_SERVICE_SPECIAL_USE`、specialUse subtype property、停止アクション付きongoing通知、実行時Receiver、再起動・更新後の復旧処理。`POST_NOTIFICATIONS`の宣言・要求はDEC-004の別承認とする。
 
 ## ADR-007 Mobile通知とWear通知を明示的に分離する
 
@@ -129,9 +130,16 @@ handoff_notes: ""
 
 仕様担当は同期形式・接続状態・Stale・ACを確定し、実装担当はData Layer/受信/DataStore/単体テスト、レビュー担当は時刻・競合・再接続・path・lifecycle、テスト担当は正常/切断/再接続/再起動/Stale/連続/異常データ、人間は実機・消費・遅延・最終承認を担当する。
 
+## ADR-013 MobileとWearでユーザー起点の通知権限要求を行う
+
+- **状態**: Accepted（2026-07-22、人間承認）
+- **文脈**: Android 13以降ではMobileとWearの各インストールで`POST_NOTIFICATIONS`の実行時許可が必要であり、拒否時も監視・保存・同期を継続する必要がある。
+- **決定**: 両アプリで`POST_NOTIFICATIONS`を宣言する。初回起動直後には要求せず、用途説明後の通知設定操作から各端末で個別に要求する。初回要求をDataStoreへ記録し、拒否またはdismiss後はOSダイアログを自動再表示せず、権限状態とシステム通知設定への導線を表示する。
+- **理由**: 通知の価値を説明してから同意を求め、ユーザーの拒否を尊重しながら通知以外の中核処理を継続するため。
+- **結果**: Mobile/Wearの権限組合せとchannel無効化を試験する。承認範囲は通知権限とそのUXに限定し、自動通知再試行条件はDEC-003で別途決定する。
+
 ## 参考
 
 - [Android architecture recommendations](https://developer.android.com/topic/architecture/recommendations)
 - [DataStore](https://developer.android.com/topic/libraries/architecture/datastore)
 - [Wear Data Layer](https://developer.android.com/training/wearables/data/overview)
-

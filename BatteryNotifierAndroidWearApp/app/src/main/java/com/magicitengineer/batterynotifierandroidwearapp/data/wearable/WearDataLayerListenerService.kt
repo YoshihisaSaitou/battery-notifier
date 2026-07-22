@@ -21,6 +21,7 @@ class WearDataLayerListenerService : WearableListenerService() {
     override fun onDataChanged(dataEvents: DataEventBuffer) {
         val repository = WearAppContainer.repository(this)
         val processor = WearAppContainer.dataItemProcessor(this)
+        val notificationDelivery = WearAppContainer.notificationDelivery(this)
         val surfaceUpdater = AndroidWearSurfaceUpdater(this)
         dataEvents.forEach { event ->
             if (event.type != DataEvent.TYPE_CHANGED) return@forEach
@@ -40,6 +41,7 @@ class WearDataLayerListenerService : WearableListenerService() {
                     result.result.outcome == WearStateApplyOutcome.APPLIED
                 ) {
                     surfaceUpdater.requestRefresh()
+                    notificationDelivery.deliver(result.result.state)
                 }
             }
         }

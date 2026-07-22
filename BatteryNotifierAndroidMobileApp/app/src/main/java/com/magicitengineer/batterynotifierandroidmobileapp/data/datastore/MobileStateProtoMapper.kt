@@ -3,11 +3,13 @@ package com.magicitengineer.batterynotifierandroidmobileapp.data.datastore
 import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.AlertStateProto
 import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.BatterySnapshotProto
 import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.MobileStateProto
+import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.MobileNotificationDispositionProto
 import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.ThresholdReachedEventProto
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.AlertRule
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.AlertState
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.ThresholdReachedEvent
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.battery.BatterySnapshot
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.notification.MobileNotificationDisposition
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.state.MobilePersistentState
 
 object MobileStateProtoMapper {
@@ -22,10 +24,19 @@ object MobileStateProtoMapper {
                 rearmHysteresisPercent = safe.rearmHysteresisPercent,
             ),
             onboardingCompleted = safe.onboardingCompleted,
+            resumeRequired = safe.resumeRequired,
+            notificationPermissionRequested = safe.notificationPermissionRequested,
             lastSnapshot = if (safe.hasLastSnapshot()) safe.lastSnapshot.toDomain() else null,
             sequence = safe.sequence,
             alertState = safe.alertState.toDomain(),
             lastMobileNotifiedEventId = safe.lastMobileNotifiedEventId.nullIfBlank(),
+            pendingMobileNotification = if (safe.hasPendingMobileNotification()) {
+                safe.pendingMobileNotification.toDomain()
+            } else {
+                null
+            },
+            lastMobileNotificationEventId = safe.lastMobileNotificationEventId.nullIfBlank(),
+            mobileNotificationDisposition = safe.mobileNotificationDisposition.toDomain(),
             pendingStateSequence = safe.pendingStateSequence,
             pendingEvent = if (safe.hasPendingEvent()) safe.pendingEvent.toDomain() else null,
             lastSyncSuccessAtEpochMillis = safe.lastSyncSuccessAtEpochMillis.takeIf { it > 0 },
@@ -41,11 +52,15 @@ object MobileStateProtoMapper {
             .setThresholdPercent(state.alertRule.thresholdPercent)
             .setMonitoringEnabled(state.alertRule.monitoringEnabled)
             .setOnboardingCompleted(state.onboardingCompleted)
+            .setResumeRequired(state.resumeRequired)
+            .setNotificationPermissionRequested(state.notificationPermissionRequested)
             .setNotifyIfAlreadyBelowOnStart(state.alertRule.notifyIfAlreadyBelowOnStart)
             .setRearmHysteresisPercent(state.alertRule.rearmHysteresisPercent)
             .setSequence(state.sequence)
             .setAlertState(state.alertState.toProto())
             .setLastMobileNotifiedEventId(state.lastMobileNotifiedEventId.orEmpty())
+            .setLastMobileNotificationEventId(state.lastMobileNotificationEventId.orEmpty())
+            .setMobileNotificationDisposition(state.mobileNotificationDisposition.toProto())
             .setPendingStateSequence(state.pendingStateSequence)
             .setLastSyncSuccessAtEpochMillis(state.lastSyncSuccessAtEpochMillis ?: 0)
             .setLastSyncErrorClassification(state.lastSyncErrorClassification.orEmpty())
@@ -54,6 +69,7 @@ object MobileStateProtoMapper {
 
         state.lastSnapshot?.let { builder.setLastSnapshot(it.toProto()) }
         state.pendingEvent?.let { builder.setPendingEvent(it.toProto()) }
+        state.pendingMobileNotification?.let { builder.setPendingMobileNotification(it.toProto()) }
         return builder.build()
     }
 
@@ -103,6 +119,30 @@ object MobileStateProtoMapper {
         .setExpiresAtEpochMillis(expiresAtEpochMillis)
         .setSequence(sequence)
         .build()
+
+    private fun MobileNotificationDispositionProto.toDomain(): MobileNotificationDisposition =
+        when (this) {
+            MobileNotificationDispositionProto.MOBILE_NOTIFICATION_DISPOSITION_POSTED ->
+                MobileNotificationDisposition.POSTED
+            MobileNotificationDispositionProto.MOBILE_NOTIFICATION_DISPOSITION_PERMISSION_DENIED ->
+                MobileNotificationDisposition.PERMISSION_DENIED
+            MobileNotificationDispositionProto.MOBILE_NOTIFICATION_DISPOSITION_FAILED ->
+                MobileNotificationDisposition.FAILED
+            MobileNotificationDispositionProto.MOBILE_NOTIFICATION_DISPOSITION_NONE,
+            MobileNotificationDispositionProto.UNRECOGNIZED -> MobileNotificationDisposition.NONE
+        }
+
+    private fun MobileNotificationDisposition.toProto(): MobileNotificationDispositionProto =
+        when (this) {
+            MobileNotificationDisposition.NONE ->
+                MobileNotificationDispositionProto.MOBILE_NOTIFICATION_DISPOSITION_NONE
+            MobileNotificationDisposition.POSTED ->
+                MobileNotificationDispositionProto.MOBILE_NOTIFICATION_DISPOSITION_POSTED
+            MobileNotificationDisposition.PERMISSION_DENIED ->
+                MobileNotificationDispositionProto.MOBILE_NOTIFICATION_DISPOSITION_PERMISSION_DENIED
+            MobileNotificationDisposition.FAILED ->
+                MobileNotificationDispositionProto.MOBILE_NOTIFICATION_DISPOSITION_FAILED
+        }
 
     private fun String.nullIfBlank(): String? = takeIf { it.isNotBlank() }
 }

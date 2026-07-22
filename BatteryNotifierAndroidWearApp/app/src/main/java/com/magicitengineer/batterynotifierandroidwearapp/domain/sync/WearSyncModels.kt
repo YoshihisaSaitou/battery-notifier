@@ -44,6 +44,9 @@ data class ReceivedThresholdEvent(
 enum class NotificationDisposition(val persistedValue: String) {
     NONE("none"),
     PENDING("pending"),
+    POSTED("posted"),
+    PERMISSION_DENIED("permission_denied"),
+    RESERVED_FAILED("reserved_failed"),
     EXPIRED("expired"),
     CLOCK_SKEW("clock_skew"),
 }

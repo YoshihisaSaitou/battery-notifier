@@ -118,15 +118,21 @@ if (-not $javaHome) {
 } else {
     $javaExecutable = Join-Path $javaHome 'bin\java.exe'
     try {
-        $previousErrorActionPreference = $ErrorActionPreference
-        $ErrorActionPreference = 'Continue'
-        try {
-            $javaOutput = & $javaExecutable -version 2>&1
-            $javaExitCode = $LASTEXITCODE
-        } finally {
-            $ErrorActionPreference = $previousErrorActionPreference
-        }
-        $javaVersionLine = ($javaOutput | Select-Object -First 1).ToString()
+        $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+        $startInfo.FileName = $javaExecutable
+        $startInfo.Arguments = '-version'
+        $startInfo.UseShellExecute = $false
+        $startInfo.CreateNoWindow = $true
+        $startInfo.RedirectStandardOutput = $true
+        $startInfo.RedirectStandardError = $true
+        $javaProcess = [System.Diagnostics.Process]::new()
+        $javaProcess.StartInfo = $startInfo
+        [void]$javaProcess.Start()
+        $javaOutput = $javaProcess.StandardOutput.ReadToEnd()
+        $javaError = $javaProcess.StandardError.ReadToEnd()
+        $javaProcess.WaitForExit()
+        $javaExitCode = $javaProcess.ExitCode
+        $javaVersionLine = (($javaError + $javaOutput) -split "`r?`n" | Select-Object -First 1).ToString()
         $versionMatch = [regex]::Match($javaVersionLine, 'version\s+"(\d+)')
         if ($javaExitCode -ne 0 -or -not $versionMatch.Success) {
             Add-Result 'java.version' 'FAIL' "Unable to determine Java version from $javaExecutable"
@@ -207,7 +213,8 @@ $gitCommand = Get-Command git.exe -ErrorAction SilentlyContinue
 if (-not $gitCommand) {
     Add-Result 'git.command' 'FAIL' 'git.exe is not available on PATH.'
 } else {
-    $gitStatus = & $gitCommand.Source -c "safe.directory=$repositoryRoot" status --short 2>&1
+    $gitSafeDirectory = $repositoryRoot.Replace('\', '/')
+    $gitStatus = & $gitCommand.Source -c "safe.directory=$gitSafeDirectory" status --short 2>&1
     if ($LASTEXITCODE -ne 0) {
         Add-Result 'git.repository' 'FAIL' ($gitStatus -join [Environment]::NewLine)
     } else {

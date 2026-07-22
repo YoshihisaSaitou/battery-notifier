@@ -19,6 +19,7 @@ data class WearPersistentState(
     val outOfOrderCount: Long = 0,
     val lastReceiveError: String? = null,
     val lastUnsupportedSchemaVersion: Int? = null,
+    val notificationPermissionRequested: Boolean = false,
 ) {
     init {
         require(storageSchemaVersion == CURRENT_STORAGE_SCHEMA_VERSION)

@@ -34,6 +34,12 @@ object MobileStateSanitizer {
             .setInvalidInputCount(input.invalidInputCount.coerceAtLeast(0))
             .setUnsupportedSchemaCount(input.unsupportedSchemaCount.coerceAtLeast(0))
 
+        if (input.monitoringEnabled && input.resumeRequired) {
+            builder
+                .setMonitoringEnabled(false)
+                .setResumeRequired(true)
+        }
+
         if (!input.hasAlertState()) {
             builder.setAlertState(AlertStateProto.newBuilder().setArmed(true).build())
         } else if (
@@ -53,6 +59,18 @@ object MobileStateSanitizer {
         }
         if (input.hasPendingEvent() && !input.pendingEvent.isValid()) {
             builder.clearPendingEvent()
+        }
+        if (
+            input.hasPendingMobileNotification() &&
+            !input.pendingMobileNotification.isValid()
+        ) {
+            builder.clearPendingMobileNotification()
+        }
+        if (!input.lastMobileNotifiedEventId.isNullOrValidUuid()) {
+            builder.clearLastMobileNotifiedEventId()
+        }
+        if (!input.lastMobileNotificationEventId.isNullOrValidUuid()) {
+            builder.clearLastMobileNotificationEventId()
         }
         return builder.build()
     }
@@ -74,4 +92,7 @@ object MobileStateSanitizer {
             expiresAtEpochMillis > occurredAtEpochMillis &&
             expiresAtEpochMillis - occurredAtEpochMillis <= ThresholdReachedEvent.MAX_EXPIRY_MILLIS &&
             sequence >= 1
+
+    private fun String.isNullOrValidUuid(): Boolean =
+        isBlank() || runCatching { UUID.fromString(this) }.isSuccess
 }

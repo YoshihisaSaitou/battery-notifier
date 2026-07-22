@@ -3,10 +3,12 @@ package com.magicitengineer.batterynotifierandroidmobileapp.data.datastore
 import androidx.datastore.core.DataStore
 import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.MobileStateProto
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.AlertRule
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.AlertRuleChangeEvaluator
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.ThresholdEvaluator
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.ThresholdReachedEvent
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.battery.BatteryReading
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.battery.BatterySnapshot
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.notification.MobileNotificationDisposition
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.state.MobilePersistentState
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.sync.SyncDeliveryUpdate
 import java.util.UUID
@@ -19,6 +21,16 @@ data class BatteryProcessingResult(
     val event: ThresholdReachedEvent?,
 )
 
+enum class MobileNotificationCompletionOutcome {
+    APPLIED,
+    STALE_RESERVATION,
+}
+
+data class MobileNotificationCompletion(
+    val outcome: MobileNotificationCompletionOutcome,
+    val state: MobilePersistentState,
+)
+
 interface MobileStateRepository {
     val state: Flow<MobilePersistentState>
 
@@ -29,11 +41,24 @@ interface MobileStateRepository {
 
     suspend fun updateAlertRule(rule: AlertRule): MobilePersistentState
 
+    suspend fun updateMonitoringState(
+        monitoringEnabled: Boolean,
+        resumeRequired: Boolean,
+    ): MobilePersistentState = error("Monitoring state updates are not configured")
+
     suspend fun markMobileNotified(eventId: String): MobilePersistentState
+
+    suspend fun completeMobileNotification(
+        eventId: String,
+        disposition: MobileNotificationDisposition,
+    ): MobileNotificationCompletion = error("Mobile notification completion is not configured")
 
     suspend fun applySyncDelivery(update: SyncDeliveryUpdate): MobilePersistentState
 
     suspend fun recordInvalidInput(): MobilePersistentState
+
+    suspend fun markNotificationPermissionRequested(): MobilePersistentState =
+        error("Notification permission request tracking is not configured")
 }
 
 class ProtoMobileStateRepository(
@@ -72,6 +97,18 @@ class ProtoMobileStateRepository(
                     alertState = evaluation.state,
                     pendingStateSequence = nextSequence,
                     pendingEvent = evaluation.event ?: current.pendingEvent,
+                    pendingMobileNotification = evaluation.event ?:
+                        current.pendingMobileNotification,
+                    lastMobileNotificationEventId = if (evaluation.event != null) {
+                        null
+                    } else {
+                        current.lastMobileNotificationEventId
+                    },
+                    mobileNotificationDisposition = if (evaluation.event != null) {
+                        MobileNotificationDisposition.NONE
+                    } else {
+                        current.mobileNotificationDisposition
+                    },
                 )
             )
         }
@@ -94,17 +131,88 @@ class ProtoMobileStateRepository(
                 alertRule = rule,
                 lastSnapshot = current.lastSnapshot?.copy(sequence = nextSequence),
                 sequence = nextSequence,
+                alertState = AlertRuleChangeEvaluator.reevaluateWithoutEvent(
+                    rule = rule,
+                    state = current.alertState,
+                    snapshot = current.lastSnapshot,
+                ),
                 pendingStateSequence = nextSequence,
             )
         }
 
-    override suspend fun markMobileNotified(eventId: String): MobilePersistentState =
-        update { current ->
-            require(current.pendingEvent?.eventId == eventId) {
-                "Only the current pending event can be marked notified"
-            }
-            current.copy(lastMobileNotifiedEventId = eventId)
+    override suspend fun updateMonitoringState(
+        monitoringEnabled: Boolean,
+        resumeRequired: Boolean,
+    ): MobilePersistentState {
+        require(!monitoringEnabled || !resumeRequired) {
+            "monitoring cannot be active while resume is required"
         }
+        return update { current ->
+            val nextSequence = if (current.lastSnapshot == null) {
+                current.sequence
+            } else {
+                current.sequence.nextSequence()
+            }
+            val nextRule = current.alertRule.copy(monitoringEnabled = monitoringEnabled)
+            current.copy(
+                alertRule = nextRule,
+                resumeRequired = resumeRequired,
+                lastSnapshot = current.lastSnapshot?.copy(sequence = nextSequence),
+                sequence = nextSequence,
+                alertState = AlertRuleChangeEvaluator.reevaluateWithoutEvent(
+                    rule = nextRule,
+                    state = current.alertState,
+                    snapshot = current.lastSnapshot,
+                ),
+                pendingStateSequence = nextSequence,
+            )
+        }
+    }
+
+    override suspend fun markMobileNotified(eventId: String): MobilePersistentState =
+        completeMobileNotification(eventId, MobileNotificationDisposition.POSTED).let {
+            check(it.outcome == MobileNotificationCompletionOutcome.APPLIED) {
+                "Only the current pending Mobile notification can be marked notified"
+            }
+            it.state
+        }
+
+    override suspend fun completeMobileNotification(
+        eventId: String,
+        disposition: MobileNotificationDisposition,
+    ): MobileNotificationCompletion {
+        require(disposition != MobileNotificationDisposition.NONE) {
+            "A terminal notification disposition is required"
+        }
+        var applied = false
+        val updated = update { current ->
+            if (current.pendingMobileNotification?.eventId != eventId) {
+                current
+            } else {
+                applied = true
+                current.copy(
+                    lastMobileNotifiedEventId = if (
+                        disposition == MobileNotificationDisposition.POSTED
+                    ) {
+                        eventId
+                    } else {
+                        current.lastMobileNotifiedEventId
+                    },
+                    pendingMobileNotification = null,
+                    lastMobileNotificationEventId = eventId,
+                    mobileNotificationDisposition = disposition,
+                )
+            }
+        }
+        return MobileNotificationCompletion(
+            outcome = if (applied) {
+                MobileNotificationCompletionOutcome.APPLIED
+            } else {
+                MobileNotificationCompletionOutcome.STALE_RESERVATION
+            },
+            state = updated,
+        )
+    }
 
     override suspend fun applySyncDelivery(
         delivery: SyncDeliveryUpdate,
@@ -147,6 +255,11 @@ class ProtoMobileStateRepository(
     override suspend fun recordInvalidInput(): MobilePersistentState =
         update { current ->
             current.copy(invalidInputCount = current.invalidInputCount.saturatingIncrement())
+        }
+
+    override suspend fun markNotificationPermissionRequested(): MobilePersistentState =
+        update { current ->
+            current.copy(notificationPermissionRequested = true)
         }
 
     private suspend fun update(

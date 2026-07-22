@@ -1,6 +1,7 @@
 package com.magicitengineer.batterynotifierandroidwearapp.domain.presentation
 
 import com.magicitengineer.batterynotifierandroidwearapp.domain.state.WearPersistentState
+import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.NotificationDisposition
 
 enum class Freshness {
     NO_DATA,
@@ -19,6 +20,8 @@ data class WearDisplayState(
     val ageMinutes: Long? = null,
     val incompatibleSchema: Boolean = false,
     val clockWarning: Boolean = false,
+    val notificationPermissionMissing: Boolean = false,
+    val notificationDeliveryFailed: Boolean = false,
 )
 
 object WearDisplayStateMapper {
@@ -33,7 +36,11 @@ object WearDisplayStateMapper {
         val phoneState = state.lastPhoneState ?: return WearDisplayState(
             freshness = Freshness.NO_DATA,
             incompatibleSchema = state.lastReceiveError == "unsupported_schema",
-            clockWarning = state.notificationDisposition.persistedValue == "clock_skew",
+            clockWarning = state.notificationDisposition == NotificationDisposition.CLOCK_SKEW,
+            notificationPermissionMissing =
+                state.notificationDisposition == NotificationDisposition.PERMISSION_DENIED,
+            notificationDeliveryFailed =
+                state.notificationDisposition == NotificationDisposition.RESERVED_FAILED,
         )
         val receivedAt = requireNotNull(state.phoneStateReceivedAtEpochMillis)
         val ageMillis = nowEpochMillis - receivedAt
@@ -52,7 +59,11 @@ object WearDisplayStateMapper {
             receivedAtEpochMillis = receivedAt,
             ageMinutes = if (ageMillis < 0) null else ageMillis / 60_000L,
             incompatibleSchema = state.lastReceiveError == "unsupported_schema",
-            clockWarning = state.notificationDisposition.persistedValue == "clock_skew",
+            clockWarning = state.notificationDisposition == NotificationDisposition.CLOCK_SKEW,
+            notificationPermissionMissing =
+                state.notificationDisposition == NotificationDisposition.PERMISSION_DENIED,
+            notificationDeliveryFailed =
+                state.notificationDisposition == NotificationDisposition.RESERVED_FAILED,
         )
     }
 }

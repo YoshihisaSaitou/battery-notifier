@@ -3,7 +3,7 @@
 文書ID: PRD-001  
 版: 0.1  
 状態: Draft  
-最終更新: 2026-07-20
+最終更新: 2026-07-22
 
 ## 1. プロダクト概要
 
@@ -80,7 +80,7 @@ Battery Notifierは、Androidスマートフォンの電池残量を常時監視
 
 - 開発環境はAndroid Studio、Kotlin、Gradle Kotlin DSLを使用する。
 - Mobileソースは`BatteryNotifierAndroidMobileApp`、Wearソースは`BatteryNotifierAndroidWearApp`に置く。
-- MobileとWearはData Layerのセキュリティ要件を満たすため、リリース時に同一application IDと同一署名を使用する。
+- MobileとWearはData Layerのセキュリティ要件を満たすため、`com.magicitengineer.batterynotifier`の同一application IDと同一署名証明書系列を使用する。
 - Mobileは現在のプロジェクト設定で`minSdk 33 / targetSdk 36`、Wearは`minSdk 30 / targetSdk 36`を基準とする。
 - バックグラウンド監視はユーザーが明示的に開始・停止でき、実行中であることを継続通知で示す。
 - Google Playへ配布する場合、foreground serviceの用途申告と審査条件を満たす必要がある。
@@ -107,5 +107,3 @@ Battery Notifierは、Androidスマートフォンの電池残量を常時監視
 
 - Google Play一般公開、限定公開、社内配布のどれを初回配布経路とするか。
 - バッテリー消費の正式な合格基準値。
-- Mobile/Wear共通application IDの最終値。
-

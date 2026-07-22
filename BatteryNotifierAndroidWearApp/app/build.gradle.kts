@@ -12,10 +12,10 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.magicitengineer.batterynotifierandroidwearapp"
+        applicationId = "com.magicitengineer.batterynotifier"
         minSdk = 30
         targetSdk = 36
-        versionCode = 1
+        versionCode = 3
         versionName = "1.0"
 
     }

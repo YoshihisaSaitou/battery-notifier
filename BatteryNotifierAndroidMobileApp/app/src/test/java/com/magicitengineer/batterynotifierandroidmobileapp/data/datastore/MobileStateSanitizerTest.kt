@@ -59,4 +59,17 @@ class MobileStateSanitizerTest {
         assertFalse(result.hasPendingEvent())
         assertTrue(result.hasAlertState())
     }
+
+    @Test
+    fun impossibleActiveAndResumeRequiredCombinationKeepsOnlyRecoveryRequirement() {
+        val invalid = MobileStateSanitizer.defaultValue().toBuilder()
+            .setMonitoringEnabled(true)
+            .setResumeRequired(true)
+            .build()
+
+        val result = MobileStateSanitizer.sanitize(invalid)
+
+        assertFalse(result.monitoringEnabled)
+        assertTrue(result.resumeRequired)
+    }
 }

@@ -81,8 +81,9 @@ Pixel Watch 4は発売時Wear OS 6.0で、41mm/45mmがある。2026年のOS更�
 
 - Mobile/Wearのapplication IDと署名が同一でなければData Layer連携は非対応。
 - debug同士、release同士で組み合わせる。debug/release混在を正式対応しない。
-- versionCodeは端末別APKで管理できるが、同期schemaの互換範囲を明示する。
-- Play Storeのmulti-APK/同一listing構成または配布方式はリリース前ADRで確定する。
+- 共通application IDは`com.magicitengineer.batterynotifier`とし、Kotlin namespaceは端末別に維持する。
+- 同一Play Store掲載でMobileは偶数、Wearは奇数の重複しないversionCode系列を使い、同期schemaの互換範囲を明示する。
+- debugは同一debug署名、releaseは同一Play App Signing証明書系列を使用し、署名秘密情報をリポジトリへ保存しない。
 
 ## 9. 公式情報
 
@@ -93,4 +94,3 @@ Pixel Watch 4は発売時Wear OS 6.0で、41mm/45mmがある。2026年のOS更�
 - [Build adaptive apps](https://developer.android.com/develop/ui/compose/build-adaptive-apps)
 
 端末・OS情報は変化するため、各リリース候補で公式ページと実機のOS buildを再確認する。
-

@@ -12,10 +12,23 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ProtoWearStateRepositoryTest {
+    @Test
+    fun notificationPermissionRequestHistoryIsPersistedWithoutChangingReceivedState() =
+        runBlocking {
+            val repository = repository()
+            repository.applyPhoneState(phoneState(10), 1_000L)
+
+            val updated = repository.markNotificationPermissionRequested()
+
+            assertTrue(updated.notificationPermissionRequested)
+            assertEquals(10L, updated.lastPhoneState?.sequence)
+        }
+
     @Test
     fun stateOrderingAcceptsOnlyTheHighestSequenceAndCountsRejections() = runBlocking {
         val repository = repository()
@@ -69,6 +82,47 @@ class ProtoWearStateRepositoryTest {
 
         assertEquals(NotificationDisposition.EXPIRED, expired.state.notificationDisposition)
         assertEquals(NotificationDisposition.CLOCK_SKEW, skewed.state.notificationDisposition)
+    }
+
+    @Test
+    fun notificationCompletionCannotOverwriteANewerEventReservation() = runBlocking {
+        val repository = repository()
+        repository.applyThresholdEvent(event(10), 1_100_000L)
+        val newerEvent = event(11).copy(
+            eventId = "550e8400-e29b-41d4-a716-446655440021"
+        )
+        repository.applyThresholdEvent(newerEvent, 1_100_001L)
+
+        val staleCompletion = repository.completeNotification(
+            eventId = EVENT_ID,
+            disposition = NotificationDisposition.POSTED,
+        )
+
+        assertEquals(
+            WearNotificationCompletionOutcome.STALE_RESERVATION,
+            staleCompletion.outcome,
+        )
+        assertEquals(newerEvent.eventId, staleCompletion.state.lastProcessedEventId)
+        assertEquals(NotificationDisposition.PENDING, staleCompletion.state.notificationDisposition)
+    }
+
+    @Test
+    fun pendingNotificationCanBeCompletedOnlyOnce() = runBlocking {
+        val repository = repository()
+        repository.applyThresholdEvent(event(10), 1_100_000L)
+
+        val first = repository.completeNotification(
+            eventId = EVENT_ID,
+            disposition = NotificationDisposition.POSTED,
+        )
+        val second = repository.completeNotification(
+            eventId = EVENT_ID,
+            disposition = NotificationDisposition.RESERVED_FAILED,
+        )
+
+        assertEquals(WearNotificationCompletionOutcome.APPLIED, first.outcome)
+        assertEquals(WearNotificationCompletionOutcome.STALE_RESERVATION, second.outcome)
+        assertEquals(NotificationDisposition.POSTED, second.state.notificationDisposition)
     }
 
     @Test

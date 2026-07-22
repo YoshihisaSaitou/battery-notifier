@@ -1,7 +1,9 @@
 package com.magicitengineer.batterynotifierandroidwearapp.data.datastore
 
 import android.content.Context
+import com.magicitengineer.batterynotifierandroidwearapp.application.notification.DeliverPendingWearNotification
 import com.magicitengineer.batterynotifierandroidwearapp.application.sync.ProcessWearDataItem
+import com.magicitengineer.batterynotifierandroidwearapp.platform.notification.AndroidWearNotificationGateway
 
 object WearAppContainer {
     @Volatile
@@ -16,4 +18,10 @@ object WearAppContainer {
 
     fun dataItemProcessor(context: Context): ProcessWearDataItem =
         ProcessWearDataItem(repository(context))
+
+    fun notificationDelivery(context: Context): DeliverPendingWearNotification =
+        DeliverPendingWearNotification(
+            repository = repository(context),
+            gateway = AndroidWearNotificationGateway(context),
+        )
 }

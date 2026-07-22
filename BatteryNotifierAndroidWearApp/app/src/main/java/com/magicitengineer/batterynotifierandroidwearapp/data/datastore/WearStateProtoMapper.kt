@@ -30,6 +30,7 @@ object WearStateProtoMapper {
             lastUnsupportedSchemaVersion = safe.lastUnsupportedSchemaVersion.takeIf {
                 safe.hasLastUnsupportedSchemaVersion
             },
+            notificationPermissionRequested = safe.notificationPermissionRequested,
         )
     }
 
@@ -48,6 +49,7 @@ object WearStateProtoMapper {
             .setLastReceiveError(state.lastReceiveError.orEmpty())
             .setHasLastUnsupportedSchemaVersion(state.lastUnsupportedSchemaVersion != null)
             .setLastUnsupportedSchemaVersion(state.lastUnsupportedSchemaVersion ?: 0)
+            .setNotificationPermissionRequested(state.notificationPermissionRequested)
         state.lastPhoneState?.let { builder.setLastPhoneState(it.toProto()) }
         state.lastEvent?.let { builder.setLastEvent(it.toProto()) }
         return builder.build()

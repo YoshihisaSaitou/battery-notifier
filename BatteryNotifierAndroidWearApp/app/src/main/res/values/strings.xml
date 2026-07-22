@@ -29,4 +29,16 @@
     <string name="retry_sent">Sync requested</string>
     <string name="retry_no_connection">No phone connection is currently available</string>
     <string name="retry_failed">Could not request an update</string>
+    <string name="battery_alert_channel_name">Phone battery alerts</string>
+    <string name="battery_alert_channel_description">Alerts when the phone battery reaches its configured threshold</string>
+    <string name="phone_battery_alert_title">Phone battery is at %1$d%%</string>
+    <string name="phone_battery_alert_body">It reached your %1$d%% threshold. Please charge your phone.</string>
+    <string name="notification_permission_missing">Notifications are not allowed on this watch</string>
+    <string name="notification_delivery_failed">A phone battery alert could not be posted</string>
+    <string name="notification_permission_description">Allow notifications to receive phone battery alerts on this watch. State display and sync continue if you decline.</string>
+    <string name="notification_permission_enabled">Watch notifications are allowed</string>
+    <string name="notification_permission_not_requested">Notifications have not been requested</string>
+    <string name="notification_permission_settings_required">Notifications are not allowed; use system settings</string>
+    <string name="notification_permission_request_action">Allow notifications</string>
+    <string name="notification_permission_settings_action">Open settings</string>
 </resources>

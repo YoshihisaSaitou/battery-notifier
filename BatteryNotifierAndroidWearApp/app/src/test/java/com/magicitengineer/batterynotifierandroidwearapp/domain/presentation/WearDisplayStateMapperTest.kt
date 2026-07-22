@@ -1,6 +1,7 @@
 package com.magicitengineer.batterynotifierandroidwearapp.domain.presentation
 
 import com.magicitengineer.batterynotifierandroidwearapp.domain.state.WearPersistentState
+import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.NotificationDisposition
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.ReceivedPhoneState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -43,6 +44,25 @@ class WearDisplayStateMapperTest {
 
         assertEquals(68, display.levelPercent)
         assertTrue(display.incompatibleSchema)
+    }
+
+    @Test
+    fun notificationOutcomesAreExposedAsUserVisibleDisplayState() {
+        val permissionDenied = WearDisplayStateMapper.map(
+            WearPersistentState(
+                notificationDisposition = NotificationDisposition.PERMISSION_DENIED
+            ),
+            1_000L,
+        )
+        val failed = WearDisplayStateMapper.map(
+            WearPersistentState(
+                notificationDisposition = NotificationDisposition.RESERVED_FAILED
+            ),
+            1_000L,
+        )
+
+        assertTrue(permissionDenied.notificationPermissionMissing)
+        assertTrue(failed.notificationDeliveryFailed)
     }
 
     private fun state(receivedAt: Long) = WearPersistentState(

@@ -7,6 +7,11 @@ import androidx.wear.watchface.complications.datasource.ComplicationDataSourceUp
 import com.magicitengineer.batterynotifierandroidwearapp.application.presentation.WearSurfaceUpdater
 import com.magicitengineer.batterynotifierandroidwearapp.complication.MainComplicationService
 import com.magicitengineer.batterynotifierandroidwearapp.tile.MainTileService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class AndroidWearSurfaceUpdater(
     context: Context,
@@ -18,7 +23,21 @@ class AndroidWearSurfaceUpdater(
     )
 
     override fun requestRefresh() {
-        TileService.getUpdater(applicationContext).requestUpdate(MainTileService::class.java)
-        complicationRequester.requestUpdateAll()
+        if (!refreshCoalescer.trySchedule()) return
+        refreshScope.launch {
+            try {
+                delay(REFRESH_COALESCE_MILLIS)
+                TileService.getUpdater(applicationContext).requestUpdate(MainTileService::class.java)
+                complicationRequester.requestUpdateAll()
+            } finally {
+                refreshCoalescer.markCompleted()
+            }
+        }
+    }
+
+    private companion object {
+        const val REFRESH_COALESCE_MILLIS = 250L
+        val refreshScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val refreshCoalescer = WearSurfaceRefreshCoalescer()
     }
 }

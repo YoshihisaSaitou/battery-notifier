@@ -93,6 +93,13 @@
 | TC-U016 | schema | v1、未来v2 | v1採用、v2をunsupportedとして保持値維持 |
 | TC-U017 | 時刻 | capturedAtが受信より6分未来 | 異常として拒否/時刻警告 |
 | TC-U018 | Locale | ja/enで同じevent数値 | 各Localeの文言、payloadに文言なし |
+| TC-U019 | Wear通知再試行予約 | `RESERVED_FAILED`、attempt=1、期限内 | 原子的に`PENDING`、attempt=2となる |
+| TC-U020 | Wear通知上限 | `RESERVED_FAILED`、attempt=3 | `FAILED_EXHAUSTED`となりadapterを呼ばない |
+| TC-U021 | Wear通知再試行期限 | `RESERVED_FAILED`、attempt=1、`now > expiresAt` | `EXPIRED`となりadapterを呼ばない |
+| TC-U022 | Wear通知再試行競合 | 同じeventへ並行して10回予約 | 予約成功は1回、同じ試行番号を重複しない |
+| TC-U023 | 100%しきい値境界 | threshold=100、初回100→99→98→100→99 | 初回100はarmedでeventなし、最初の99で1件、98で重複なし、100で再arm、次の99で新event1件 |
+| TC-U024 | 100%しきい値初回低値 | threshold=100、初回99 | eventなし、disarm |
+| TC-U025 | backup exclusion | Mobile/Wearのbackup/data-extraction rules | 両Proto DataStoreファイルがcloud backupとdevice transferの双方から除外される |
 
 ## 7. 統合・E2Eテストケース
 
@@ -168,6 +175,9 @@
 | TC-E064 | battery_alerts channelを無効化 | クラッシュせず、画面に通知不可を表示 |
 | TC-E065 | ongoing通知の停止をタップ | FGS停止、監視OFF、Wearへ反映 |
 | TC-E066 | Mobile notification bridgeを観測 | Mobile通知の自動ミラー重複なし |
+| TC-E067 | Wear初回投稿を失敗させ、期限内にアプリをforeground化 | attempt=2で再試行し、成功時のWear通知は1件 |
+| TC-E068 | Wear投稿を3回とも失敗させ、その後foreground化と再試行操作 | `FAILED_EXHAUSTED`を表示し、4回目を投稿しない |
+| TC-E069 | Wear投稿で権限拒否後に権限を許可してアプリ再開 | 過去eventを再投稿せず、設定状態を更新する |
 
 ### 7.8 UI・多言語・互換性
 
@@ -217,4 +227,3 @@
 - application ID/署名不一致、FGS開始不能、DataStore破損で状態喪失、再現性ある通知重複が見つかった場合はE2Eを中止する。
 - 原因修正、影響範囲の単体/統合テスト追加、レビュー完了後に該当環境から再開する。
 - 未実施をPassとして扱わず、`blocked`または`not_run`で記録する。
-

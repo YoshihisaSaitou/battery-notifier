@@ -22,6 +22,7 @@ object WearStateProtoMapper {
             notificationDisposition = NotificationDisposition.entries.first {
                 it.persistedValue == safe.notificationDisposition
             },
+            notificationPostAttemptCount = safe.notificationPostAttemptCount,
             invalidPayloadCount = safe.invalidPayloadCount,
             unsupportedSchemaCount = safe.unsupportedSchemaCount,
             duplicateCount = safe.duplicateCount,
@@ -42,6 +43,7 @@ object WearStateProtoMapper {
             .setLastProcessedEventId(state.lastProcessedEventId.orEmpty())
             .setEventProcessedAtEpochMillis(state.eventProcessedAtEpochMillis ?: 0)
             .setNotificationDisposition(state.notificationDisposition.persistedValue)
+            .setNotificationPostAttemptCount(state.notificationPostAttemptCount)
             .setInvalidPayloadCount(state.invalidPayloadCount)
             .setUnsupportedSchemaCount(state.unsupportedSchemaCount)
             .setDuplicateCount(state.duplicateCount)

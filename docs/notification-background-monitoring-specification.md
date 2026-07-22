@@ -53,9 +53,12 @@ if monitoring is off: no event
 else if charging: update state; do not trigger
 else if not armed:
     if level >= threshold + hysteresis: arm
-else if previousLevel > threshold and level <= threshold:
+else if (threshold < 100 and previousLevel > threshold and level <= threshold)
+     or (threshold == 100 and previousLevel == 100 and level < 100):
     create one event and disarm
 ```
+
+threshold=100は上側の値が存在しないため、満充電100%から99%以下へ離れる下降を交差と定義する。初回観測が100%なら通知せずarmed、99%以下なら通知せずDisarmedとする。設定変更だけでは通知せず、現在値が100%の場合だけ次の下降に備えてarmedとする。再アーム値は`min(100, threshold + hysteresis)`であり、threshold=100では100%である。
 
 - 比較は整数百分率で行う。
 - しきい値変更だけではイベントを作らない。
@@ -129,4 +132,3 @@ Channel作成後は重要度をアプリから変更できないため、文言�
 - [Foreground service types](https://developer.android.com/develop/background-work/services/fgs/service-types)
 - [Foreground service start restrictions](https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start)
 - [Notification runtime permission](https://developer.android.com/develop/ui/compose/notifications/notification-permission)
-

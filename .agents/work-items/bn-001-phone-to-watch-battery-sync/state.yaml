@@ -17,13 +17,12 @@ current_actor:
   id: "codex"
 
 last_transition:
-  from_phase: "specification"
+  from_phase: "review"
   to_phase: "implementation"
   reason: >-
-    The draft sync format, connected/disconnected/reconnected behavior, stale
-    display rules, and acceptance criteria are recorded. Implementation has not
-    started and must verify the draft handoff before changing status to
-    in_progress.
+    Independent re-review confirmed 15 prior fixes but RV-002 remains High and
+    RV-017 adds a Medium timeline-age defect. The Review-to-Test gate failed;
+    implementation resumes with RV-002 as the first correction.
 
 spec_refs:
   - "docs/product-requirements.md"
@@ -78,6 +77,8 @@ traceability:
     - "FR-040"
     - "FR-041"
     - "FR-042"
+    - "FR-044"
+    - "FR-045"
     - "FR-050"
     - "FR-051"
     - "FR-052"
@@ -99,6 +100,7 @@ traceability:
     - "AC-007"
     - "AC-008"
     - "AC-010"
+    - "AC-013"
 
 phases:
   specification:
@@ -127,9 +129,31 @@ phases:
         evidence:
           - "docs/functional-requirements.md"
           - "docs/test-plan-and-cases.md"
+      - id: "SPEC-005"
+        title: "Define bounded Wear notification post-failure retry behavior"
+        status: "done"
+        evidence:
+          - "docs/notification-bridge-specification.md"
+          - "docs/functional-requirements.md"
+          - "docs/test-plan-and-cases.md"
+      - id: "SPEC-006"
+        title: "Define threshold 100 percent crossing and re-arm behavior"
+        status: "done"
+        evidence:
+          - "docs/functional-requirements.md"
+          - "docs/notification-background-monitoring-specification.md"
+          - "docs/test-plan-and-cases.md"
+      - id: "SPEC-007"
+        title: "Define Proto DataStore cloud backup and device-transfer exclusions"
+        status: "done"
+        evidence:
+          - "docs/data-design.md"
+          - "docs/permissions-and-privacy-specification.md"
+          - "docs/architecture-decision-records.md"
+          - "docs/test-plan-and-cases.md"
 
   implementation:
-    status: "in_progress"
+    status: "completed_pending_re_review"
     owner: "codex"
     tasks:
       - id: "IMP-001"
@@ -171,12 +195,14 @@ phases:
           - "FR-066"
       - id: "IMP-005"
         title: "Connect Wear persisted state to app, Tile, complication, and notification updates"
-        status: "in_progress"
+        status: "done"
         requirement_refs:
           - "FR-030"
           - "FR-031"
           - "FR-032"
           - "FR-040"
+          - "FR-044"
+          - "FR-045"
           - "FR-050"
           - "FR-053"
       - id: "IMP-006"
@@ -202,12 +228,19 @@ phases:
           - "FR-021"
           - "FR-022"
           - "FR-024"
+      - id: "IMP-008"
+        title: "Add real Wear Proto DataStore retry persistence and concurrency tests"
+        status: "done"
+        requirement_refs:
+          - "FR-041"
+          - "FR-044"
+          - "FR-045"
 
   review:
-    status: "pending"
-    owner: "unassigned"
+    status: "changes_requested"
+    owner: "/root/independent_review"
     preparation:
-      status: "prepared_not_started"
+      status: "fixes_ready_for_independent_reviewer"
       checklist: ".agents/work-items/bn-001-phone-to-watch-battery-sync/review-checklist.md"
       independence_requirement: >-
         The reviewer actor must differ from implementation actor codex. The
@@ -216,20 +249,343 @@ phases:
     focus:
       - id: "REV-001"
         title: "Timestamp, expiry, clock-change, and freshness semantics"
-        status: "pending"
+        status: "changes_requested_rv017"
       - id: "REV-002"
         title: "Consecutive update races and atomic ordering"
-        status: "pending"
+        status: "fixes_pending_verification"
       - id: "REV-003"
         title: "Disconnected and reconnected convergence"
-        status: "pending"
+        status: "fixes_pending_verification"
       - id: "REV-004"
         title: "DataItem paths, filters, package identity, and schema validation"
-        status: "pending"
+        status: "reviewed_passed_with_runtime_identity_gate_remaining"
       - id: "REV-005"
         title: "Android service, receiver, coroutine, and UI lifecycle behavior"
-        status: "pending"
-    findings: []
+        status: "changes_requested_rv002"
+    findings:
+      - id: "RV-001"
+        severity: "High"
+        status: "fixed"
+        file: "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/wearable/WearDataLayerListenerService.kt"
+        location: "onDataChanged lines 38-45"
+        requirement_refs: ["FR-041", "FR-044", "FR-045", "AC-013"]
+        scenario: >-
+          Persist a threshold event as PENDING and suspend its notification post;
+          apply a phone-state update before the first post completes.
+        observed: >-
+          Every APPLIED DataItem, including phone-state, invokes deliver with the
+          same PENDING event. Parallel state callbacks can call the gateway more
+          than once while attempt count remains one and can bypass the three-post cap.
+        required_outcome: >-
+          Only the atomic threshold-event reservation may own initial delivery,
+          or delivery must acquire an equivalent one-use token. Add an event/state
+          interleaving test proving one gateway call and exact attempt accounting.
+        verification: >-
+          Initial delivery is now owned only by the threshold-event path. The
+          event/phone-state interleaving regression proves one gateway call and
+          an unchanged single-attempt count. Targeted debug tests pass.
+      - id: "RV-002"
+        severity: "High"
+        status: "open"
+        file: "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/application/notification/DeliverPendingWearNotification.kt"
+        location: "deliver and retry; MainActivity.onStart; listener service cancellation"
+        requirement_refs: ["FR-040", "FR-044", "NBR-001", "REV-005"]
+        scenario: >-
+          Stop the Wear service or process after PENDING is persisted but before
+          gateway completion, including CancellationException.
+        observed: >-
+          PENDING remains indefinitely. Duplicate DataItems are ignored and
+          foreground retry accepts only RESERVED_FAILED, so the notification is
+          lost; a later phone-state can also revive it through RV-001 without expiry recheck.
+        required_outcome: >-
+          Implement bounded in-flight recovery that cannot lose, duplicate,
+          resurrect an expired event, or exceed the attempt cap, and add process-
+          interruption regression coverage.
+        verification: >-
+          Re-review failed. The gateway-thrown CancellationException path is
+          protected, but cancellation after gateway return and before the
+          suspending completion write is outside the NonCancellable block. If
+          recoverInterruptedNotificationOnce already completed earlier in the
+          process, the resulting PENDING state is not recovered on foreground
+          because retry accepts RESERVED_FAILED only. Existing tests cover
+          gateway-thrown cancellation, not service cancellation at this boundary.
+      - id: "RV-003"
+        severity: "High"
+        status: "fixed"
+        file: "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateRepository.kt"
+        location: "reserveNotificationRetry lines 209-247"
+        requirement_refs: ["AC-007", "NBR-001", "REV-001"]
+        scenario: >-
+          After an initial post failure, roll the Wear wall clock back more than
+          the five-minute skew tolerance and foreground the app.
+        observed: >-
+          Retry checks only now <= expiresAt, so an event whose occurredAt is far
+          in the apparent future is reserved and posted.
+        required_outcome: >-
+          Re-evaluate clock rollback/skew before retry, make the result terminal
+          without calling the gateway, and cover equality and rollback boundaries.
+        verification: >-
+          Retry now applies the five-minute future-skew boundary before any
+          reservation, persists CLOCK_SKEW terminally, and never calls the
+          gateway. Equality and one-millisecond-beyond tests pass.
+      - id: "RV-004"
+        severity: "High"
+        status: "fixed_runtime_test_required"
+        file: "BatteryNotifierAndroidWearApp/app/src/main/AndroidManifest.xml"
+        location: "complication UPDATE_PERIOD_SECONDS and MainTileService/MainComplicationService"
+        requirement_refs: ["FR-031", "FR-051", "AC-005", "CPS-001"]
+        scenario: >-
+          Receive a Fresh state, disconnect, and leave the Tile or complication
+          active with no later DataItem.
+        observed: >-
+          Both surfaces return static content; update period is zero and refresh
+          requests occur only on DataItems. No code schedules the two/five-minute
+          boundaries, so cached Fresh content can remain after five minutes.
+        required_outcome: >-
+          Use a bounded system-supported validity/timeline or refresh mechanism
+          that guarantees Delayed/Stale transitions without new DataItems, with
+          disconnected boundary tests for Tile and complication.
+        verification: >-
+          Tile and complication now use shared epoch validity timelines covering
+          Fresh, Delayed, and Stale boundaries without another DataItem. Boundary
+          unit evidence passes; actual system-surface behavior remains not_run.
+      - id: "RV-005"
+        severity: "High"
+        status: "fixed"
+        file: "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt"
+        location: "nowEpochMillis ticker lines 85-99 and WearDisplayStateMapper"
+        requirement_refs: ["FR-031", "AC-004", "REV-001"]
+        scenario: >-
+          Receive a new phone state between the activity's one-minute clock ticks.
+        observed: >-
+          The saved receivedAt can be later than the stale UI now value; the new
+          valid state maps to STALE for up to about 60 seconds instead of Fresh.
+        required_outcome: >-
+          Advance display time on each received-state change while preserving
+          explicit rollback detection, and add a between-ticks regression test.
+        verification: >-
+          MainActivity refreshes now when receivedAt changes, so a newly applied
+          state no longer waits for the minute ticker. Negative-age mapping also
+          exposes the clock warning. Unit boundary evidence passes.
+      - id: "RV-006"
+        severity: "High"
+        status: "fixed_runtime_test_required"
+        file: "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/application/sync/MobileSyncCoordinator.kt"
+        location: "startMonitoring lines 118-125; MobileStateRepository.updateMonitoringState"
+        requirement_refs: ["FR-013", "NBS-001", "REV-005"]
+        scenario: >-
+          Stop monitoring with the persisted level 21 and armed=true, let the
+          real battery fall to 20 while stopped, then start monitoring at threshold 20.
+        observed: >-
+          Start retains the stale previous level and armed state; the sticky
+          callback is evaluated as a normal 21-to-20 crossing and posts an
+          immediate alert although first-low-on-start is disabled.
+        required_outcome: >-
+          Atomically establish a start baseline before callback evaluation and
+          distinguish user start from recovery. Add stop-discharge-start tests.
+        verification: >-
+          User start captures or resets a baseline before enabling monitoring;
+          recovery remains a separate path. Stop-discharge-start repository and
+          coordinator tests pass; sticky Receiver/FGS runtime remains not_run.
+      - id: "RV-007"
+        severity: "High"
+        status: "fixed"
+        file: "docs/functional-requirements.md"
+        location: "FR-002/FR-012 and Mobile AlertRule/ThresholdEvaluator/UI"
+        requirement_refs: ["PR-001", "PR-002", "FR-002", "FR-012"]
+        scenario: "Set threshold to the allowed value 100 and discharge from 100 to 99."
+        observed: >-
+          The value domain is 0..100 but the crossing condition requires
+          previousLevel > 100, which is impossible; the allowed setting can
+          never generate an event.
+        required_outcome: >-
+          Specification must define the 100-percent boundary or reduce the
+          maximum. Then align UI, domain, payload validation, docs, and tests.
+        verification: >-
+          SPEC-006 defines initial 100 as armed without notification, 100-to-99
+          as the crossing, first observation below 100 as disarmed, and 100 as
+          the re-arm value in FR-012/015/019, AC-014, and TC-U023/U024.
+      - id: "RV-008"
+        severity: "High"
+        status: "fixed_runtime_test_required"
+        file: "BatteryNotifierAndroidMobileApp/app/src/main/AndroidManifest.xml"
+        location: "MobileDataLayerListenerService MESSAGE_RECEIVED-only filter"
+        requirement_refs: ["FR-064", "AC-006", "WIS-001", "REV-003"]
+        scenario: >-
+          Change phone state while disconnected, reconnect without sending the
+          Wear request-state message, and wait for automatic convergence.
+        observed: >-
+          The only automatic entry is onPeerConnected, but the manifest registers
+          only the exact MESSAGE_RECEIVED path and no capability-change listener.
+          Current Google guidance requires declaring interested event actions and
+          recommends CapabilityClient for app-specific network availability; no
+          paired runtime evidence proves this callback is awakened on reconnection.
+        required_outcome: >-
+          Explicitly subscribe to a current capability/node reachability signal
+          and prove reconnect causes recapture, new sequence, and urgent send
+          without a request-state message.
+        verification: >-
+          Wear declares the receiver capability and Mobile subscribes to the
+          exact CAPABILITY_CHANGED path, routing reachable changes to current
+          recapture and urgent convergence. Unit routing passes; paired runtime
+          reconnection without request-state remains not_run.
+      - id: "RV-009"
+        severity: "Medium"
+        status: "fixed_runtime_test_required"
+        file: "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt"
+        location: "onStart lines 155-162"
+        requirement_refs: ["FR-044", "REV-005"]
+        scenario: >-
+          Recreate the Activity for locale, font, or configuration changes while
+          the app remains foreground and an event is RESERVED_FAILED.
+        observed: "Each recreation consumes another automatic retry and can exhaust the event."
+        required_outcome: >-
+          Bind automatic retry to a real process/app background-to-foreground
+          transition or guard recreation, with lifecycle regression coverage.
+        verification: >-
+          Automatic retry moved from Activity.onStart to ProcessLifecycleOwner
+          onStart, preventing ordinary Activity recreation from consuming a
+          retry. Configuration-change runtime evidence remains not_run.
+      - id: "RV-010"
+        severity: "Medium"
+        status: "fixed_runtime_test_required"
+        file: "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/MainActivity.kt"
+        location: "refreshNotificationPermissionState; Wear MainActivity equivalent"
+        requirement_refs: ["DEC-004", "TC-E064"]
+        scenario: >-
+          Grant POST_NOTIFICATIONS and global app notifications, disable only the
+          battery_alerts channel, then reopen either app.
+        observed: >-
+          Both UIs report notifications enabled because they omit channel
+          importance, while their gateways correctly reject channel-disabled posts.
+        required_outcome: >-
+          Include channel state in the UI model and show the notification settings
+          route immediately; add channel-none tests for Mobile and Wear.
+        verification: >-
+          Both apps combine runtime permission, app notification state, and
+          battery_alerts channel importance and provide the channel settings
+          route. Unit evidence passes; real channel-disabled UX remains not_run.
+      - id: "RV-011"
+        severity: "Medium"
+        status: "fixed"
+        file: "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/platform/presentation/AndroidWearSurfaceUpdater.kt"
+        location: "requestRefresh lines 20-23"
+        requirement_refs: ["CPS-001", "WIS-001", "REV-002"]
+        scenario: "Apply 30 phone-state DataItems in a short burst."
+        observed: >-
+          Every applied item immediately requests Tile and all complication
+          updates; there is no coalescing window.
+        required_outcome: "Coalesce burst refresh requests to a bounded rate and add a burst test."
+        verification: >-
+          A process-wide atomic coalescer limits Tile/complication refresh to
+          one request per 250 ms window; burst unit evidence passes.
+      - id: "RV-012"
+        severity: "Medium"
+        status: "fixed_runtime_test_required"
+        file: "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/complication/MainComplicationService.kt"
+        location: "createComplicationData/buildDescription lines 49-90"
+        requirement_refs: ["FR-051", "CPS-001"]
+        scenario: "Request complication data for Charging and Delayed states."
+        observed: >-
+          Charging and Delayed are present only in content description or are
+          rendered as ordinary discharging; no visible icon/warning is returned.
+        required_outcome: >-
+          Make supported complication types visibly distinguish charging and
+          delayed status and assert the returned ComplicationData.
+        verification: >-
+          SHORT_TEXT and RANGED_VALUE data now include distinct visible status
+          titles for Charging and Delayed, asserted by complication-data tests.
+          Representative watch-face rendering remains not_run.
+      - id: "RV-013"
+        severity: "Medium"
+        status: "fixed"
+        file: "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/domain/presentation/WearDisplayState.kt"
+        location: "negative age mapping lines 52-68 and MainActivity stale age rendering"
+        requirement_refs: ["REV-001", "TC-E034"]
+        scenario: "Roll the Wear wall clock behind phoneStateReceivedAt and open the app."
+        observed: >-
+          State becomes STALE but clockWarning remains false and the UI renders
+          the null age as zero minutes ago.
+        required_outcome: "Expose an explicit rollback warning and avoid a misleading relative age; add tests."
+        verification: >-
+          Negative age maps to Stale with null relative age and an explicit
+          clock warning; the app does not render a misleading zero-minute age.
+      - id: "RV-014"
+        severity: "Medium"
+        status: "fixed_runtime_test_required"
+        file: "BatteryNotifierAndroidMobileApp/app/src/main/AndroidManifest.xml"
+        location: "allowBackup=true and empty backup/data-extraction rules; Wear manifest equivalent"
+        requirement_refs: ["DDS-001"]
+        scenario: "Run Android cloud backup with the default empty exclusion rules."
+        observed: >-
+          Proto DataStore state, event IDs, and pending outboxes are eligible for
+          cloud backup although DDS-001 states data is not stored on external servers.
+        required_outcome: >-
+          Exclude Proto DataStore from cloud backup on both apps, explicitly decide
+          D2D transfer, and define safe handling of restored pending event/outbox state.
+        verification: >-
+          ADR-014 and PPS-001 exclude both complete Proto files from cloud
+          backup and device transfer; TC-U025 defines the static contract gate.
+      - id: "RV-015"
+        severity: "Low"
+        status: "fixed"
+        file: "BatteryNotifierAndroidWearApp/app/src/main/AndroidManifest.xml"
+        location: "com.google.android.wearable.standalone=true lines 67-69"
+        requirement_refs: ["PR-003", "PR-004"]
+        scenario: "Publish the Wear artifact to Google Play with current metadata."
+        observed: >-
+          The app declares standalone although phone battery data is a core
+          dependency. Current Android guidance requires false for this case.
+        required_outcome: "Set standalone=false and verify paired-app distribution behavior."
+        verification: "Wear manifest declares com.google.android.wearable.standalone=false."
+      - id: "RV-016"
+        severity: "Low"
+        status: "fixed"
+        file: "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/ProtoWearStateRepositoryTest.kt"
+        location: "retry migration coverage"
+        requirement_refs: ["IMP-005", "TC-U019", "TC-U022"]
+        scenario: >-
+          Read a pre-counter proto whose disposition is PENDING, POSTED,
+          PERMISSION_DENIED, or RESERVED_FAILED and count defaults to zero.
+        observed: >-
+          Sanitizer code maps these to attempt one, but no direct regression test
+          proves all legacy dispositions and terminal behavior.
+        required_outcome: "Add explicit pre-counter migration tests for every required disposition."
+        verification: >-
+          Migration tests cover legacy PENDING, POSTED, PERMISSION_DENIED, and
+          RESERVED_FAILED dispositions and sanitize each zero counter to one.
+      - id: "RV-017"
+        severity: "Medium"
+        status: "open"
+        file: "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/domain/presentation/WearDisplayTimeline.kt"
+        location: "WearDisplayTimelineMapper.map lines 36-45; Tile and complication timeline rendering"
+        requirement_refs: ["WDS-001", "CPS-001", "AC-005"]
+        scenario: >-
+          Receive a phone state, then view the Tile or complication after 6,
+          10, and 60 minutes without another DataItem.
+        observed: >-
+          The cached Delayed state is calculated once at the two-minute boundary
+          and the Stale state once at five minutes. Tile relative age therefore
+          remains five minutes indefinitely; complication delayed text similarly
+          remains two minutes, and stale description omits the last-update time.
+        required_outcome: >-
+          Use bounded minute timeline entries, a dynamic time representation, or
+          an absolute last-update value so displayed age remains truthful. Add
+          6-, 10-, and 60-minute Tile/complication regressions.
+        verification: null
+      - id: "RV-018"
+        severity: "Low"
+        status: "open"
+        file: ".agents/work-items/bn-001-phone-to-watch-battery-sync/state.yaml"
+        location: "spec_refs"
+        requirement_refs: ["ADR-014", "PPS-001"]
+        scenario: "Resume BN-001 using only the required-reading order in AGENTS.md."
+        observed: >-
+          permissions-and-privacy-specification.md is normative evidence for
+          RV-014 and ADR-014 and changed in this candidate, but is absent from
+          spec_refs, so future role handoffs do not automatically read it.
+        required_outcome: "Add docs/permissions-and-privacy-specification.md to spec_refs."
+        verification: null
 
   test:
     status: "pending"
@@ -295,6 +651,17 @@ phases:
           - "TC-E055"
           - "TC-E056"
     results:
+      - id: "DATASTORE-INSTRUMENTED-002"
+        title: "Real Wear Proto DataStore retry persistence and concurrency"
+        status: "not_run"
+        compile_result: "pass"
+        compile_command: >-
+          From BatteryNotifierAndroidWearApp: .\gradlew.bat
+          compileDebugAndroidTestKotlin --console=plain
+          '-Pkotlin.compiler.execution.strategy=in-process'
+        reason: >-
+          Three real-file cases compile, but execution requires an attached
+          Wear emulator or device and adb lists no target.
       - id: "DATASTORE-INSTRUMENTED-001"
         title: "Real Mobile Proto DataStore persistence, concurrency, and corruption recovery"
         status: "not_run"
@@ -330,6 +697,30 @@ phases:
       rationale: null
 
 decisions_needed:
+  - id: "DEC-005"
+    title: "Define threshold 100 percent boundary"
+    owner: "specification"
+    status: "approved"
+    decided_at: "2026-07-22T18:55:00+09:00"
+    decided_by: "codex"
+    decision: >-
+      Preserve the approved 5-100 range. At threshold 100, initial 100 arms
+      without notification, the next 100-to-below-100 transition emits one
+      event, first observation below 100 emits none, and 100 re-arms.
+    blocks: []
+    notes: "Recorded in FR-012, FR-015, FR-019, AC-014, TC-U023, and TC-U024."
+  - id: "DEC-006"
+    title: "Define Proto DataStore backup and device transfer policy"
+    owner: "specification"
+    status: "approved"
+    decided_at: "2026-07-22T18:55:00+09:00"
+    decided_by: "codex"
+    decision: >-
+      Exclude the complete Mobile and Wear Proto DataStore files from Android
+      cloud backup and device-to-device transfer in v1.0; do not partially
+      restore settings or pending/outbox state.
+    blocks: []
+    notes: "Recorded in ADR-014, DDS-001, PPS-001, and TC-U025."
   - id: "DEC-001"
     title: "Select the final common application ID for Mobile and Wear"
     owner: "human"
@@ -368,14 +759,21 @@ decisions_needed:
   - id: "DEC-003"
     title: "Define the Wear notification post-failure retry limit and triggers"
     owner: "specification"
-    status: "open"
-    blocks:
-      - "IMP-005 completion"
+    status: "approved"
+    decided_at: "2026-07-22T15:45:07+09:00"
+    decided_by: "codex"
+    decision: >-
+      Allow at most three Wear notification post attempts per event, including
+      the initial attempt. Retry RESERVED_FAILED only on the next Wear app
+      foreground transition or an explicit user retry action, with one atomic
+      reservation per trigger. Recheck expiry before each retry; POSTED,
+      PERMISSION_DENIED, EXPIRED, and FAILED_EXHAUSTED are terminal. Do not use
+      timers, WorkManager, or duplicate DataItem delivery as retry triggers.
+    blocks: []
     notes: >-
-      NBR-001 requires bounded retry after RESERVED_FAILED but does not define
-      the attempt limit or retry triggers. The implementation may post once and
-      persist POSTED, PERMISSION_DENIED, or RESERVED_FAILED, but automatic retry
-      remains excluded until the normative behavior is specified.
+      Resolved by SPEC-005 and implemented by IMP-005. The targeted retry suite,
+      full Wear debug/release unit tests, lint, and real DataStore Android-test
+      compilation pass; runtime device cases remain in the Test phase.
   - id: "DEC-004"
     title: "Approve POST_NOTIFICATIONS declaration and permission UX"
     owner: "human"
@@ -401,10 +799,93 @@ blockers: []
 loop_control:
   same_cause_failure_limit: 3
   phase_return_limit: 5
-  current_failure_signature: null
-  consecutive_same_cause_failures: 0
-  total_phase_returns: 0
+  current_failure_signature: >-
+    RV-002 Wear notification can remain PENDING after same-process service
+    cancellation outside the gateway cancellation catch.
+  consecutive_same_cause_failures: 1
+  total_phase_returns: 2
   attempts:
+    - attempt: 1
+      occurred_at: "2026-07-22T21:41:11+09:00"
+      phase: "review"
+      role: "review"
+      command: >-
+        Independent code-path and regression-test re-review of RV-002 after the
+        cancellation and one-time recovery corrective change.
+      failure_signature: >-
+        A new notification PENDING created after process recovery has already
+        completed can survive service cancellation after gateway return and
+        before completion persistence, with no same-process recovery trigger.
+      root_cause_hypothesis: >-
+        NonCancellable protection covers only a CancellationException thrown by
+        gateway.post; it does not cover cancellation at repository completion,
+        while recoverInterruptedNotificationOnce permanently closes recovery
+        for the remainder of the process.
+      corrective_change: >-
+        Implementation added gateway-cancellation completion and a one-time
+        previous-process PENDING recovery before listener processing.
+      result: >-
+        fail; the post-return/completion-write cancellation boundary remains
+        unprotected and is not covered by a service-cancellation regression.
+    - attempt: 1
+      occurred_at: "2026-07-22T18:28:00+09:00"
+      phase: "implementation"
+      role: "implementation"
+      command: >-
+        From BatteryNotifierAndroidWearApp: compileDebugKotlin plus
+        testDebugUnitTest after timeline, process lifecycle, and refresh changes.
+      failure_signature: >-
+        compileDebugKotlin: BatteryNotifierWearApplication had ambiguous
+        onCreate supertype resolution and MainActivity lacked lifecycleScope import.
+      root_cause_hypothesis: >-
+        Implementing DefaultLifecycleObserver directly on Application exposed
+        an onCreate name collision, while removing Activity automatic retry also
+        removed an import still used by the permission callback.
+      corrective_change: >-
+        Moved the process observer to a private delegated object and restored
+        the lifecycleScope import. Equivalent rerun is pending.
+      result: >-
+        pass; compileDebugKotlin and testDebugUnitTest completed BUILD SUCCESSFUL
+        in 2m 55s after the delegated observer and import correction.
+    - attempt: 1
+      occurred_at: "2026-07-22T18:43:46+09:00"
+      phase: "implementation"
+      role: "implementation"
+      command: >-
+        From BatteryNotifierAndroidMobileApp: targeted testDebugUnitTest for
+        monitoring baseline, capability routing, and notification channel state.
+      failure_signature: >-
+        compileDebugKotlin: MainActivity referenced CHANNEL_ID on
+        AndroidMobileAlertNotificationGateway instead of its factory owner.
+      root_cause_hypothesis: >-
+        The public channel constant is declared on
+        AndroidMobileAlertNotificationFactory, while the new UI import used the gateway class.
+      corrective_change: >-
+        Changed the import and both references to
+        AndroidMobileAlertNotificationFactory.CHANNEL_ID. Equivalent rerun is pending.
+      result: >-
+        pass; the four targeted Mobile suites produced 31 tests with 0 failures
+        and 0 errors after the factory-owner correction. The command client
+        timed out after five minutes, but fresh JUnit XML records the completed result.
+    - attempt: 1
+      occurred_at: "2026-07-22T16:02:14+09:00"
+      phase: "implementation"
+      role: "implementation"
+      command: >-
+        From BatteryNotifierAndroidWearApp: .\gradlew.bat
+        testDebugUnitTest filtered to DeliverPendingWearNotificationTest,
+        ProtoWearStateRepositoryTest, and WearDisplayStateMapperTest.
+      failure_signature: >-
+        compileDebugUnitTestKotlin: ProtoWearStateRepositoryTest.kt unresolved
+        reference first.
+      root_cause_hypothesis: >-
+        The new assertion collected repository.state.first() without importing
+        kotlinx.coroutines.flow.first.
+      corrective_change: >-
+        Added the missing kotlinx.coroutines.flow.first import and reran the
+        identical filtered debug unit-test command.
+      result: >-
+        pass; 22 tests completed with 0 failures, 0 errors, and 0 skipped.
     - attempt: 1
       occurred_at: "2026-07-22T14:23:01+09:00"
       phase: "implementation"
@@ -430,13 +911,42 @@ loop_control:
 progress_reporting:
   format_version: 1
   current:
-    reported_at: "2026-07-22T14:52:48+09:00"
+    reported_at: "2026-07-22T21:41:11+09:00"
     work_item_id: "BN-001"
     role: "implementation"
     phase: "implementation"
     actor: "codex"
     status: "in_progress"
     completed:
+      - "Independent re-review gate failed: Critical 0, High open 1 (RV-002), Medium open 1 (RV-017), and Low open 1 (RV-018)."
+      - "RV-001, RV-003 through RV-016 are fixed in code; RV-004/006/008/009/010/012/014 retain explicit runtime Test evidence requirements."
+      - "Independent full Gradle commands for both apps completed BUILD SUCCESSFUL, including lint and Android-test Kotlin compilation."
+      - "Mobile cache-independent debug unit XML is fresh at 78/78; the forced combined debug/release rerun was terminated after prolonged no-output, so release was not claimed as freshly rerun."
+      - "Independent backup XML contract, preflight, adb target, candidate identity, and git diff checks are recorded."
+      - "Verified the implementation handoff, all 12 spec_refs, review role, checklist, candidate HEAD f460839120062188e27514cf2e7bd5e4f7975580, and the complete changed/untracked path inventory."
+      - "Confirmed reviewer identity /root/independent_review differs from implementation actor codex and began review without production-code changes."
+      - "Implementation exit gate passes: Mobile debug/release 78/78 each, Wear debug/release 47/47 each, both Android-test Kotlin compilations, and both lint gates."
+      - "Mobile lint has 0 errors/20 warnings; Wear lint has 0 errors/28 warnings."
+      - "Preflight passes 10 checks with 4 expected warnings and 0 failures; state YAML and git diff checks pass."
+      - "Mobile/Wear cloud backup and D2D Proto exclusions pass static TC-U025 contract checks."
+      - "All RV-001 through RV-016 corrections are implemented and await independent re-review."
+      - "Final targeted increment passes Mobile 43/43 and Wear 38/38 with zero failures/errors."
+      - "SPEC-006 defines threshold=100 initial, crossing, and re-arm semantics in FR-012/015/019, AC-014, and TC-U023/U024."
+      - "SPEC-007/ADR-014 excludes both complete Proto DataStore files from cloud backup and D2D transfer; TC-U025 defines verification."
+      - "Implementation fixes for RV-004/005/006/008/009/010/011/013/015 are present and targeted Mobile 31/31 plus Wear 42/42 tests pass."
+      - "RV-001 initial Wear notification delivery is restricted to an applied threshold-event path; phone-state interleaving cannot post the event."
+      - "RV-002 cancellation and previous-process PENDING recovery move the reservation into bounded retry or an expiry/skew/exhausted terminal state."
+      - "RV-003 retry clock rollback uses the exact five-minute future-skew boundary and terminal CLOCK_SKEW result."
+      - "Independent review completed with Critical 0, High 8, Medium 6, and Low 2; review gate failed and returned to implementation."
+      - "Independent Mobile/Wear unit, release, lint, Android-test compilation, preflight, diff, manifest, and candidate-identity checks are recorded."
+      - "Independent reviewer verified the implementation handoff and candidate identity without relying on passing tests alone."
+      - "Candidate base HEAD is f460839120062188e27514cf2e7bd5e4f7975580; all changed and untracked paths were inventoried at review start."
+      - "IMP-005 and IMP-008 complete; implementation exit gate is ready for an independent reviewer actor different from codex."
+      - "RealWearDataStoreInstrumentedTest has 3 compiled real-file cases for persistence, concurrent retry reservation, and corruption recovery."
+      - "Wear affected-project gate passes: debug 35/35, release 35/35, lint 0 errors/26 non-blocking warnings, and diff check pass."
+      - "IMP-005 Proto-backed attempt count, atomic retry reservation, foreground/manual triggers, exhausted-state UI, and localized strings."
+      - "TC-U019 through TC-U022 targeted coverage passes: 22 tests across notification delivery, repository, and display state."
+      - "SPEC-005/DEC-003 maximum three Wear notification attempts, atomic retry reservation, foreground/explicit triggers, and terminal outcomes."
       - "IMP-002 Mobile Proto DataStore and atomic alert/sync state."
       - "IMP-003 sender contract, gateway, atomic confirmation, and deterministic sender tests."
       - "IMP-003 current battery normalization, recapture, and serialized trigger coordination increment."
@@ -453,29 +963,201 @@ progress_reporting:
       - "IMP-005/IMP-007 Mobile and Wear POST_NOTIFICATIONS declaration, Proto-backed one-shot request history, user-initiated request, denial/dismiss settings routing, localization, and API 32/33 boundary behavior."
       - "Role-aware progress reporting rules added to the operating documentation."
     in_progress:
-      - "IMP-005 bounded Wear notification retry only; permission UX is complete."
+      - "No production correction is active; independent review handed RV-002, RV-017, and RV-018 back to implementation."
     next:
-      - "Resolve DEC-003 before adding automatic notification retries."
+      - "Fix RV-002 first by protecting every post-to-completion cancellation boundary and add service-cancellation regressions."
+      - "Fix RV-017 timeline age progression and add 6-, 10-, and 60-minute surface regressions."
+      - "Fix RV-018 by adding PPS-001 to spec_refs, then return all three findings to the independent reviewer."
       - "Run Mobile/Wear notification permission allow, deny, dismiss, and channel-disabled combinations on attached API 33+ targets."
       - "Run Mobile FGS, stop-action, callback, reboot, and package-update recovery cases on an attached emulator or device."
       - "Prepare the Play Console FGS declaration, explanation, demo video, and policy confirmation before publication."
     checks:
+      - "Independent Mobile full command BUILD SUCCESSFUL in 1m 52s; unit tasks were UP-TO-DATE, lint gate passed, and compileDebugAndroidTestKotlin passed."
+      - "Independent Wear full command BUILD SUCCESSFUL in 2m 51s; unit tasks were UP-TO-DATE, lint gate passed, and compileDebugAndroidTestKotlin passed."
+      - "Fresh Mobile forced debug XML: 78 tests, 0 failures/errors/skips. The combined forced debug/release command did not complete and command-owned Java processes were stopped; release freshness was not claimed."
+      - "Existing unchanged-candidate XML verifies Mobile release 78/78 and Wear debug/release 47/47; these are distinguished from a fresh forced rerun."
+      - "Lint reports remain Mobile 0 errors/20 warnings and Wear 0 errors/28 warnings."
+      - "Preflight pass after sandbox-external JBR probe: 10 pass, 4 expected warnings, 0 fail."
+      - "Static backup contract pass for Mobile and Wear legacy cloud, API 31+ cloud, and D2D Proto exclusions."
+      - "adb devices -l listed no target; runtime instrumented and real-device scenarios remain not_run."
+      - "Pre-final git diff --check passed."
+      - "Mobile full gate BUILD SUCCESSFUL in 6m 59s: debug/release 78/78 each, lint 0 errors/20 warnings, compileDebugAndroidTestKotlin pass."
+      - "Wear full gate BUILD SUCCESSFUL in 9m 9s: debug/release 47/47 each, lint 0 errors/28 warnings, compileDebugAndroidTestKotlin pass."
+      - "TC-U025 static backup contract pass: both Proto filenames occur in legacy full-backup exclusion and both cloud/D2D exclusions."
+      - "Final preflight pass: 10 pass, 4 expected warnings, 0 fail."
+      - "SnakeYAML parse pass: status=in_progress and role=implementation."
+      - "Resolved SDK adb reports no attached devices; runtime instrumented and real-device cases remain not_run."
+      - "Final git diff --check pass."
+      - "Targeted final Mobile debug suites pass: 43 tests, 0 failures, 0 errors."
+      - "Targeted final Wear debug suites pass: 38 tests, 0 failures, 0 errors."
+      - "Mobile targeted suites pass from fresh XML: 31 tests, 0 failures, 0 errors; command client timeout occurred after test result creation."
+      - "Wear targeted suites pass: 42 tests, 0 failures, 0 errors."
+      - "Wear targeted debug tests for DeliverPendingWearNotificationTest and ProtoWearStateRepositoryTest pass after RV-001 through RV-003; rerun completed BUILD SUCCESSFUL in 2m 26s."
+      - "Final state validation pass: SnakeYAML reads status=in_progress, role=implementation, phase returns=1, findings=16."
+      - "Final post-handoff git diff --check passes."
+      - "Independent Mobile gate pass: debug/release 70/70 each; lint 0 errors/20 warnings; Android-test compilation pass."
+      - "Independent Wear gate pass: debug/release 35/35 each; lint 0 errors/26 warnings; Android-test compilation pass."
+      - "Independent preflight 10 pass/4 warn/0 fail and git diff --check pass."
+      - "Independent runtime instrumented tests remain not_run because adb lists no target."
+      - "Wear unit tests pass: debug 35/35 and release 35/35."
+      - "Wear lint passes with 0 errors and 26 non-blocking warnings."
+      - "Wear retry targeted debug unit tests pass: 22/22, with 0 failures, errors, or skipped tests."
       - "Mobile unit tests pass: debug 70/70 and release 70/70."
       - "Mobile lint passes with 0 errors and 20 non-blocking warnings."
       - "Mobile Android test Kotlin, including real DataStore, four Intent-mapper cases, FGS notification, and local threshold-notification contracts, compiles successfully."
       - "Instrumented tests are not run because adb lists no attached target."
-      - "Wear unit tests pass: debug 29/29 and release 29/29."
-      - "Wear lint passes with 0 errors and 9 non-blocking warnings."
-      - "Wear Android test Kotlin reports NO-SOURCE after successful Android-test configuration."
+      - "RealWearDataStoreInstrumentedTest compiles 3 real-file cases; runtime remains not_run because adb has no target."
       - "Merged Mobile manifest contains the exact request-state MessageClient filter."
       - "Merged Mobile manifest contains BatteryNotifierApplication for one-shot process restoration."
       - "Merged Mobile and Wear manifests both use package com.magicitengineer.batterynotifier and declare POST_NOTIFICATIONS; the Mobile FGS/recovery contract remains present."
       - "Environment preflight passes with 10 passes, 4 expected warnings, and 0 failures; the application-ID check passes."
       - "Final git diff --check passes."
     blockers:
-      - "DEC-003 blocks automatic Wear notification retry and IMP-005 completion."
+      - "Open High RV-002 blocks Review-to-Test handoff."
+      - "Open Medium RV-017 requires correction or explicit disposition before Test handoff."
       - "No emulator or device is attached for instrumented execution."
   history:
+    - reported_at: "2026-07-22T21:41:11+09:00"
+      role: "review"
+      phase: "review"
+      actor: "/root/independent_review"
+      event: "independent_re_review_changes_requested"
+      summary: >-
+        Re-review fixed 15 prior findings but kept RV-002 High open and added
+        RV-017 Medium plus RV-018 Low. Both full Gradle commands, lint,
+        Android-test compilation, preflight, backup, adb, and diff checks were
+        independently evaluated. Review gate failed and returned to
+        implementation with total phase returns 2/5; RV-002 is first.
+    - reported_at: "2026-07-22T21:14:11+09:00"
+      role: "review"
+      phase: "review"
+      actor: "/root/independent_review"
+      event: "independent_re_review_started"
+      summary: >-
+        Verified the implementation handoff, all spec_refs, review rules,
+        candidate HEAD and full changed/untracked path inventory. Reviewer
+        identity differs from codex. RV-001 through RV-016 are being re-reviewed;
+        runtime device evidence remains not_run and production code is unchanged.
+    - reported_at: "2026-07-22T19:22:56+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "implementation_exit_gate_ready_after_review_fixes"
+      summary: >-
+        All 16 review corrections are ready for independent verification.
+        Mobile debug/release each pass 78 tests, Wear each pass 47; both lint
+        gates have zero errors and Android-test compilation passes. Preflight,
+        backup exclusions, YAML, and diff checks pass. Runtime device cases are
+        not_run because adb has no target.
+    - reported_at: "2026-07-22T19:08:41+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "all_review_fixes_implemented"
+      summary: >-
+        RV-001 through RV-016 now have implementation corrections. Final
+        targeted Mobile suites pass 43/43 and Wear suites pass 38/38. Full
+        project exit gates remain before independent re-review handoff.
+    - reported_at: "2026-07-22T18:55:00+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "specification_to_implementation_handoff"
+      summary: >-
+        SPEC-006 and SPEC-007 completed. Threshold 100 and full Proto
+        cloud/D2D exclusion are implementation-ready with FR/AC/TC and ADR
+        traceability. Implementation resumes with TC-U023 through TC-U025.
+    - reported_at: "2026-07-22T18:51:09+09:00"
+      role: "specification"
+      phase: "specification"
+      actor: "codex"
+      event: "implementation_to_specification_handoff"
+      summary: >-
+        Implementation completed the non-normative High fixes and several
+        Medium/Low fixes with Mobile 31/31 and Wear 42/42 targeted tests passing.
+        Role transferred to specification for RV-007 threshold=100 semantics
+        and RV-014 backup/D2D policy before production implementation resumes.
+    - reported_at: "2026-07-22T18:15:32+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "wear_notification_ownership_recovery_clock_fix"
+      summary: >-
+        Implemented RV-001 through RV-003: threshold-event-only initial
+        delivery, cancellation-safe and one-time previous-process recovery,
+        and terminal retry clock-skew handling. Added interleaving,
+        interruption, expiry, attempt accounting, and exact skew-boundary
+        regressions. Targeted Wear debug tests pass.
+    - reported_at: "2026-07-22T17:44:59+09:00"
+      role: "review"
+      phase: "review"
+      actor: "/root/independent_review"
+      event: "review_changes_requested_handoff"
+      summary: >-
+        Independent review recorded Critical 0, High 8, Medium 6, and Low 2.
+        Mobile debug/release each passed 70 tests and Wear each passed 35;
+        lint and Android-test compilation passed, but runtime-path findings
+        block Test handoff. Returned review to implementation with total phase
+        returns 1/5 and RV-001 as the first correction. Device tests remain not_run.
+    - reported_at: "2026-07-22T17:32:41+09:00"
+      role: "review"
+      phase: "review"
+      actor: "/root/independent_review"
+      event: "independent_review_started"
+      summary: >-
+        Verified the implementation handoff, candidate base HEAD, full dirty
+        worktree path inventory, common application ID, non-overlapping version
+        codes, and recorded check commands. Reviewer identity differs from
+        implementation actor codex. Runtime device evidence remains not_run;
+        approval will not be based on passing tests alone.
+    - reported_at: "2026-07-22T16:21:24+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "implementation_exit_gate_ready"
+      summary: >-
+        Completed IMP-005 and IMP-008. Wear debug and release each pass 35
+        tests, lint has zero errors, the three-case real Wear DataStore suite
+        compiles, preflight and diff check pass, and device execution remains
+        not_run. The candidate is ready for an independent reviewer other than
+        codex; review has not started.
+    - reported_at: "2026-07-22T16:08:58+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "imp005_full_gate_passed_imp008_started"
+      summary: >-
+        Wear debug and release each passed 35 tests; lint passed with zero
+        errors and 26 non-blocking warnings; diff check and preflight passed.
+        IMP-008 now adds real-file Wear DataStore coverage before review.
+    - reported_at: "2026-07-22T16:02:14+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "imp005_retry_targeted_tests_passed"
+      summary: >-
+        Implemented the approved bounded retry contract and passed 22 targeted
+        debug unit tests. One compile failure from a missing Flow.first import
+        was corrected and the identical check then passed.
+    - reported_at: "2026-07-22T15:45:07+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "dec003_specification_completed_handoff"
+      summary: >-
+        SPEC-005 approved DEC-003 and added FR-044, FR-045, AC-013, TC-U019
+        through TC-U022, and TC-E067 through TC-E069. Implementation resumes
+        IMP-005 with no unresolved normative retry decision.
+    - reported_at: "2026-07-22T15:42:22+09:00"
+      role: "specification"
+      phase: "specification"
+      actor: "codex"
+      event: "dec003_specification_started"
+      summary: >-
+        Implementation handed IMP-005 back for the missing bounded retry
+        contract. SPEC-005 will define attempt counting, eligible triggers,
+        expiry and permission behavior, terminal exhaustion, and traceable
+        tests. This clarification does not increment total_phase_returns.
     - reported_at: "2026-07-22T14:52:48+09:00"
       role: "implementation"
       phase: "implementation"
@@ -761,6 +1443,57 @@ risks:
     mitigation: "Enforce event expiry and verify reconnect before/after expiry."
 
 evidence:
+  independent_review:
+    - reviewed_at: "2026-07-22T21:41:11+09:00"
+      actor: "/root/independent_review"
+      candidate_base_head: "f460839120062188e27514cf2e7bd5e4f7975580"
+      candidate_scope: >-
+        RV-001 through RV-016 correction diff, all changed production/tests,
+        all spec_refs, PPS-001, manifests, backup rules, and candidate worktree.
+      independence: "review actor differs from implementation actor codex"
+      result: "changes_requested"
+      finding_totals:
+        critical_open: 0
+        high_open: 1
+        medium_open: 1
+        low_open: 1
+        fixed: 15
+      checks:
+        - "Environment preflight: pass=10, warn=4, fail=0 after sandbox-external JBR probe."
+        - "Mobile full command: BUILD SUCCESSFUL; lint and Android-test compilation pass; unit tasks UP-TO-DATE."
+        - "Wear full command: BUILD SUCCESSFUL; lint and Android-test compilation pass; unit tasks UP-TO-DATE."
+        - "Fresh forced Mobile debug XML: 78/78, zero failures/errors/skips; combined release force run did not complete."
+        - "Unchanged-candidate XML: Mobile release 78/78 and Wear debug/release 47/47, zero failures/errors/skips."
+        - "Lint XML: Mobile 0 errors/20 warnings; Wear 0 errors/28 warnings."
+        - "Backup exclusions: Mobile/Wear legacy cloud, API 31+ cloud, and D2D pass."
+        - "adb devices -l: no target; runtime instrumented evidence remains not_run."
+        - "git diff --check: pass before final state update."
+      gate: >-
+        Fail. RV-002 High remains open; RV-017 Medium and RV-018 Low are newly
+        recorded. Return to implementation with RV-002 as the first correction.
+    - reviewed_at: "2026-07-22T17:44:59+09:00"
+      actor: "/root/independent_review"
+      candidate_base_head: "f460839120062188e27514cf2e7bd5e4f7975580"
+      candidate_scope: >-
+        Full BN-001 production, test, manifest, build, and normative-document
+        changes from ecca331 through HEAD plus the 22-path dirty worktree
+        captured at review start.
+      independence: "review actor differs from implementation actor codex"
+      result: "changes_requested"
+      finding_totals:
+        critical: 0
+        high: 8
+        medium: 6
+        low: 2
+      checks:
+        - "Environment preflight: pass=10, warn=4, fail=0 after sandbox-external JBR probe."
+        - "git diff --check: pass."
+        - "Mobile test/lint/compileDebugAndroidTestKotlin: pass; debug 70/70, release 70/70, lint 0 errors/20 warnings."
+        - "Wear test/lint/compileDebugAndroidTestKotlin: pass; debug 35/35, release 35/35, lint 0 errors/26 warnings."
+        - "adb devices -l: no attached target; instrumented runtime remains not_run."
+      gate: >-
+        Fail. Open High findings block Test handoff even though automated build
+        checks pass. First correction is RV-001 in WearDataLayerListenerService.
   documents:
     - "AGENTS.md"
     - "docs/documentation-index.md"
@@ -768,6 +1501,8 @@ evidence:
     - "docs/data-design.md"
     - "docs/wear-os-integration-specification.md"
     - "docs/test-plan-and-cases.md"
+    - "docs/functional-requirements.md"
+    - "docs/notification-bridge-specification.md"
     - ".agents/roles/specification.md"
     - ".agents/roles/implementation.md"
     - ".agents/roles/review.md"
@@ -784,6 +1519,48 @@ evidence:
         proceed without changing application ID, signing, permissions, or
         distribution policy.
   implementation_progress:
+    - completed_at: "2026-07-22T16:21:24+09:00"
+      actor: "codex"
+      task: "IMP-005 and IMP-008 implementation exit"
+      status: "done_ready_for_independent_review"
+      requirement_refs:
+        - "FR-041"
+        - "FR-044"
+        - "FR-045"
+        - "AC-013"
+      test_refs:
+        - "TC-U019"
+        - "TC-U020"
+        - "TC-U021"
+        - "TC-U022"
+        - "DATASTORE-INSTRUMENTED-002"
+      evidence:
+        - "Wear test: debug 35/35 and release 35/35 pass."
+        - "Wear lint: 0 errors and 26 non-blocking warnings."
+        - "RealWearDataStoreInstrumentedTest compile: pass; execution not_run."
+        - "Preflight: 10 pass, 4 expected warnings, 0 fail."
+        - "git diff --check: pass."
+      candidate_base_head: "f460839120062188e27514cf2e7bd5e4f7975580"
+    - completed_at: "2026-07-22T16:02:14+09:00"
+      actor: "codex"
+      task: "IMP-005 bounded Wear notification retry"
+      status: "targeted_tests_passed"
+      requirement_refs:
+        - "FR-044"
+        - "FR-045"
+        - "AC-013"
+      test_refs:
+        - "TC-U019"
+        - "TC-U020"
+        - "TC-U021"
+        - "TC-U022"
+      evidence:
+        - "Wear filtered testDebugUnitTest: 22/22 pass."
+      files:
+        - "BatteryNotifierAndroidWearApp/app/src/main/proto/wear_state.proto"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateRepository.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/application/notification/DeliverPendingWearNotification.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt"
     - completed_at: "2026-07-22T14:52:48+09:00"
       actor: "codex"
       task: "IMP-001, IMP-005 permission increment, IMP-007"
@@ -1071,6 +1848,25 @@ evidence:
         - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/domain/alert/ThresholdEvaluatorTest.kt"
   dependency_verification:
     - checked_at: "2026-07-22"
+      source: "https://developers.google.com/android/reference/com/google/android/gms/wearable/WearableListenerService"
+      result: >-
+        Independent review verified that manifest listener filters declare the
+        event actions an app is interested in and the current reference lists
+        DATA_CHANGED, MESSAGE_RECEIVED, REQUEST_RECEIVED, CAPABILITY_CHANGED,
+        and CHANNEL_EVENT. The Mobile manifest declares only MESSAGE_RECEIVED;
+        no paired runtime evidence proves reconnection-only wake-up.
+    - checked_at: "2026-07-22"
+      source: "https://developer.android.com/identity/data/autobackup"
+      result: >-
+        Auto Backup includes almost all app data by default and uses explicit
+        include/exclude rules. Current empty rules do not exclude Proto DataStore.
+    - checked_at: "2026-07-22"
+      source: "https://developer.android.com/training/wearables/apps/standalone-apps"
+      result: >-
+        A Wear app that depends on another app for core features must declare
+        com.google.android.wearable.standalone=false; phone battery data is this
+        Wear app's core feature.
+    - checked_at: "2026-07-22"
       source: "https://developer.android.com/develop/background-work/services/fgs/service-types#special-use"
       result: >-
         Verified the Android 14+ specialUse contract: declare
@@ -1118,6 +1914,41 @@ evidence:
         Selected stable DataStore 1.2.1 and the documented Protobuf plugin
         0.9.5 / protobuf-kotlin-lite 4.32.1 setup.
   commands:
+    - command: >-
+        Independent review final state validation using local SnakeYAML 2.0,
+        followed by git diff --check
+      result: "pass"
+      output: >-
+        YAML_OK=in_progress|implementation|returns=1|findings=16;
+        FINAL_DIFF_CHECK_PASS.
+    - command: >-
+        Independent review from repository root: powershell -ExecutionPolicy
+        Bypass -File .\scripts\preflight.ps1
+      result: "pass_with_warnings"
+      output: "pass=10, warn=4, fail=0; Java 21, SDK 36, wrappers, adb, Git, and common application ID passed."
+    - command: >-
+        Independent review from repository root: git -c
+        safe.directory=C:/Users/yoshihisa/Desktop/www/battery-notifier diff --check
+      result: "pass"
+      output: "No whitespace errors."
+    - command: >-
+        Independent review from BatteryNotifierAndroidMobileApp: Gradle test
+        lint compileDebugAndroidTestKotlin with Android Studio JBR, in-process
+        Kotlin, TieredStopAtLevel=1, offline, one worker, and no daemon
+      result: "pass_with_warnings"
+      output: >-
+        BUILD SUCCESSFUL in 5m 13s; debug/release each 70/70 with zero
+        failures/errors/skips; lint 0 errors/20 warnings; Android tests compile.
+    - command: >-
+        Independent review from BatteryNotifierAndroidWearApp: Gradle test lint
+        compileDebugAndroidTestKotlin with the same scoped environment
+      result: "pass_with_warnings"
+      output: >-
+        BUILD SUCCESSFUL in 2m 33s; debug/release each 35/35 with zero
+        failures/errors/skips; lint 0 errors/26 warnings; Android tests compile.
+    - command: "Independent review: adb devices -l"
+      result: "not_run_no_target"
+      output: "ADB listed no attached device or emulator; no runtime instrumented case was claimed as pass."
     - command: >-
         From repository root: powershell -ExecutionPolicy Bypass -File
         .\scripts\preflight.ps1
@@ -1733,17 +2564,17 @@ evidence:
         package is com.magicitengineer.batterynotifier.
     - name: "Wear unit tests"
       result: "pass"
-      details: "Debug 29/29 and release 29/29 passed."
+      details: "Debug 35/35 and release 35/35 passed."
     - name: "Wear lint"
       result: "pass_with_warnings"
       details: >-
-        0 errors and 9 non-blocking warnings: dependency, inlined API,
+        0 errors and 26 non-blocking warnings: dependency, inlined API,
         typography, and unused template-resource notices.
     - name: "Wear Android test compilation"
-      result: "pass_no_source"
+      result: "pass"
       details: >-
-        Android-test configuration and resources completed successfully;
-        compileDebugAndroidTestKotlin reported NO-SOURCE.
+        RealWearDataStoreInstrumentedTest compiles 3 cases covering real-file
+        retry persistence, concurrent reservation, and corruption recovery.
     - name: "Merged Wear notification manifest contract"
       result: "pass"
       details: >-
@@ -1756,23 +2587,28 @@ evidence:
         and Mobile/Wear permission-combination cases.
 
 handoff:
-  from_role: "specification"
+  from_role: "review"
   to_role: "implementation"
   summary: >-
-    Version 1 uses fixed state and event DataItem paths, sequence-first ordering,
-    local Proto DataStore on both devices, a five-minute stale boundary, and a
-    five-minute notification-event expiry. The implementation role must first
-    read all spec_refs, assign an actor, and resolve or explicitly defer DEC-001.
+    Independent re-review confirmed RV-001 and RV-003 through RV-016 fixed,
+    retained RV-002 as an open High cancellation/recovery defect, and added
+    RV-017 Medium plus RV-018 Low. Review-to-Test failed. Runtime device cases
+    remain not_run and production code was not changed by the reviewer.
   first_action: >-
-    Implement the Mobile domain models and Proto DataStore schema with boundary
-    unit tests before adding Data Layer side effects.
+    Fix RV-002 so service cancellation at every point from PENDING persistence
+    through completion cannot strand PENDING in the same process, then add
+    apply-to-deliver and post-to-completion cancellation regressions.
 
 next_actions:
-  - "Specification resolves DEC-003 notification retry limit/triggers before implementation completes IMP-005."
+  - "Implementation fixes RV-002 High first and adds service-cancellation boundary regressions."
+  - "Implementation fixes RV-017 truthful timeline age and adds 6-, 10-, and 60-minute surface tests."
+  - "Implementation fixes RV-018 by adding docs/permissions-and-privacy-specification.md to spec_refs."
+  - "Return RV-002, RV-017, and RV-018 to /root/independent_review before Test handoff."
+  - "Run RealWearDataStoreInstrumentedTest on an attached Wear emulator or device during the Test phase."
   - "Run API 33+ Mobile/Wear notification permission allow, deny, dismiss, channel-disabled, and four permission-combination cases on attached targets."
   - "Run RealMobileDataStoreInstrumentedTest and the Mobile FGS start/stop, battery callback, process restart, boot, and package-update recovery cases on an attached emulator or device."
   - "Before Google Play publication, complete and approve the Play Console FGS declaration, explanation, demo video, and current policy confirmation."
   - "After implementation exit evidence is complete, assign an independent reviewer actor different from codex and use the prepared checklist."
 
-updated_at: "2026-07-22T14:52:48+09:00"
-updated_by: "codex"
+updated_at: "2026-07-22T21:41:11+09:00"
+updated_by: "/root/independent_review"

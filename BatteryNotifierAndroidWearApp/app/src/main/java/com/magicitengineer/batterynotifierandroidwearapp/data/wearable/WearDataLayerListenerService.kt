@@ -7,16 +7,34 @@ import com.magicitengineer.batterynotifierandroidwearapp.data.datastore.WearAppC
 import com.magicitengineer.batterynotifierandroidwearapp.data.datastore.WearStateApplyOutcome
 import com.magicitengineer.batterynotifierandroidwearapp.application.sync.WearDataItemProcessingResult
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.ReceiveErrorClassification
+import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.WearDataLayerContract
 import com.magicitengineer.batterynotifierandroidwearapp.platform.presentation.AndroidWearSurfaceUpdater
 import com.magicitengineer.batterynotifierandroidwearapp.platform.time.SystemEpochMillisClock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+
+internal fun ownsInitialWearNotificationDelivery(path: String): Boolean =
+    path == WearDataLayerContract.THRESHOLD_EVENT_PATH
 
 class WearDataLayerListenerService : WearableListenerService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private lateinit var notificationRecovery: Deferred<Unit>
+
+    override fun onCreate() {
+        super.onCreate()
+        notificationRecovery = serviceScope.async {
+            WearAppContainer.recoverInterruptedNotificationOnce(
+                context = this@WearDataLayerListenerService,
+                nowEpochMillis = SystemEpochMillisClock.now(),
+            )
+            Unit
+        }
+    }
 
     override fun onDataChanged(dataEvents: DataEventBuffer) {
         val repository = WearAppContainer.repository(this)
@@ -35,13 +53,16 @@ class WearDataLayerListenerService : WearableListenerService() {
                 }
             val receivedAtEpochMillis = SystemEpochMillisClock.now()
             serviceScope.launch {
+                notificationRecovery.await()
                 val result = processor.process(path, values, receivedAtEpochMillis)
                 if (
                     result is WearDataItemProcessingResult.Applied &&
                     result.result.outcome == WearStateApplyOutcome.APPLIED
                 ) {
                     surfaceUpdater.requestRefresh()
-                    notificationDelivery.deliver(result.result.state)
+                    if (ownsInitialWearNotificationDelivery(path)) {
+                        notificationDelivery.deliver(result.result.state)
+                    }
                 }
             }
         }

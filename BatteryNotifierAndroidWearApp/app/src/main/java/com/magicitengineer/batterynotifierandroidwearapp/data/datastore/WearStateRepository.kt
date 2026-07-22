@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import com.magicitengineer.batterynotifierandroidwearapp.data.datastore.proto.WearStateProto
 import com.magicitengineer.batterynotifierandroidwearapp.domain.state.WearPersistentState
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.MAX_FUTURE_SKEW_MILLIS
+import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.MAX_WEAR_NOTIFICATION_POST_ATTEMPTS
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.NotificationDisposition
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.ReceiveErrorClassification
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.ReceivedPhoneState
@@ -32,6 +33,32 @@ data class WearNotificationCompletionResult(
     val state: WearPersistentState,
 )
 
+enum class WearNotificationRetryReservationOutcome {
+    RESERVED,
+    NOT_ELIGIBLE,
+    EXPIRED,
+    EXHAUSTED,
+    CLOCK_SKEW,
+}
+
+data class WearNotificationRetryReservationResult(
+    val outcome: WearNotificationRetryReservationOutcome,
+    val state: WearPersistentState,
+)
+
+enum class WearNotificationRecoveryOutcome {
+    RECOVERED_FOR_RETRY,
+    NOT_REQUIRED,
+    EXPIRED,
+    EXHAUSTED,
+    CLOCK_SKEW,
+}
+
+data class WearNotificationRecoveryResult(
+    val outcome: WearNotificationRecoveryOutcome,
+    val state: WearPersistentState,
+)
+
 interface WearStateRepository {
     val state: Flow<WearPersistentState>
 
@@ -55,6 +82,15 @@ interface WearStateRepository {
         eventId: String,
         disposition: NotificationDisposition,
     ): WearNotificationCompletionResult
+
+    suspend fun reserveNotificationRetry(
+        eventId: String,
+        nowEpochMillis: Long,
+    ): WearNotificationRetryReservationResult
+
+    suspend fun recoverInterruptedNotification(
+        nowEpochMillis: Long,
+    ): WearNotificationRecoveryResult
 
     suspend fun markNotificationPermissionRequested(): WearPersistentState
 }
@@ -118,6 +154,15 @@ class ProtoWearStateRepository(
                     lastProcessedEventId = event.eventId,
                     eventProcessedAtEpochMillis = receivedAtEpochMillis,
                     notificationDisposition = event.notificationDisposition(receivedAtEpochMillis),
+                    notificationPostAttemptCount =
+                        if (
+                            event.notificationDisposition(receivedAtEpochMillis) ==
+                            NotificationDisposition.PENDING
+                        ) {
+                            1
+                        } else {
+                            0
+                        },
                     lastReceiveError = null,
                 )
             }
@@ -163,10 +208,122 @@ class ProtoWearStateRepository(
                 outcome = WearNotificationCompletionOutcome.STALE_RESERVATION
                 current
             } else {
-                current.copy(notificationDisposition = disposition)
+                current.copy(
+                    notificationDisposition = if (
+                        disposition == NotificationDisposition.RESERVED_FAILED &&
+                        current.notificationPostAttemptCount >=
+                        MAX_WEAR_NOTIFICATION_POST_ATTEMPTS
+                    ) {
+                        NotificationDisposition.FAILED_EXHAUSTED
+                    } else {
+                        disposition
+                    }
+                )
             }
         }
         return WearNotificationCompletionResult(outcome, updated)
+    }
+
+    override suspend fun reserveNotificationRetry(
+        eventId: String,
+        nowEpochMillis: Long,
+    ): WearNotificationRetryReservationResult {
+        require(eventId.isNotBlank())
+        require(nowEpochMillis > 0)
+        var outcome = WearNotificationRetryReservationOutcome.NOT_ELIGIBLE
+        val updated = update { current ->
+            val event = current.lastEvent
+            when {
+                current.lastProcessedEventId != eventId ||
+                    event == null ||
+                    current.notificationDisposition != NotificationDisposition.RESERVED_FAILED ->
+                    current
+
+                nowEpochMillis > event.expiresAtEpochMillis -> {
+                    outcome = WearNotificationRetryReservationOutcome.EXPIRED
+                    current.copy(
+                        notificationDisposition = NotificationDisposition.EXPIRED,
+                        notificationPostAttemptCount = 0,
+                    )
+                }
+
+                event.occurredAtEpochMillis > nowEpochMillis &&
+                    event.occurredAtEpochMillis - nowEpochMillis >
+                    MAX_FUTURE_SKEW_MILLIS -> {
+                    outcome = WearNotificationRetryReservationOutcome.CLOCK_SKEW
+                    current.copy(
+                        notificationDisposition = NotificationDisposition.CLOCK_SKEW,
+                        notificationPostAttemptCount = 0,
+                    )
+                }
+
+                current.notificationPostAttemptCount >=
+                    MAX_WEAR_NOTIFICATION_POST_ATTEMPTS -> {
+                    outcome = WearNotificationRetryReservationOutcome.EXHAUSTED
+                    current.copy(
+                        notificationDisposition = NotificationDisposition.FAILED_EXHAUSTED
+                    )
+                }
+
+                else -> {
+                    outcome = WearNotificationRetryReservationOutcome.RESERVED
+                    current.copy(
+                        notificationDisposition = NotificationDisposition.PENDING,
+                        notificationPostAttemptCount =
+                            current.notificationPostAttemptCount + 1,
+                    )
+                }
+            }
+        }
+        return WearNotificationRetryReservationResult(outcome, updated)
+    }
+
+    override suspend fun recoverInterruptedNotification(
+        nowEpochMillis: Long,
+    ): WearNotificationRecoveryResult {
+        require(nowEpochMillis > 0)
+        var outcome = WearNotificationRecoveryOutcome.NOT_REQUIRED
+        val updated = update { current ->
+            val event = current.lastEvent
+            when {
+                current.notificationDisposition != NotificationDisposition.PENDING ||
+                    event == null -> current
+
+                nowEpochMillis > event.expiresAtEpochMillis -> {
+                    outcome = WearNotificationRecoveryOutcome.EXPIRED
+                    current.copy(
+                        notificationDisposition = NotificationDisposition.EXPIRED,
+                        notificationPostAttemptCount = 0,
+                    )
+                }
+
+                event.occurredAtEpochMillis > nowEpochMillis &&
+                    event.occurredAtEpochMillis - nowEpochMillis >
+                    MAX_FUTURE_SKEW_MILLIS -> {
+                    outcome = WearNotificationRecoveryOutcome.CLOCK_SKEW
+                    current.copy(
+                        notificationDisposition = NotificationDisposition.CLOCK_SKEW,
+                        notificationPostAttemptCount = 0,
+                    )
+                }
+
+                current.notificationPostAttemptCount >=
+                    MAX_WEAR_NOTIFICATION_POST_ATTEMPTS -> {
+                    outcome = WearNotificationRecoveryOutcome.EXHAUSTED
+                    current.copy(
+                        notificationDisposition = NotificationDisposition.FAILED_EXHAUSTED
+                    )
+                }
+
+                else -> {
+                    outcome = WearNotificationRecoveryOutcome.RECOVERED_FOR_RETRY
+                    current.copy(
+                        notificationDisposition = NotificationDisposition.RESERVED_FAILED
+                    )
+                }
+            }
+        }
+        return WearNotificationRecoveryResult(outcome, updated)
     }
 
     override suspend fun markNotificationPermissionRequested(): WearPersistentState =

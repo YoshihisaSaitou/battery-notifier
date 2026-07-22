@@ -35,6 +35,9 @@
     <string name="phone_battery_alert_body">It reached your %1$d%% threshold. Please charge your phone.</string>
     <string name="notification_permission_missing">Notifications are not allowed on this watch</string>
     <string name="notification_delivery_failed">A phone battery alert could not be posted</string>
+    <string name="notification_retry_exhausted">Automatic and manual retries have reached their limit</string>
+    <string name="retry_notification">Retry alert</string>
+    <string name="retrying_notification">Retrying alert…</string>
     <string name="notification_permission_description">Allow notifications to receive phone battery alerts on this watch. State display and sync continue if you decline.</string>
     <string name="notification_permission_enabled">Watch notifications are allowed</string>
     <string name="notification_permission_not_requested">Notifications have not been requested</string>

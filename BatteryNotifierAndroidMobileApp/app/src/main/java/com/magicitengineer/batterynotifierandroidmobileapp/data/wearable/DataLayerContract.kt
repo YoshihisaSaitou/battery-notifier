@@ -9,6 +9,7 @@ object BatteryDataLayerContractV1 {
     const val PHONE_STATE_PATH = "/battery-notifier/v1/phone-state"
     const val THRESHOLD_EVENT_PATH = "/battery-notifier/v1/threshold-event"
     const val REQUEST_STATE_PATH = "/battery-notifier/v1/request-state"
+    const val WEAR_STATE_RECEIVER_CAPABILITY = "battery_notifier_state_receiver"
 
     object Keys {
         const val SCHEMA_VERSION = "schemaVersion"

@@ -6,6 +6,7 @@ import com.magicitengineer.batterynotifierandroidmobileapp.application.battery.B
 import com.magicitengineer.batterynotifierandroidmobileapp.application.monitoring.MonitoringCommandOutcome
 import com.magicitengineer.batterynotifierandroidmobileapp.application.monitoring.MonitoringServiceGateway
 import com.magicitengineer.batterynotifierandroidmobileapp.application.monitoring.MonitoringStateUpdater
+import com.magicitengineer.batterynotifierandroidmobileapp.application.monitoring.MonitoringStartBaselineResetter
 import com.magicitengineer.batterynotifierandroidmobileapp.application.notification.MobileNotificationDeliveryResult
 import com.magicitengineer.batterynotifierandroidmobileapp.application.notification.PendingMobileNotificationDeliverer
 import com.magicitengineer.batterynotifierandroidmobileapp.application.settings.ThresholdSaveRejectionReason
@@ -268,7 +269,7 @@ class MobileSyncCoordinatorTest {
 
         val result = coordinator.startMonitoring()
 
-        assertEquals(listOf("persist:true:false", "start", "send"), order)
+        assertEquals(listOf("refresh", "persist:true:false", "start", "send"), order)
         assertEquals(MonitoringCommandOutcome.STARTED, result.outcome)
     }
 
@@ -280,10 +281,53 @@ class MobileSyncCoordinatorTest {
         val result = coordinator.startMonitoring()
 
         assertEquals(
-            listOf("persist:true:false", "start", "persist:false:true", "send"),
+            listOf("refresh", "persist:true:false", "start", "persist:false:true", "send"),
             order,
         )
         assertEquals(MonitoringCommandOutcome.START_FAILED, result.outcome)
+    }
+
+    @Test
+    fun unavailableReadingClearsStaleStartBaselineBeforeEnablingMonitoring() = runBlocking {
+        val order = mutableListOf<String>()
+        val coordinator = MobileSyncCoordinator(
+            refresher = BatteryStateRefresher {
+                order += "refresh-unavailable"
+                BatteryRefreshResult.Unavailable
+            },
+            sender = PendingSyncSender {
+                order += "send"
+                emptyBatch()
+            },
+            monitoringStartBaselineResetter = MonitoringStartBaselineResetter {
+                order += "reset-baseline"
+                MobilePersistentState()
+            },
+            monitoringStateUpdater = MonitoringStateUpdater { enabled, resumeRequired ->
+                order += "persist:$enabled:$resumeRequired"
+                MobilePersistentState(
+                    alertRule = AlertRule(monitoringEnabled = enabled),
+                    resumeRequired = resumeRequired,
+                )
+            },
+            monitoringServiceGateway = object : MonitoringServiceGateway {
+                override fun start() { order += "start" }
+                override fun stop() = Unit
+            },
+        )
+
+        coordinator.startMonitoring()
+
+        assertEquals(
+            listOf(
+                "refresh-unavailable",
+                "reset-baseline",
+                "persist:true:false",
+                "start",
+                "send",
+            ),
+            order,
+        )
     }
 
     @Test
@@ -411,7 +455,10 @@ class MobileSyncCoordinatorTest {
         order: MutableList<String>,
         failStart: Boolean = false,
     ): MobileSyncCoordinator = MobileSyncCoordinator(
-        refresher = BatteryStateRefresher { refreshedResult() },
+        refresher = BatteryStateRefresher {
+            order += "refresh"
+            refreshedResult()
+        },
         sender = PendingSyncSender {
             order += "send"
             emptyBatch()
@@ -422,6 +469,10 @@ class MobileSyncCoordinatorTest {
                 alertRule = AlertRule(monitoringEnabled = enabled),
                 resumeRequired = resumeRequired,
             )
+        },
+        monitoringStartBaselineResetter = MonitoringStartBaselineResetter {
+            order += "reset-baseline"
+            MobilePersistentState()
         },
         monitoringServiceGateway = object : MonitoringServiceGateway {
             override fun start() {

@@ -35,6 +35,10 @@ fun interface MonitoringStateUpdater {
     ): MobilePersistentState
 }
 
+fun interface MonitoringStartBaselineResetter {
+    suspend fun reset(): MobilePersistentState
+}
+
 interface MonitoringServiceGateway {
     fun start()
 
@@ -51,6 +55,13 @@ class RepositoryMonitoringStateUpdater(
         monitoringEnabled = monitoringEnabled,
         resumeRequired = resumeRequired,
     )
+}
+
+class RepositoryMonitoringStartBaselineResetter(
+    private val repository: MobileStateRepository,
+) : MonitoringStartBaselineResetter {
+    override suspend fun reset(): MobilePersistentState =
+        repository.resetMonitoringStartBaseline()
 }
 
 class MonitoringController(

@@ -138,6 +138,14 @@ handoff_notes: ""
 - **理由**: 通知の価値を説明してから同意を求め、ユーザーの拒否を尊重しながら通知以外の中核処理を継続するため。
 - **結果**: Mobile/Wearの権限組合せとchannel無効化を試験する。承認範囲は通知権限とそのUXに限定し、自動通知再試行条件はDEC-003で別途決定する。
 
+## ADR-014 Proto DataStoreをcloud backupとdevice transferから除外する
+
+- **状態**: Accepted（2026-07-22、RV-014仕様是正）
+- **文脈**: Mobile/WearのProtoは設定だけでなく、alert state、sequence、eventId、通知予約、outboxを原子的に保持する。端末移行で一部または古い状態を復元すると、重複通知、期限切れイベントの再生、監視の意図しない再開を起こし得る。
+- **決定**: v1.0では両アプリのProto DataStoreファイルをAndroid cloud backupとdevice-to-device transferの双方から除外する。設定のみの部分復元も行わない。
+- **理由**: v1.0は再セットアップを許容しており、復元利便性より通知・outboxのexactly-once境界とユーザー起点の監視開始を優先するため。
+- **結果**: 移行/再インストール後は既定状態から開始し、WearはMobileの新しいstate同期を待つ。backup rulesの静的契約テストをリリースgateに含める。
+
 ## 参考
 
 - [Android architecture recommendations](https://developer.android.com/topic/architecture/recommendations)

@@ -56,6 +56,18 @@ class AlertRuleChangeEvaluatorTest {
         assertEquals(21, result.previousLevelPercent)
     }
 
+    @Test
+    fun threshold100AtFullArmsWithoutCreatingAnEvent() {
+        val result = AlertRuleChangeEvaluator.reevaluateWithoutEvent(
+            rule = AlertRule(thresholdPercent = 100, monitoringEnabled = true),
+            state = AlertState(armed = false, previousLevelPercent = 99),
+            snapshot = snapshot(100),
+        )
+
+        assertTrue(result.armed)
+        assertEquals(100, result.previousLevelPercent)
+    }
+
     private fun snapshot(level: Int) = BatterySnapshot(
         levelPercent = level,
         isCharging = false,

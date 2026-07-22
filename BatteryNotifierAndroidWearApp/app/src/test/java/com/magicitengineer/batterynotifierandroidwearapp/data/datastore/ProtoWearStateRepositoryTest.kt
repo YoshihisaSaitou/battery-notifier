@@ -8,6 +8,9 @@ import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.ReceivedPho
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.ReceivedThresholdEvent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -55,6 +58,7 @@ class ProtoWearStateRepositoryTest {
         assertEquals(WearStateApplyOutcome.APPLIED, result.outcome)
         assertEquals(EVENT_ID, result.state.lastProcessedEventId)
         assertEquals(NotificationDisposition.PENDING, result.state.notificationDisposition)
+        assertEquals(1, result.state.notificationPostAttemptCount)
     }
 
     @Test
@@ -123,6 +127,90 @@ class ProtoWearStateRepositoryTest {
         assertEquals(WearNotificationCompletionOutcome.APPLIED, first.outcome)
         assertEquals(WearNotificationCompletionOutcome.STALE_RESERVATION, second.outcome)
         assertEquals(NotificationDisposition.POSTED, second.state.notificationDisposition)
+    }
+
+    @Test
+    fun failedNotificationCanBeAtomicallyReservedForTheNextAttempt() = runBlocking {
+        val repository = repository()
+        repository.applyThresholdEvent(event(10), 1_100_000L)
+        repository.completeNotification(EVENT_ID, NotificationDisposition.RESERVED_FAILED)
+
+        val reservation = repository.reserveNotificationRetry(EVENT_ID, 1_200_000L)
+
+        assertEquals(WearNotificationRetryReservationOutcome.RESERVED, reservation.outcome)
+        assertEquals(NotificationDisposition.PENDING, reservation.state.notificationDisposition)
+        assertEquals(2, reservation.state.notificationPostAttemptCount)
+    }
+
+    @Test
+    fun retryAfterExpiryIsTerminalWithoutCreatingAReservation() = runBlocking {
+        val repository = repository()
+        repository.applyThresholdEvent(event(10), 1_100_000L)
+        repository.completeNotification(EVENT_ID, NotificationDisposition.RESERVED_FAILED)
+
+        val reservation = repository.reserveNotificationRetry(EVENT_ID, 1_300_001L)
+
+        assertEquals(WearNotificationRetryReservationOutcome.EXPIRED, reservation.outcome)
+        assertEquals(NotificationDisposition.EXPIRED, reservation.state.notificationDisposition)
+        assertEquals(0, reservation.state.notificationPostAttemptCount)
+    }
+
+    @Test
+    fun retryAtClockSkewBoundaryIsAllowedButOneMillisecondBeyondIsTerminal() = runBlocking {
+        val allowedRepository = repository()
+        allowedRepository.applyThresholdEvent(event(10), 1_100_000L)
+        allowedRepository.completeNotification(EVENT_ID, NotificationDisposition.RESERVED_FAILED)
+        val allowed = allowedRepository.reserveNotificationRetry(EVENT_ID, 700_000L)
+
+        val skewedRepository = repository()
+        skewedRepository.applyThresholdEvent(event(10), 1_100_000L)
+        skewedRepository.completeNotification(EVENT_ID, NotificationDisposition.RESERVED_FAILED)
+        val skewed = skewedRepository.reserveNotificationRetry(EVENT_ID, 699_999L)
+
+        assertEquals(WearNotificationRetryReservationOutcome.RESERVED, allowed.outcome)
+        assertEquals(WearNotificationRetryReservationOutcome.CLOCK_SKEW, skewed.outcome)
+        assertEquals(NotificationDisposition.CLOCK_SKEW, skewed.state.notificationDisposition)
+        assertEquals(0, skewed.state.notificationPostAttemptCount)
+    }
+
+    @Test
+    fun interruptedPendingRecoveryHonorsExpirySkewAndAttemptCap() = runBlocking {
+        val retryableRepository = repository()
+        retryableRepository.applyThresholdEvent(event(10), 1_100_000L)
+        val retryable = retryableRepository.recoverInterruptedNotification(1_200_000L)
+
+        val expiredRepository = repository()
+        expiredRepository.applyThresholdEvent(event(10), 1_100_000L)
+        val expired = expiredRepository.recoverInterruptedNotification(1_300_001L)
+
+        val skewedRepository = repository()
+        skewedRepository.applyThresholdEvent(event(10), 1_100_000L)
+        val skewed = skewedRepository.recoverInterruptedNotification(699_999L)
+
+        assertEquals(WearNotificationRecoveryOutcome.RECOVERED_FOR_RETRY, retryable.outcome)
+        assertEquals(NotificationDisposition.RESERVED_FAILED, retryable.state.notificationDisposition)
+        assertEquals(WearNotificationRecoveryOutcome.EXPIRED, expired.outcome)
+        assertEquals(NotificationDisposition.EXPIRED, expired.state.notificationDisposition)
+        assertEquals(WearNotificationRecoveryOutcome.CLOCK_SKEW, skewed.outcome)
+        assertEquals(NotificationDisposition.CLOCK_SKEW, skewed.state.notificationDisposition)
+    }
+
+    @Test
+    fun concurrentRetryTriggersCreateOnlyOneReservation() = runBlocking {
+        val repository = repository()
+        repository.applyThresholdEvent(event(10), 1_100_000L)
+        repository.completeNotification(EVENT_ID, NotificationDisposition.RESERVED_FAILED)
+
+        val outcomes = List(10) {
+            async { repository.reserveNotificationRetry(EVENT_ID, 1_200_000L).outcome }
+        }.awaitAll()
+
+        assertEquals(1, outcomes.count { it == WearNotificationRetryReservationOutcome.RESERVED })
+        assertEquals(
+            9,
+            outcomes.count { it == WearNotificationRetryReservationOutcome.NOT_ELIGIBLE },
+        )
+        assertEquals(2, repository.state.first().notificationPostAttemptCount)
     }
 
     @Test

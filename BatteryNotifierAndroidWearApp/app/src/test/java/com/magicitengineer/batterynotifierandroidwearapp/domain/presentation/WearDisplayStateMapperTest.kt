@@ -33,6 +33,20 @@ class WearDisplayStateMapperTest {
 
         assertEquals(Freshness.STALE, display.freshness)
         assertEquals(null, display.ageMinutes)
+        assertTrue(display.clockWarning)
+    }
+
+    @Test
+    fun timelineCarriesFreshDelayedAndStaleValidityWithoutAnotherDataItem() {
+        val timeline = WearDisplayTimelineMapper.map(state(receivedAt = 1_000_000L))
+
+        assertEquals(
+            listOf(Freshness.STALE, Freshness.FRESH, Freshness.DELAYED, Freshness.STALE),
+            timeline.entries.map { it.displayState.freshness },
+        )
+        assertEquals(1_120_001L, timeline.entries[1].endEpochMillisExclusive)
+        assertEquals(1_300_001L, timeline.entries[2].endEpochMillisExclusive)
+        assertEquals(Freshness.STALE, timeline.defaultState.freshness)
     }
 
     @Test
@@ -60,9 +74,18 @@ class WearDisplayStateMapperTest {
             ),
             1_000L,
         )
+        val exhausted = WearDisplayStateMapper.map(
+            WearPersistentState(
+                notificationDisposition = NotificationDisposition.FAILED_EXHAUSTED
+            ),
+            1_000L,
+        )
 
         assertTrue(permissionDenied.notificationPermissionMissing)
         assertTrue(failed.notificationDeliveryFailed)
+        assertTrue(failed.notificationRetryAvailable)
+        assertTrue(exhausted.notificationDeliveryFailed)
+        assertTrue(exhausted.notificationRetryExhausted)
     }
 
     private fun state(receivedAt: Long) = WearPersistentState(

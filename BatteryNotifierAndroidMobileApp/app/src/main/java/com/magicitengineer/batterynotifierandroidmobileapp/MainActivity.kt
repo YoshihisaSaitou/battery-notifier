@@ -44,6 +44,8 @@ import com.magicitengineer.batterynotifierandroidmobileapp.presentation.Monitori
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.NotificationPermissionUiState
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.ThresholdSaveUiState
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.notificationPermissionUiState
+import com.magicitengineer.batterynotifierandroidmobileapp.presentation.batteryAlertNotificationsEnabled
+import com.magicitengineer.batterynotifierandroidmobileapp.platform.notification.AndroidMobileAlertNotificationFactory
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.toManualSyncUiState
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.toMonitoringCommandUiState
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.toUiResult
@@ -54,6 +56,7 @@ import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
     private var notificationsEnabled by mutableStateOf(false)
+    private var batteryAlertChannelDisabled = false
     private val thresholdSettingsController by lazy {
         MobileAppContainer.thresholdSettingsController(this)
     }
@@ -180,15 +183,35 @@ class MainActivity : ComponentActivity() {
 
     private fun refreshNotificationPermissionState() {
         val manager = getSystemService(NotificationManager::class.java)
-        notificationsEnabled =
-            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
-                PackageManager.PERMISSION_GRANTED && manager.areNotificationsEnabled()
+        val channel = manager.getNotificationChannel(
+            AndroidMobileAlertNotificationFactory.CHANNEL_ID
+        )
+        batteryAlertChannelDisabled = channel?.importance == NotificationManager.IMPORTANCE_NONE
+        notificationsEnabled = batteryAlertNotificationsEnabled(
+            runtimePermissionGranted = checkSelfPermission(
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED,
+            appNotificationsEnabled = manager.areNotificationsEnabled(),
+            batteryAlertChannelEnabled = !batteryAlertChannelDisabled,
+        )
     }
 
     private fun openNotificationSettings() {
         startActivity(
-            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            Intent(
+                if (batteryAlertChannelDisabled) {
+                    Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS
+                } else {
+                    Settings.ACTION_APP_NOTIFICATION_SETTINGS
+                }
+            ).apply {
                 putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                if (batteryAlertChannelDisabled) {
+                    putExtra(
+                        Settings.EXTRA_CHANNEL_ID,
+                        AndroidMobileAlertNotificationFactory.CHANNEL_ID,
+                    )
+                }
             }
         )
     }

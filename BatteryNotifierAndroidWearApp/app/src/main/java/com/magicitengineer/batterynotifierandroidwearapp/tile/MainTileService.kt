@@ -23,7 +23,7 @@ import com.magicitengineer.batterynotifierandroidwearapp.R
 import com.magicitengineer.batterynotifierandroidwearapp.data.datastore.WearAppContainer
 import com.magicitengineer.batterynotifierandroidwearapp.domain.presentation.Freshness
 import com.magicitengineer.batterynotifierandroidwearapp.domain.presentation.WearDisplayState
-import com.magicitengineer.batterynotifierandroidwearapp.domain.presentation.WearDisplayStateMapper
+import com.magicitengineer.batterynotifierandroidwearapp.domain.presentation.WearDisplayTimelineMapper
 import com.magicitengineer.batterynotifierandroidwearapp.presentation.MainActivity
 import kotlinx.coroutines.flow.first
 
@@ -39,11 +39,7 @@ class MainTileService : SuspendingTileService() {
         requestParams: RequestBuilders.TileRequest,
     ): TileBuilders.Tile {
         val persistentState = WearAppContainer.repository(this).state.first()
-        val displayState = WearDisplayStateMapper.map(
-            persistentState,
-            System.currentTimeMillis().coerceAtLeast(1L),
-        )
-        return tile(requestParams, this, displayState)
+        return tile(requestParams, this, WearDisplayTimelineMapper.map(persistentState))
     }
 }
 
@@ -54,22 +50,40 @@ private fun resources(): ResourceBuilders.Resources = ResourceBuilders.Resources
 private fun tile(
     requestParams: RequestBuilders.TileRequest,
     context: Context,
-    displayState: WearDisplayState,
+    displayTimeline: com.magicitengineer.batterynotifierandroidwearapp.domain.presentation.WearDisplayTimeline,
 ): TileBuilders.Tile {
-    val timeline = TimelineBuilders.Timeline.Builder()
-        .addTimelineEntry(
+    val timelineBuilder = TimelineBuilders.Timeline.Builder()
+    displayTimeline.entries.forEach { entry ->
+        timelineBuilder.addTimelineEntry(
             TimelineBuilders.TimelineEntry.Builder()
+                .setValidity(
+                    TimelineBuilders.TimeInterval.Builder()
+                        .setStartMillis(entry.startEpochMillisInclusive)
+                        .setEndMillis(entry.endEpochMillisExclusive)
+                        .build()
+                )
                 .setLayout(
                     LayoutElementBuilders.Layout.Builder()
-                        .setRoot(tileLayout(requestParams, context, displayState))
+                        .setRoot(tileLayout(requestParams, context, entry.displayState))
                         .build()
                 )
                 .build()
         )
-        .build()
+    }
+    if (displayTimeline.entries.isEmpty()) {
+        timelineBuilder.addTimelineEntry(
+            TimelineBuilders.TimelineEntry.Builder()
+                .setLayout(
+                    LayoutElementBuilders.Layout.Builder()
+                        .setRoot(tileLayout(requestParams, context, displayTimeline.defaultState))
+                        .build()
+                )
+                .build()
+        )
+    }
     return TileBuilders.Tile.Builder()
         .setResourcesVersion(RESOURCES_VERSION)
-        .setTileTimeline(timeline)
+        .setTileTimeline(timelineBuilder.build())
         .build()
 }
 
@@ -89,10 +103,13 @@ private fun tileLayout(
     }
     val labelText = when {
         displayState.levelPercent == null -> context.getString(R.string.no_phone_data)
-        displayState.freshness == Freshness.STALE -> context.getString(
+        displayState.clockWarning -> context.getString(R.string.clock_warning)
+        displayState.freshness == Freshness.STALE && displayState.ageMinutes != null ->
+            context.getString(
             R.string.delayed_updated,
-            displayState.ageMinutes ?: 0,
+            displayState.ageMinutes,
         )
+        displayState.freshness == Freshness.STALE -> context.getString(R.string.stale_data)
         displayState.isCharging -> context.getString(R.string.charging)
         !displayState.monitoringEnabled -> context.getString(R.string.monitoring_off)
         else -> context.getString(R.string.phone_label)
@@ -141,11 +158,14 @@ fun tilePreview(context: Context) = TilePreviewData({ resources() }) {
     tile(
         it,
         context,
-        WearDisplayState(
-            freshness = Freshness.FRESH,
-            levelPercent = 68,
-            isCharging = true,
-            monitoringEnabled = true,
+        com.magicitengineer.batterynotifierandroidwearapp.domain.presentation.WearDisplayTimeline(
+            defaultState = WearDisplayState(
+                freshness = Freshness.FRESH,
+                levelPercent = 68,
+                isCharging = true,
+                monitoringEnabled = true,
+            ),
+            entries = emptyList(),
         ),
     )
 }

@@ -46,6 +46,9 @@ interface MobileStateRepository {
         resumeRequired: Boolean,
     ): MobilePersistentState = error("Monitoring state updates are not configured")
 
+    suspend fun resetMonitoringStartBaseline(): MobilePersistentState =
+        error("Monitoring start baseline reset is not configured")
+
     suspend fun markMobileNotified(eventId: String): MobilePersistentState
 
     suspend fun completeMobileNotification(
@@ -168,6 +171,13 @@ class ProtoMobileStateRepository(
             )
         }
     }
+
+    override suspend fun resetMonitoringStartBaseline(): MobilePersistentState =
+        update { current ->
+            current.copy(
+                alertState = current.alertState.copy(previousLevelPercent = null),
+            )
+        }
 
     override suspend fun markMobileNotified(eventId: String): MobilePersistentState =
         completeMobileNotification(eventId, MobileNotificationDisposition.POSTED).let {

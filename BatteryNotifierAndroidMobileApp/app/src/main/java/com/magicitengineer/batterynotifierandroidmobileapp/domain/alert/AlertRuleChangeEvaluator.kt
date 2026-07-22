@@ -11,8 +11,8 @@ object AlertRuleChangeEvaluator {
         if (snapshot == null) return state
 
         val armed = when {
-            snapshot.levelPercent <= rule.thresholdPercent -> false
             snapshot.levelPercent >= rule.rearmLevelPercent -> true
+            snapshot.levelPercent <= rule.thresholdPercent -> false
             else -> state.armed
         }
         return state.copy(

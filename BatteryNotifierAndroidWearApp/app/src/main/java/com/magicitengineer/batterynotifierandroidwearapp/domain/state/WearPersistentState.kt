@@ -1,6 +1,7 @@
 package com.magicitengineer.batterynotifierandroidwearapp.domain.state
 
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.NotificationDisposition
+import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.MAX_WEAR_NOTIFICATION_POST_ATTEMPTS
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.ReceivedPhoneState
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.ReceivedThresholdEvent
 
@@ -13,6 +14,7 @@ data class WearPersistentState(
     val lastProcessedEventId: String? = null,
     val eventProcessedAtEpochMillis: Long? = null,
     val notificationDisposition: NotificationDisposition = NotificationDisposition.NONE,
+    val notificationPostAttemptCount: Int = 0,
     val invalidPayloadCount: Long = 0,
     val unsupportedSchemaCount: Long = 0,
     val duplicateCount: Long = 0,
@@ -30,6 +32,7 @@ data class WearPersistentState(
         require((lastProcessedEventId == null) == (eventProcessedAtEpochMillis == null))
         require(lastProcessedEventId == null || lastProcessedEventId.isNotBlank())
         require(eventProcessedAtEpochMillis == null || eventProcessedAtEpochMillis > 0)
+        require(notificationPostAttemptCount in 0..MAX_WEAR_NOTIFICATION_POST_ATTEMPTS)
         require(invalidPayloadCount >= 0)
         require(unsupportedSchemaCount >= 0)
         require(duplicateCount >= 0)

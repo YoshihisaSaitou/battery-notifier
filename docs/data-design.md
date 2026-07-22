@@ -59,6 +59,8 @@
 
 保持するイベントは最新の未期限切れ1件と直近処理IDだけでよい。履歴分析はv1.0対象外とする。
 
+`battery_notifier_mobile.pb`は設定・alert state・sequence・通知/outboxを1つの原子的状態として保持するため、v1.0では部分復元しない。Android cloud backupとdevice-to-device transferの双方からファイル全体を除外する。
+
 ## 3. Wear Proto DataStore
 
 推奨ファイル名: `battery_notifier_wear.pb`
@@ -70,6 +72,8 @@
 | Diagnostics | invalid payload count、unsupported schema、last receive error |
 
 鮮度は保存せず、`now - receivedAtEpochMillis`で都度算出する。端末時刻変更を跨ぐ画面内計測には`elapsedRealtime`を併用してよいが、再起動を跨ぐ永続値にはepoch millisを用いる。
+
+`battery_notifier_wear.pb`もAndroid cloud backupとdevice-to-device transferの双方から除外する。再インストールまたは端末移行後はNo Dataから開始し、Mobileの最新stateを新規同期する。過去のPENDING/outbox/eventIdを復元して通知してはならない。
 
 ## 4. Data Layer同期契約
 
@@ -151,4 +155,3 @@ DataItemパスをイベントごとに増やさない。固定パスにして不
 ```
 
 JSONは説明用であり、実装はDataMapを使用する。
-

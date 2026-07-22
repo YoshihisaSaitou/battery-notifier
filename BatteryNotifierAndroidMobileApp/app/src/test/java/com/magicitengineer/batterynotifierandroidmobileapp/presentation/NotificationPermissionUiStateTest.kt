@@ -36,4 +36,16 @@ class NotificationPermissionUiStateTest {
             ),
         )
     }
+
+    @Test
+    fun disabledBatteryAlertChannelIsNotReportedAsEnabled() {
+        assertEquals(
+            false,
+            batteryAlertNotificationsEnabled(
+                runtimePermissionGranted = true,
+                appNotificationsEnabled = true,
+                batteryAlertChannelEnabled = false,
+            ),
+        )
+    }
 }

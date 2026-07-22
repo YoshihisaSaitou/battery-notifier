@@ -47,6 +47,7 @@ enum class NotificationDisposition(val persistedValue: String) {
     POSTED("posted"),
     PERMISSION_DENIED("permission_denied"),
     RESERVED_FAILED("reserved_failed"),
+    FAILED_EXHAUSTED("failed_exhausted"),
     EXPIRED("expired"),
     CLOCK_SKEW("clock_skew"),
 }
@@ -63,6 +64,7 @@ const val SUPPORTED_SCHEMA_VERSION = 1
 const val MAX_EVENT_ID_LENGTH = 64
 const val MAX_FUTURE_SKEW_MILLIS = 5 * 60 * 1_000L
 const val MAX_EVENT_EXPIRY_MILLIS = 15 * 60 * 1_000L
+const val MAX_WEAR_NOTIFICATION_POST_ATTEMPTS = 3
 
 fun interface EpochMillisClock {
     fun now(): Long

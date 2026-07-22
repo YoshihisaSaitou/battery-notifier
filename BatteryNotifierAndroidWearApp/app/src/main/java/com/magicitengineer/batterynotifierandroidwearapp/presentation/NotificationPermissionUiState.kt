@@ -16,3 +16,10 @@ fun notificationPermissionUiState(
 }
 
 fun notificationRuntimePermissionRequired(sdkInt: Int): Boolean = sdkInt >= 33
+
+fun batteryAlertNotificationsEnabled(
+    runtimePermissionGranted: Boolean,
+    appNotificationsEnabled: Boolean,
+    batteryAlertChannelEnabled: Boolean,
+): Boolean =
+    runtimePermissionGranted && appNotificationsEnabled && batteryAlertChannelEnabled

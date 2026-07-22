@@ -82,6 +82,61 @@ class ThresholdEvaluatorTest {
         assertEquals(20, result.state.previousLevelPercent)
     }
 
+    @Test
+    fun threshold100NotifiesWhenLeavingFullAndRearmsAtFull() {
+        val rule = enabledRule.copy(thresholdPercent = 100)
+        val initial = ThresholdEvaluator.evaluate(
+            rule,
+            AlertState(),
+            snapshot(100, 1L),
+            EVENT_ID,
+        )
+        val first = ThresholdEvaluator.evaluate(
+            rule,
+            initial.state,
+            snapshot(99, 2L),
+            EVENT_ID,
+        )
+        val duplicate = ThresholdEvaluator.evaluate(
+            rule,
+            first.state,
+            snapshot(98, 3L),
+            EVENT_ID,
+        )
+        val rearmed = ThresholdEvaluator.evaluate(
+            rule,
+            duplicate.state,
+            snapshot(100, 4L),
+            EVENT_ID,
+        )
+        val second = ThresholdEvaluator.evaluate(
+            rule,
+            rearmed.state,
+            snapshot(99, 5L),
+            EVENT_ID,
+        )
+
+        assertNull(initial.event)
+        assertTrue(initial.state.armed)
+        assertNotNull(first.event)
+        assertNull(duplicate.event)
+        assertTrue(rearmed.state.armed)
+        assertNotNull(second.event)
+    }
+
+    @Test
+    fun threshold100FirstObservationBelowFullDoesNotNotify() {
+        val result = ThresholdEvaluator.evaluate(
+            enabledRule.copy(thresholdPercent = 100),
+            AlertState(),
+            snapshot(99, 1L),
+            EVENT_ID,
+        )
+
+        assertNull(result.event)
+        assertFalse(result.state.armed)
+    }
+
     private fun evaluate(
         state: AlertState,
         level: Int,

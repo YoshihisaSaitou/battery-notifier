@@ -52,6 +52,14 @@
                     android:path="/battery-notifier/v1/request-state"
                     android:scheme="wear" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.CAPABILITY_CHANGED" />
+
+                <data
+                    android:host="*"
+                    android:path="/battery_notifier_state_receiver"
+                    android:scheme="wear" />
+            </intent-filter>
         </service>
 
         <activity

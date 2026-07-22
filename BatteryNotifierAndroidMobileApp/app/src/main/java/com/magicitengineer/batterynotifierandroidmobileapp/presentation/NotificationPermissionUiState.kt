@@ -14,3 +14,10 @@ fun notificationPermissionUiState(
     requestPreviouslyCompleted -> NotificationPermissionUiState.SETTINGS_REQUIRED
     else -> NotificationPermissionUiState.REQUEST_AVAILABLE
 }
+
+fun batteryAlertNotificationsEnabled(
+    runtimePermissionGranted: Boolean,
+    appNotificationsEnabled: Boolean,
+    batteryAlertChannelEnabled: Boolean,
+): Boolean =
+    runtimePermissionGranted && appNotificationsEnabled && batteryAlertChannelEnabled

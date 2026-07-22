@@ -199,6 +199,35 @@ class ProtoMobileStateRepositoryTest {
     }
 
     @Test
+    fun userRestartBaselinePreventsStoppedDischargeFromBecomingACrossing() = runBlocking {
+        val store = InMemoryDataStore(MobileStateSanitizer.defaultValue())
+        val repository = ProtoMobileStateRepository(store)
+        repository.updateAlertRule(
+            AlertRule(thresholdPercent = 20, monitoringEnabled = true)
+        )
+        repository.processBatteryReading(
+            BatteryReading(21, isCharging = false, capturedAtEpochMillis = 1_000L),
+            FIRST_EVENT_ID,
+        )
+        repository.updateMonitoringState(false, false)
+
+        val baseline = repository.processBatteryReading(
+            BatteryReading(20, isCharging = false, capturedAtEpochMillis = 2_000L),
+            SECOND_EVENT_ID,
+        )
+        repository.updateMonitoringState(true, false)
+        val stickyCallback = repository.processBatteryReading(
+            BatteryReading(20, isCharging = false, capturedAtEpochMillis = 2_001L),
+            "550e8400-e29b-41d4-a716-446655440002",
+        )
+
+        assertNull(baseline.event)
+        assertNull(stickyCallback.event)
+        assertFalse(stickyCallback.state.alertState.armed)
+        assertNull(stickyCallback.state.pendingEvent)
+    }
+
+    @Test
     fun mobileNotificationCompletionIsIndependentFromSyncAndRejectsStaleReservation() = runBlocking {
         val store = InMemoryDataStore(MobileStateSanitizer.defaultValue())
         val repository = ProtoMobileStateRepository(store)

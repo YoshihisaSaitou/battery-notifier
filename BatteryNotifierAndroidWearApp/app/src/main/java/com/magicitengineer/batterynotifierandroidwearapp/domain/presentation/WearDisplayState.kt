@@ -22,6 +22,8 @@ data class WearDisplayState(
     val clockWarning: Boolean = false,
     val notificationPermissionMissing: Boolean = false,
     val notificationDeliveryFailed: Boolean = false,
+    val notificationRetryAvailable: Boolean = false,
+    val notificationRetryExhausted: Boolean = false,
 )
 
 object WearDisplayStateMapper {
@@ -40,7 +42,12 @@ object WearDisplayStateMapper {
             notificationPermissionMissing =
                 state.notificationDisposition == NotificationDisposition.PERMISSION_DENIED,
             notificationDeliveryFailed =
+                state.notificationDisposition == NotificationDisposition.RESERVED_FAILED ||
+                    state.notificationDisposition == NotificationDisposition.FAILED_EXHAUSTED,
+            notificationRetryAvailable =
                 state.notificationDisposition == NotificationDisposition.RESERVED_FAILED,
+            notificationRetryExhausted =
+                state.notificationDisposition == NotificationDisposition.FAILED_EXHAUSTED,
         )
         val receivedAt = requireNotNull(state.phoneStateReceivedAtEpochMillis)
         val ageMillis = nowEpochMillis - receivedAt
@@ -59,11 +66,17 @@ object WearDisplayStateMapper {
             receivedAtEpochMillis = receivedAt,
             ageMinutes = if (ageMillis < 0) null else ageMillis / 60_000L,
             incompatibleSchema = state.lastReceiveError == "unsupported_schema",
-            clockWarning = state.notificationDisposition == NotificationDisposition.CLOCK_SKEW,
+            clockWarning = ageMillis < 0 ||
+                state.notificationDisposition == NotificationDisposition.CLOCK_SKEW,
             notificationPermissionMissing =
                 state.notificationDisposition == NotificationDisposition.PERMISSION_DENIED,
             notificationDeliveryFailed =
+                state.notificationDisposition == NotificationDisposition.RESERVED_FAILED ||
+                    state.notificationDisposition == NotificationDisposition.FAILED_EXHAUSTED,
+            notificationRetryAvailable =
                 state.notificationDisposition == NotificationDisposition.RESERVED_FAILED,
+            notificationRetryExhausted =
+                state.notificationDisposition == NotificationDisposition.FAILED_EXHAUSTED,
         )
     }
 }

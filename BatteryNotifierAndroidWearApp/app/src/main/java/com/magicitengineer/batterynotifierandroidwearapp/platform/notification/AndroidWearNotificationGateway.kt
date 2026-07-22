@@ -17,7 +17,7 @@ import com.magicitengineer.batterynotifierandroidwearapp.application.notificatio
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.ReceivedThresholdEvent
 import com.magicitengineer.batterynotifierandroidwearapp.presentation.MainActivity
 
-private const val BATTERY_ALERT_CHANNEL_ID = "battery_alerts"
+const val BATTERY_ALERT_CHANNEL_ID = "battery_alerts"
 
 class AndroidWearNotificationGateway(
     context: Context,

@@ -49,6 +49,7 @@ import com.magicitengineer.batterynotifierandroidwearapp.domain.presentation.Wea
 import com.magicitengineer.batterynotifierandroidwearapp.domain.state.WearPersistentState
 import com.magicitengineer.batterynotifierandroidwearapp.presentation.theme.BatteryNotifierAndroidWearAppTheme
 import com.magicitengineer.batterynotifierandroidwearapp.platform.wearable.GooglePlayServicesPhoneStateRequestGateway
+import com.magicitengineer.batterynotifierandroidwearapp.platform.notification.BATTERY_ALERT_CHANNEL_ID
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -62,7 +63,11 @@ private enum class RetryUiState {
 
 class MainActivity : ComponentActivity() {
     private val repository by lazy { WearAppContainer.repository(this) }
+    private val notificationDelivery by lazy {
+        WearAppContainer.notificationDelivery(this)
+    }
     private var notificationsEnabled by mutableStateOf(false)
+    private var batteryAlertChannelDisabled = false
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -80,6 +85,7 @@ class MainActivity : ComponentActivity() {
             val coroutineScope = rememberCoroutineScope()
             var nowEpochMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
             var retryUiState by remember { mutableStateOf(RetryUiState.IDLE) }
+            var notificationRetryInProgress by remember { mutableStateOf(false) }
             LaunchedEffect(lifecycleOwner) {
                 lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                     while (true) {
@@ -87,6 +93,9 @@ class MainActivity : ComponentActivity() {
                         delay(60_000L)
                     }
                 }
+            }
+            LaunchedEffect(persistentState.phoneStateReceivedAtEpochMillis) {
+                nowEpochMillis = System.currentTimeMillis()
             }
             val displayState = WearDisplayStateMapper.map(
                     state = persistentState,
@@ -127,6 +136,22 @@ class MainActivity : ComponentActivity() {
                             openNotificationSettings()
                     }
                 },
+                notificationRetryInProgress = notificationRetryInProgress,
+                onNotificationRetry = {
+                    if (!notificationRetryInProgress) {
+                        notificationRetryInProgress = true
+                        coroutineScope.launch {
+                            try {
+                                notificationDelivery.retry(
+                                    state = persistentState,
+                                    nowEpochMillis = System.currentTimeMillis().coerceAtLeast(1L),
+                                )
+                            } finally {
+                                notificationRetryInProgress = false
+                            }
+                        }
+                    }
+                },
             )
         }
     }
@@ -153,17 +178,31 @@ class MainActivity : ComponentActivity() {
 
     private fun refreshNotificationPermissionState() {
         val manager = getSystemService(NotificationManager::class.java)
-        notificationsEnabled =
-            manager.areNotificationsEnabled() &&
-                (!notificationRuntimePermissionRequired(Build.VERSION.SDK_INT) ||
+        val channel = manager.getNotificationChannel(BATTERY_ALERT_CHANNEL_ID)
+        batteryAlertChannelDisabled = channel?.importance == NotificationManager.IMPORTANCE_NONE
+        notificationsEnabled = batteryAlertNotificationsEnabled(
+            runtimePermissionGranted =
+                !notificationRuntimePermissionRequired(Build.VERSION.SDK_INT) ||
                     checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
-                    PackageManager.PERMISSION_GRANTED)
+                    PackageManager.PERMISSION_GRANTED,
+            appNotificationsEnabled = manager.areNotificationsEnabled(),
+            batteryAlertChannelEnabled = !batteryAlertChannelDisabled,
+        )
     }
 
     private fun openNotificationSettings() {
         startActivity(
-            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            Intent(
+                if (batteryAlertChannelDisabled) {
+                    Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS
+                } else {
+                    Settings.ACTION_APP_NOTIFICATION_SETTINGS
+                }
+            ).apply {
                 putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                if (batteryAlertChannelDisabled) {
+                    putExtra(Settings.EXTRA_CHANNEL_ID, BATTERY_ALERT_CHANNEL_ID)
+                }
             }
         )
     }
@@ -181,6 +220,8 @@ private fun WearApp(
         NotificationPermissionUiState.ENABLED,
     onRetry: () -> Unit = {},
     onNotificationPermissionAction: () -> Unit = {},
+    notificationRetryInProgress: Boolean = false,
+    onNotificationRetry: () -> Unit = {},
 ) {
     BatteryNotifierAndroidWearAppTheme {
         Box(
@@ -195,6 +236,8 @@ private fun WearApp(
                 notificationPermissionState = notificationPermissionState,
                 onRetry = onRetry,
                 onNotificationPermissionAction = onNotificationPermissionAction,
+                notificationRetryInProgress = notificationRetryInProgress,
+                onNotificationRetry = onNotificationRetry,
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -208,6 +251,8 @@ private fun BatteryStateList(
     notificationPermissionState: NotificationPermissionUiState,
     onRetry: () -> Unit,
     onNotificationPermissionAction: () -> Unit,
+    notificationRetryInProgress: Boolean,
+    onNotificationRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val batteryDescription = displayState.levelPercent?.let {
@@ -246,12 +291,15 @@ private fun BatteryStateList(
                 )
             }
             item { FreshnessText(displayState) }
-            if (displayState.freshness == Freshness.STALE) {
+            if (
+                displayState.freshness == Freshness.STALE &&
+                displayState.ageMinutes != null
+            ) {
                 item {
                     StateText(
                         stringResource(
                             R.string.delayed_updated,
-                            displayState.ageMinutes ?: 0,
+                            displayState.ageMinutes,
                         )
                     )
                 }
@@ -274,6 +322,27 @@ private fun BatteryStateList(
         }
         if (displayState.notificationDeliveryFailed) {
             item { StateText(stringResource(R.string.notification_delivery_failed)) }
+        }
+        if (displayState.notificationRetryExhausted) {
+            item { StateText(stringResource(R.string.notification_retry_exhausted)) }
+        }
+        if (displayState.notificationRetryAvailable) {
+            item {
+                Button(
+                    onClick = onNotificationRetry,
+                    enabled = !notificationRetryInProgress,
+                ) {
+                    Text(
+                        text = stringResource(
+                            if (notificationRetryInProgress) {
+                                R.string.retrying_notification
+                            } else {
+                                R.string.retry_notification
+                            }
+                        )
+                    )
+                }
+            }
         }
         item {
             StateText(

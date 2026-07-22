@@ -8,6 +8,7 @@ import com.magicitengineer.batterynotifierandroidmobileapp.application.monitorin
 import com.magicitengineer.batterynotifierandroidmobileapp.application.monitoring.MonitoringRunner
 import com.magicitengineer.batterynotifierandroidmobileapp.application.monitoring.MonitoringServiceGateway
 import com.magicitengineer.batterynotifierandroidmobileapp.application.monitoring.MonitoringStateUpdater
+import com.magicitengineer.batterynotifierandroidmobileapp.application.monitoring.MonitoringStartBaselineResetter
 import com.magicitengineer.batterynotifierandroidmobileapp.application.notification.MobileNotificationDeliveryResult
 import com.magicitengineer.batterynotifierandroidmobileapp.application.notification.PendingMobileNotificationDeliverer
 import com.magicitengineer.batterynotifierandroidmobileapp.application.settings.ThresholdSaveRejectionReason
@@ -72,6 +73,10 @@ class MobileSyncCoordinator(
     private val monitoringStateUpdater: MonitoringStateUpdater = MonitoringStateUpdater { _, _ ->
         error("Monitoring state updates are not configured")
     },
+    private val monitoringStartBaselineResetter: MonitoringStartBaselineResetter =
+        MonitoringStartBaselineResetter {
+            error("Monitoring start baseline reset is not configured")
+        },
     private val monitoringServiceGateway: MonitoringServiceGateway = object : MonitoringServiceGateway {
         override fun start() = error("Monitoring service start is not configured")
         override fun stop() = error("Monitoring service stop is not configured")
@@ -116,6 +121,12 @@ class MobileSyncCoordinator(
     }
 
     override suspend fun startMonitoring(): MonitoringCommandResult = mutex.withLock {
+        when (refresher.refresh()) {
+            BatteryRefreshResult.InvalidInput,
+            BatteryRefreshResult.Unavailable -> monitoringStartBaselineResetter.reset()
+            is BatteryRefreshResult.Refreshed,
+            BatteryRefreshResult.Unchanged -> Unit
+        }
         monitoringStateUpdater.update(monitoringEnabled = true, resumeRequired = false)
         try {
             monitoringServiceGateway.start()

@@ -23,6 +23,14 @@ object ThresholdEvaluator {
                     )
                 )
             }
+            if (
+                rule.thresholdPercent == AlertRule.MAX_THRESHOLD_PERCENT &&
+                snapshot.levelPercent == AlertRule.MAX_THRESHOLD_PERCENT
+            ) {
+                return noEvent(
+                    state.copy(armed = true, previousLevelPercent = snapshot.levelPercent)
+                )
+            }
             if (snapshot.levelPercent <= rule.thresholdPercent) {
                 return if (rule.notifyIfAlreadyBelowOnStart && state.armed) {
                     trigger(rule, state, snapshot, candidateEventId)
@@ -51,7 +59,14 @@ object ThresholdEvaluator {
             )
         }
 
-        return if (previousLevel > rule.thresholdPercent && snapshot.levelPercent <= rule.thresholdPercent) {
+        val crossed = if (rule.thresholdPercent == AlertRule.MAX_THRESHOLD_PERCENT) {
+            previousLevel == AlertRule.MAX_THRESHOLD_PERCENT &&
+                snapshot.levelPercent < AlertRule.MAX_THRESHOLD_PERCENT
+        } else {
+            previousLevel > rule.thresholdPercent &&
+                snapshot.levelPercent <= rule.thresholdPercent
+        }
+        return if (crossed) {
             trigger(rule, state, snapshot, candidateEventId)
         } else {
             noEvent(state.copy(previousLevelPercent = snapshot.levelPercent))

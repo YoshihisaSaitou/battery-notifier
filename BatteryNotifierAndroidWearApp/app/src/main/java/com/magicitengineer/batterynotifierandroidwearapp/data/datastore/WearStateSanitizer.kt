@@ -5,6 +5,7 @@ import com.magicitengineer.batterynotifierandroidwearapp.data.datastore.proto.We
 import com.magicitengineer.batterynotifierandroidwearapp.domain.state.WearPersistentState
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.MAX_EVENT_EXPIRY_MILLIS
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.MAX_EVENT_ID_LENGTH
+import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.MAX_WEAR_NOTIFICATION_POST_ATTEMPTS
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.NotificationDisposition
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.SUPPORTED_SCHEMA_VERSION
 import java.util.UUID
@@ -25,6 +26,12 @@ object WearStateSanitizer {
             .setUnsupportedSchemaCount(input.unsupportedSchemaCount.coerceAtLeast(0))
             .setDuplicateCount(input.duplicateCount.coerceAtLeast(0))
             .setOutOfOrderCount(input.outOfOrderCount.coerceAtLeast(0))
+            .setNotificationPostAttemptCount(
+                input.notificationPostAttemptCount.coerceIn(
+                    0,
+                    MAX_WEAR_NOTIFICATION_POST_ATTEMPTS,
+                )
+            )
             .setNotificationDisposition(
                 NotificationDisposition.entries.firstOrNull {
                     it.persistedValue == input.notificationDisposition
@@ -56,6 +63,25 @@ object WearStateSanitizer {
                 .setEventProcessedAtEpochMillis(0)
                 .setNotificationDisposition(NotificationDisposition.NONE.persistedValue)
         }
+        val disposition = NotificationDisposition.entries.first {
+            it.persistedValue == builder.notificationDisposition
+        }
+        val attemptCount = when (disposition) {
+            NotificationDisposition.PENDING,
+            NotificationDisposition.POSTED,
+            NotificationDisposition.PERMISSION_DENIED,
+            NotificationDisposition.RESERVED_FAILED,
+            NotificationDisposition.FAILED_EXHAUSTED ->
+                builder.notificationPostAttemptCount.coerceIn(
+                    1,
+                    MAX_WEAR_NOTIFICATION_POST_ATTEMPTS,
+                )
+
+            NotificationDisposition.NONE,
+            NotificationDisposition.EXPIRED,
+            NotificationDisposition.CLOCK_SKEW -> 0
+        }
+        builder.setNotificationPostAttemptCount(attemptCount)
         return builder.build()
     }
 

@@ -3,7 +3,7 @@
 文書ID: PPS-001  
 版: 0.1  
 状態: Draft  
-最終更新: 2026-07-20
+最終更新: 2026-07-22
 
 ## 1. 基本方針
 
@@ -61,9 +61,10 @@ Data LayerはBluetooth、Wi-Fi、またはGoogle管理のクラウド中継を�
 
 ## 6. バックアップ
 
-- しきい値など非機密設定のAuto Backup可否をリリース前に確定する。
-- eventId、outbox、sequence、処理済み通知ID、診断情報はバックアップ対象外とし、復元による重複通知を防ぐ。
-- 自動復元した`monitoringEnabled`だけで、説明なしにFGSを開始しない。復元後はユーザーへ監視再開を確認する。
+- v1.0ではMobileの`battery_notifier_mobile.pb`とWearの`battery_notifier_wear.pb`をAndroid cloud backupおよびdevice-to-device transferの双方からファイル単位で除外する。
+- 設定だけを切り離して復元するとalert state、sequence、eventId、outboxとの原子性が失われるため、Proto DataStoreの部分復元は行わない。
+- 再インストールまたは端末移行後は既定設定/No Dataから開始する。過去の`monitoringEnabled`でFGSを自動開始せず、過去のPENDING通知・outbox・処理済みIDを復元しない。
+- 新規セットアップ後、WearはMobileから送られた新しいsequenceの最新stateへ収束する。
 
 ## 7. 権限拒否・取消
 
@@ -93,4 +94,3 @@ Data LayerはBluetooth、Wi-Fi、またはGoogle管理のクラウド中継を�
 - [Notification runtime permission](https://developer.android.com/develop/ui/compose/notifications/notification-permission)
 - [Foreground service types](https://developer.android.com/develop/background-work/services/fgs/service-types)
 - [Wear Data Layer security](https://developer.android.com/training/wearables/data/overview)
-

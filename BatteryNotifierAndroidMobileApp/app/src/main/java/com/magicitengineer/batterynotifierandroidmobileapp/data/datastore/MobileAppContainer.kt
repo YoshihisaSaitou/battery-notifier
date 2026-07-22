@@ -4,6 +4,7 @@ import android.content.Context
 import com.magicitengineer.batterynotifierandroidmobileapp.application.battery.CurrentBatteryStateRefresher
 import com.magicitengineer.batterynotifierandroidmobileapp.application.monitoring.MonitoringController
 import com.magicitengineer.batterynotifierandroidmobileapp.application.monitoring.RepositoryMonitoringStateUpdater
+import com.magicitengineer.batterynotifierandroidmobileapp.application.monitoring.RepositoryMonitoringStartBaselineResetter
 import com.magicitengineer.batterynotifierandroidmobileapp.application.notification.DeliverPendingMobileNotification
 import com.magicitengineer.batterynotifierandroidmobileapp.application.settings.RepositoryThresholdSettingUpdater
 import com.magicitengineer.batterynotifierandroidmobileapp.application.settings.ThresholdSettingsController
@@ -63,6 +64,8 @@ object MobileAppContainer {
             thresholdSettingUpdater = RepositoryThresholdSettingUpdater(repository),
             batteryReadResultProcessor = batteryRefresher,
             monitoringStateUpdater = RepositoryMonitoringStateUpdater(repository),
+            monitoringStartBaselineResetter =
+                RepositoryMonitoringStartBaselineResetter(repository),
             monitoringServiceGateway = AndroidMonitoringServiceGateway(context),
             mobileNotificationDeliverer = DeliverPendingMobileNotification(
                 repository = repository,

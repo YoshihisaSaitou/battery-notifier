@@ -30,6 +30,9 @@
     <string name="phone_battery_alert_body">設定値%1$d%%以下になりました。充電してください。</string>
     <string name="notification_permission_missing">ウォッチの通知が許可されていません</string>
     <string name="notification_delivery_failed">スマートフォンの電池通知を表示できませんでした</string>
+    <string name="notification_retry_exhausted">通知の再試行回数が上限に達しました</string>
+    <string name="retry_notification">通知を再試行</string>
+    <string name="retrying_notification">通知を再試行中…</string>
     <string name="notification_permission_description">このウォッチでスマートフォンの電池通知を受け取るには通知を許可してください。拒否しても状態表示と同期は継続します。</string>
     <string name="notification_permission_enabled">ウォッチの通知は許可されています</string>
     <string name="notification_permission_not_requested">通知はまだ要求していません</string>

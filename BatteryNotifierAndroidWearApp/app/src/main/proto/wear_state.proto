@@ -23,6 +23,7 @@ message WearStateProto {
   bool has_last_unsupported_schema_version = 35;
   int32 last_unsupported_schema_version = 36;
   bool notification_permission_requested = 37;
+  int32 notification_post_attempt_count = 38;
 }
 
 message PhoneStateProto {

@@ -46,6 +46,16 @@ If the worktree changes after review starts, invalidate the affected findings an
 - REV-004: exact fixed DataItem paths, schema validation, application ID, signing identity, and listener filters.
 - REV-005: Service/Receiver/coroutine lifecycle, boot recovery, permissions, notification behavior, Fold recreation, and context leaks.
 
+## IMP-005 bounded Wear notification retry focus
+
+- Verify Proto migration/sanitization maps a pre-counter `PENDING`, `POSTED`, `PERMISSION_DENIED`, or `RESERVED_FAILED` event to one prior attempt without exceeding the maximum of three.
+- Verify the initial reservation is attempt 1 and every retry changes `RESERVED_FAILED` to `PENDING` while incrementing the count in the same DataStore transaction.
+- Verify parallel foreground/manual triggers create at most one reservation and cannot post a fourth time after `FAILED_EXHAUSTED`.
+- Verify `now <= expiresAt` remains eligible, `now > expiresAt` becomes terminal `EXPIRED`, and the notification gateway is not called after expiry.
+- Verify `POSTED`, `PERMISSION_DENIED`, `EXPIRED`, and `FAILED_EXHAUSTED` never resurrect an old event after app resume, permission changes, duplicate DataItem delivery, or process restoration.
+- Verify `MainActivity.onStart` consumes at most one automatic retry per foreground transition and the explicit retry button is shown only for `RESERVED_FAILED`.
+- Compile and, when a Wear target is attached, execute `RealWearDataStoreInstrumentedTest` to confirm real-file persistence, concurrent reservation serialization, and corruption recovery; compilation alone is not runtime evidence.
+
 ## Finding template
 
 ```yaml

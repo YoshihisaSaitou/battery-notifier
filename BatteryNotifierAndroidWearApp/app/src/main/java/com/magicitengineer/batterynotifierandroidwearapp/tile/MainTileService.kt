@@ -8,6 +8,9 @@ import androidx.wear.protolayout.LayoutElementBuilders
 import androidx.wear.protolayout.ModifiersBuilders
 import androidx.wear.protolayout.ResourceBuilders
 import androidx.wear.protolayout.TimelineBuilders
+import androidx.wear.protolayout.TypeBuilders
+import androidx.wear.protolayout.expression.DynamicBuilders.DynamicInstant
+import androidx.wear.protolayout.expression.DynamicBuilders.DynamicString
 import androidx.wear.protolayout.material.Colors
 import androidx.wear.protolayout.material.Text
 import androidx.wear.protolayout.material.Typography
@@ -26,6 +29,9 @@ import com.magicitengineer.batterynotifierandroidwearapp.domain.presentation.Wea
 import com.magicitengineer.batterynotifierandroidwearapp.domain.presentation.WearDisplayTimelineMapper
 import com.magicitengineer.batterynotifierandroidwearapp.presentation.MainActivity
 import kotlinx.coroutines.flow.first
+import java.text.DateFormat
+import java.time.Instant
+import java.util.Date
 
 private const val RESOURCES_VERSION = "1"
 
@@ -104,15 +110,19 @@ private fun tileLayout(
     val labelText = when {
         displayState.levelPercent == null -> context.getString(R.string.no_phone_data)
         displayState.clockWarning -> context.getString(R.string.clock_warning)
-        displayState.freshness == Freshness.STALE && displayState.ageMinutes != null ->
-            context.getString(
-            R.string.delayed_updated,
-            displayState.ageMinutes,
-        )
         displayState.freshness == Freshness.STALE -> context.getString(R.string.stale_data)
         displayState.isCharging -> context.getString(R.string.charging)
         !displayState.monitoringEnabled -> context.getString(R.string.monitoring_off)
         else -> context.getString(R.string.phone_label)
+    }
+    val dynamicAgeText = if (
+        displayState.freshness == Freshness.STALE &&
+        !displayState.clockWarning &&
+        displayState.receivedAtEpochMillis != null
+    ) {
+        tileRelativeAgeText(context, displayState.receivedAtEpochMillis)
+    } else {
+        null
     }
     val content = LayoutElementBuilders.Column.Builder()
         .addContent(
@@ -122,7 +132,9 @@ private fun tileLayout(
                 .build()
         )
         .addContent(
-            Text.Builder(context, labelText)
+            (dynamicAgeText?.let { (text, constraint) ->
+                Text.Builder(context, text, constraint)
+            } ?: Text.Builder(context, labelText))
                 .setColor(argb(Colors.DEFAULT.onSurface))
                 .setTypography(Typography.TYPOGRAPHY_CAPTION1)
                 .build()
@@ -150,6 +162,31 @@ private fun tileLayout(
         )
         .addContent(primaryLayout)
         .build()
+}
+
+internal fun tileRelativeAgeText(
+    context: Context,
+    receivedAtEpochMillis: Long,
+): Pair<TypeBuilders.StringProp, TypeBuilders.StringLayoutConstraint> {
+    require(receivedAtEpochMillis > 0L)
+    val receivedAt = DynamicInstant.withSecondsPrecision(
+        Instant.ofEpochMilli(receivedAtEpochMillis),
+    )
+    val ageMinutes = receivedAt
+        .durationUntil(DynamicInstant.platformTimeWithSecondsPrecision())
+        .toIntMinutes()
+        .format()
+    val dynamicText = DynamicString.constant(context.getString(R.string.updated_age_prefix))
+        .concat(ageMinutes)
+        .concat(DynamicString.constant(context.getString(R.string.updated_age_suffix)))
+    val absoluteTime = DateFormat.getTimeInstance(DateFormat.SHORT)
+        .format(Date(receivedAtEpochMillis))
+    val fallback = context.getString(R.string.last_updated_at, absoluteTime)
+    return TypeBuilders.StringProp.Builder(fallback)
+        .setDynamicValue(dynamicText)
+        .build() to TypeBuilders.StringLayoutConstraint.Builder(
+        context.getString(R.string.updated_age_layout_pattern),
+    ).build()
 }
 
 @Preview(device = WearDevices.SMALL_ROUND)

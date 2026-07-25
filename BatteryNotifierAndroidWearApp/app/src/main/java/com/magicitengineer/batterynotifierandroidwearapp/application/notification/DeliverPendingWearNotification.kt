@@ -70,7 +70,9 @@ class DeliverPendingWearNotification(
 
             WearNotificationPostResult.FAILED -> NotificationDisposition.RESERVED_FAILED
         }
-        val completion = repository.completeNotification(event.eventId, requestedDisposition)
+        val completion = withContext(NonCancellable) {
+            repository.completeNotification(event.eventId, requestedDisposition)
+        }
         return if (completion.outcome == WearNotificationCompletionOutcome.APPLIED) {
             WearNotificationDeliveryResult.Completed(
                 postResult,

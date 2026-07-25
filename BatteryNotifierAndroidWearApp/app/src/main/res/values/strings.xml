@@ -13,6 +13,13 @@
     <string name="discharging">Not charging</string>
     <string name="fresh_updated">Updated just now</string>
     <string name="delayed_updated">Updated %1$d min ago</string>
+    <string name="updated_age_prefix">Updated </string>
+    <string name="updated_age_suffix"> min ago</string>
+    <string name="updated_age_layout_pattern">Updated 9999 min ago</string>
+    <string name="last_updated_at">Last update %1$s</string>
+    <string name="complication_updated_age">Updated ^1 ago</string>
+    <string name="phone_battery_updated_age">Phone battery %1$d%%, updated ^1 ago</string>
+    <string name="phone_battery_stale_updated_age">Phone battery %1$d%%, data may be outdated, updated ^1 ago</string>
     <string name="stale_data">Data may be outdated</string>
     <string name="no_phone_data">No phone data yet</string>
     <string name="open_phone_app_hint">Open the phone app and check the connection</string>

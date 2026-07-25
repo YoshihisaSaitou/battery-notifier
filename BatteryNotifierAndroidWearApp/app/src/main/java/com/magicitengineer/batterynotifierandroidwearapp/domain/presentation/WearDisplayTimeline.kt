@@ -32,10 +32,10 @@ object WearDisplayTimelineMapper {
         val rollbackState = WearDisplayStateMapper.map(
             state,
             (receivedAt - 1L).coerceAtLeast(1L),
-        )
-        val freshState = WearDisplayStateMapper.map(state, receivedAt)
-        val delayedState = WearDisplayStateMapper.map(state, freshEnd)
-        val staleState = WearDisplayStateMapper.map(state, delayedEnd)
+        ).withoutCachedRelativeAge()
+        val freshState = WearDisplayStateMapper.map(state, receivedAt).withoutCachedRelativeAge()
+        val delayedState = WearDisplayStateMapper.map(state, freshEnd).withoutCachedRelativeAge()
+        val staleState = WearDisplayStateMapper.map(state, delayedEnd).withoutCachedRelativeAge()
         val entries = buildList {
             if (receivedAt > 1L) {
                 add(WearDisplayTimelineEntry(1L, receivedAt, rollbackState))
@@ -49,4 +49,7 @@ object WearDisplayTimelineMapper {
 
     private fun Long.saturatingAdd(increment: Long): Long =
         if (this > Long.MAX_VALUE - increment) Long.MAX_VALUE else this + increment
+
+    private fun WearDisplayState.withoutCachedRelativeAge(): WearDisplayState =
+        copy(ageMinutes = null)
 }

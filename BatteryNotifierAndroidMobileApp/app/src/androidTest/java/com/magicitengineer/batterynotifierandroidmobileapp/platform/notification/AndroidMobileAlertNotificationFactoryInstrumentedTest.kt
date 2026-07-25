@@ -1,5 +1,6 @@
 package com.magicitengineer.batterynotifierandroidmobileapp.platform.notification
 
+import android.app.Notification
 import android.app.NotificationManager
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -30,7 +31,7 @@ class AndroidMobileAlertNotificationFactoryInstrumentedTest {
         val notification = factory.create(event)
 
         assertEquals(AndroidMobileAlertNotificationFactory.CHANNEL_ID, notification.channelId)
-        assertTrue(notification.extras.getBoolean("android.localOnly"))
+        assertTrue(notification.flags and Notification.FLAG_LOCAL_ONLY != 0)
         assertEquals(
             context.getString(R.string.phone_battery_alert_title, 20),
             notification.extras.getString("android.title"),

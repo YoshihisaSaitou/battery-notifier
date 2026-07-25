@@ -15,11 +15,22 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 internal fun ownsInitialWearNotificationDelivery(path: String): Boolean =
     path == WearDataLayerContract.THRESHOLD_EVENT_PATH
+
+internal suspend fun <T> protectInitialWearNotificationDelivery(
+    path: String,
+    block: suspend () -> T,
+): T = if (ownsInitialWearNotificationDelivery(path)) {
+    withContext(NonCancellable) { block() }
+} else {
+    block()
+}
 
 class WearDataLayerListenerService : WearableListenerService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -54,14 +65,16 @@ class WearDataLayerListenerService : WearableListenerService() {
             val receivedAtEpochMillis = SystemEpochMillisClock.now()
             serviceScope.launch {
                 notificationRecovery.await()
-                val result = processor.process(path, values, receivedAtEpochMillis)
-                if (
-                    result is WearDataItemProcessingResult.Applied &&
-                    result.result.outcome == WearStateApplyOutcome.APPLIED
-                ) {
-                    surfaceUpdater.requestRefresh()
-                    if (ownsInitialWearNotificationDelivery(path)) {
-                        notificationDelivery.deliver(result.result.state)
+                protectInitialWearNotificationDelivery(path) {
+                    val result = processor.process(path, values, receivedAtEpochMillis)
+                    if (
+                        result is WearDataItemProcessingResult.Applied &&
+                        result.result.outcome == WearStateApplyOutcome.APPLIED
+                    ) {
+                        surfaceUpdater.requestRefresh()
+                        if (ownsInitialWearNotificationDelivery(path)) {
+                            notificationDelivery.deliver(result.result.state)
+                        }
                     }
                 }
             }

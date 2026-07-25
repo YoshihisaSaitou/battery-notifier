@@ -9,20 +9,22 @@ work_item:
     persistence, Wear reception, threshold notification event bridge, and the
     automated evidence required before independent review.
 
-status: "in_progress"
-current_phase: "implementation"
-current_role: "implementation"
+status: "in_test"
+current_phase: "test"
+current_role: "test"
 current_actor:
-  type: "agent"
-  id: "codex"
+  type: "unassigned"
+  id: null
 
 last_transition:
-  from_phase: "review"
-  to_phase: "implementation"
+  from_phase: "implementation"
+  to_phase: "test"
   reason: >-
-    Independent re-review confirmed 15 prior fixes but RV-002 remains High and
-    RV-017 adds a Medium timeline-age defect. The Review-to-Test gate failed;
-    implementation resumes with RV-002 as the first correction.
+    Implementation corrected only the three TST-001/TST-002 instrumented-test
+    assertions. The Android-test compilation passed and the equivalent
+    Pixel_9a API 36 connectedDebugAndroidTest gate completed 10/10 with zero
+    failures, errors, or skips. Production code was unchanged. Test resumes;
+    the historical failure-driven phase-return count remains 4 of 5.
 
 spec_refs:
   - "docs/product-requirements.md"
@@ -37,6 +39,7 @@ spec_refs:
   - "docs/test-plan-and-cases.md"
   - "docs/compatibility-matrix.md"
   - "docs/architecture-decision-records.md"
+  - "docs/permissions-and-privacy-specification.md"
 
 affected_components:
   - "BatteryNotifierAndroidMobileApp"
@@ -153,7 +156,7 @@ phases:
           - "docs/test-plan-and-cases.md"
 
   implementation:
-    status: "completed_pending_re_review"
+    status: "completed_test_fix"
     owner: "codex"
     tasks:
       - id: "IMP-001"
@@ -195,7 +198,7 @@ phases:
           - "FR-066"
       - id: "IMP-005"
         title: "Connect Wear persisted state to app, Tile, complication, and notification updates"
-        status: "done"
+        status: "done_pending_rv017_review"
         requirement_refs:
           - "FR-030"
           - "FR-031"
@@ -237,8 +240,8 @@ phases:
           - "FR-045"
 
   review:
-    status: "changes_requested"
-    owner: "/root/independent_review"
+    status: "completed_passed"
+    owner: "/root/independent_review_final"
     preparation:
       status: "fixes_ready_for_independent_reviewer"
       checklist: ".agents/work-items/bn-001-phone-to-watch-battery-sync/review-checklist.md"
@@ -249,19 +252,19 @@ phases:
     focus:
       - id: "REV-001"
         title: "Timestamp, expiry, clock-change, and freshness semantics"
-        status: "changes_requested_rv017"
+        status: "reviewed_passed_with_runtime_gate_remaining"
       - id: "REV-002"
         title: "Consecutive update races and atomic ordering"
-        status: "fixes_pending_verification"
+        status: "reviewed_passed"
       - id: "REV-003"
         title: "Disconnected and reconnected convergence"
-        status: "fixes_pending_verification"
+        status: "reviewed_passed_with_runtime_gate_remaining"
       - id: "REV-004"
         title: "DataItem paths, filters, package identity, and schema validation"
         status: "reviewed_passed_with_runtime_identity_gate_remaining"
       - id: "REV-005"
         title: "Android service, receiver, coroutine, and UI lifecycle behavior"
-        status: "changes_requested_rv002"
+        status: "reviewed_passed_with_runtime_gate_remaining"
     findings:
       - id: "RV-001"
         severity: "High"
@@ -286,7 +289,7 @@ phases:
           an unchanged single-attempt count. Targeted debug tests pass.
       - id: "RV-002"
         severity: "High"
-        status: "open"
+        status: "fixed"
         file: "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/application/notification/DeliverPendingWearNotification.kt"
         location: "deliver and retry; MainActivity.onStart; listener service cancellation"
         requirement_refs: ["FR-040", "FR-044", "NBR-001", "REV-005"]
@@ -309,6 +312,17 @@ phases:
           process, the resulting PENDING state is not recovered on foreground
           because retry accepts RESERVED_FAILED only. Existing tests cover
           gateway-thrown cancellation, not service cancellation at this boundary.
+        implementation_verification: >-
+          The threshold-event callback now protects persistence through initial
+          delivery as one finite NonCancellable section, and every post outcome
+          protects completion persistence. Targeted debug regression tests pass
+          for cancellation after event persistence and during completion write.
+        independent_verification: >-
+          Final re-review traced service cancellation from threshold-event
+          persistence through initial delivery and from gateway return through
+          completion persistence. Process death falls back to the next-process
+          recovery path, which rechecks expiry, future skew, and the three-attempt
+          cap. Fresh forced notification/repository tests pass 25/25.
       - id: "RV-003"
         severity: "High"
         status: "fixed"
@@ -556,26 +570,40 @@ phases:
           RESERVED_FAILED dispositions and sanitize each zero counter to one.
       - id: "RV-017"
         severity: "Medium"
-        status: "open"
-        file: "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/domain/presentation/WearDisplayTimeline.kt"
-        location: "WearDisplayTimelineMapper.map lines 36-45; Tile and complication timeline rendering"
+        status: "fixed_verified"
+        file: "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/complication/MainComplicationService.kt"
+        location: >-
+          MainComplicationService.buildDescription and
+          values/strings.xml phone_battery_stale_updated_age
         requirement_refs: ["WDS-001", "CPS-001", "AC-005"]
         scenario: >-
-          Receive a phone state, then view the Tile or complication after 6,
-          10, and 60 minutes without another DataItem.
+          Receive a phone state, leave it disconnected for more than five
+          minutes, and let TalkBack read the Stale SHORT_TEXT or RANGED_VALUE
+          complication at 6, 10, or 60 minutes.
         observed: >-
-          The cached Delayed state is calculated once at the two-minute boundary
-          and the Stale state once at five minutes. Tile relative age therefore
-          remains five minutes indefinitely; complication delayed text similarly
-          remains two minutes, and stale description omits the last-update time.
+          Dynamic age and timeline behavior are corrected, but the Stale
+          contentDescription is now "Phone battery ..., updated ^1 ago". The
+          separate visible title says data may be outdated, while the accessibility
+          content description no longer includes that Stale warning.
         required_outcome: >-
-          Use bounded minute timeline entries, a dynamic time representation, or
-          an absolute last-update value so displayed age remains truthful. Add
-          6-, 10-, and 60-minute Tile/complication regressions.
-        verification: null
+          Keep the verified dynamic last-update age and static Tile fallback,
+          while making the Stale complication content description include both
+          that the data may be outdated and the dynamic last-update time in
+          English and Japanese. Add an assertion on the returned Stale
+          ComplicationData description, not only returnsSameText.
+        verification: >-
+          Independent review verified that English and Japanese Stale-specific
+          surrounding text includes phone battery identity, the outdated-data
+          warning, and dynamic last-update age. MainComplicationDataTest
+          directly verifies returned SHORT_TEXT and RANGED_VALUE
+          contentDescription ownership and dynamic 6-to-10-minute change;
+          the separate age regression retains 6/10/60-minute coverage.
+          Independent forced targeted tests pass 11/11 and the forced Wear
+          full gate passes debug/release 52/52, lint 0 errors/28 warnings, and
+          Android-test compilation.
       - id: "RV-018"
         severity: "Low"
-        status: "open"
+        status: "fixed_verified"
         file: ".agents/work-items/bn-001-phone-to-watch-battery-sync/state.yaml"
         location: "spec_refs"
         requirement_refs: ["ADR-014", "PPS-001"]
@@ -585,10 +613,13 @@ phases:
           RV-014 and ADR-014 and changed in this candidate, but is absent from
           spec_refs, so future role handoffs do not automatically read it.
         required_outcome: "Add docs/permissions-and-privacy-specification.md to spec_refs."
-        verification: null
+        verification: >-
+          docs/permissions-and-privacy-specification.md is now a required
+          spec_ref for subsequent role handoffs. Final re-review read all 13
+          refs from the required-reading list and verified PPS-001 is present.
 
   test:
-    status: "pending"
+    status: "in_progress_environment_gated"
     owner: "unassigned"
     scenarios:
       - id: "TEST-001"
@@ -614,7 +645,7 @@ phases:
           - "TC-E014"
       - id: "TEST-004"
         title: "Smartphone restart and monitoring recovery"
-        status: "not_run"
+        status: "partial_blocked"
         test_refs:
           - "TC-E020"
           - "TC-E021"
@@ -664,7 +695,7 @@ phases:
           Wear emulator or device and adb lists no target.
       - id: "DATASTORE-INSTRUMENTED-001"
         title: "Real Mobile Proto DataStore persistence, concurrency, and corruption recovery"
-        status: "not_run"
+        status: "pass"
         compile_result: "pass"
         compile_command: >-
           From BatteryNotifierAndroidMobileApp: .\gradlew.bat
@@ -672,9 +703,103 @@ phases:
           '-Pkotlin.compiler.execution.strategy=in-process'
           compileDebugAndroidTestKotlin --no-daemon --offline
           --max-workers=1 --console=plain
-        reason: >-
-          No Android device or emulator was attached. Run the three compiled
-          cases with connectedDebugAndroidTest before the Test phase gate.
+        execution_command: >-
+          From BatteryNotifierAndroidMobileApp with Pixel_9a API 36 attached:
+          .\gradlew.bat connectedDebugAndroidTest --rerun-tasks --no-daemon
+          --max-workers=1 --console=plain
+          '-Pkotlin.compiler.execution.strategy=in-process'
+        evidence: >-
+          RealMobileDataStoreInstrumentedTest passed 3/3: real Proto
+          persistence, 30 concurrent exact Long sequence allocations, and
+          malformed-Proto corruption recovery.
+      - id: "MOBILE-INSTRUMENTED-GATE-001"
+        title: "Mobile connected debug Android-test gate"
+        status: "pass_verified_by_test"
+        environment: >-
+          Pixel_9a AVD, Android 16 / API 36,
+          google/sdk_gphone64_x86_64/emu64xa build
+          BE2A.250530.026.D1.
+        command: >-
+          From BatteryNotifierAndroidMobileApp:
+          .\gradlew.bat connectedDebugAndroidTest --rerun-tasks --no-daemon
+          --max-workers=1 --console=plain
+          '-Pkotlin.compiler.execution.strategy=in-process'
+        totals: "Pass 10, Fail 0, Error 0, Skipped 0"
+        evidence: >-
+          BatteryNotifierAndroidMobileApp/app/build/outputs/androidTest-results/connected/debug/TEST-Pixel_9a(AVD) - 16-_app-.xml
+        previous_failures:
+          - "TST-001: ExampleInstrumentedTest expects the pre-DEC-001 package instead of com.magicitengineer.batterynotifier."
+          - "TST-002: Two notification factory tests read android.localOnly from extras; API 36 dumpsys verifies the production notifications carry LOCAL_ONLY."
+        verification: >-
+          Implementation passed the gate in 9m 47s. Test actor codex then
+          independently reran connectedDebugAndroidTest --rerun-tasks on the
+          same Pixel_9a Android 16/API 36 target. BUILD SUCCESSFUL in 3m 43s;
+          fresh JUnit XML reports tests=10, failures=0, errors=0, skipped=0,
+          suite time=5.823s.
+      - id: "MOBILE-PERMISSION-RUNTIME-001"
+        title: "Mobile API 36 notification permission UX"
+        status: "pass"
+        totals: "Pass 5, Fail 0, Blocked 0"
+        evidence: >-
+          No prompt appeared on cold launch. The prompt appeared only after the
+          explicit Allow notifications action. Dismiss and deny both produced
+          a one-shot denied state and Open notification settings route.
+          Grant produced POST_NOTIFICATIONS granted=true and the allowed UI.
+          With permission denied, monitoring and the foreground service
+          continued.
+      - id: "MOBILE-FGS-RUNTIME-001"
+        title: "Mobile specialUse foreground-service and recovery runtime"
+        status: "partial_blocked"
+        totals: "Pass 4, Fail 0, Blocked 1"
+        evidence: >-
+          Start and UI Stop passed. dumpsys verified isForeground=true,
+          foregroundId=10001, types=0x40000000, monitoring_status, ongoing,
+          foreground-service, local-only, silent flags, and exactly one action.
+          An adb install -r update passed and MY_PACKAGE_REPLACED restored the
+          same foreground service while monitoring remained enabled.
+        blocked: >-
+          Full reboot recovery is not decided. A second cold reboot left the
+          Pixel_9a AVD adb-visible but with sys.boot_completed empty and
+          Activity/Notification system services unavailable until the bounded
+          poll timed out. This is an emulator environment failure, not a
+          corrective implementation failure.
+    defects:
+      - id: "TST-001"
+        severity: "Low"
+        owner: "implementation"
+        status: "fixed_verified"
+        file: "BatteryNotifierAndroidMobileApp/app/src/androidTest/java/com/magicitengineer/batterynotifierandroidmobileapp/ExampleInstrumentedTest.kt"
+        observed: >-
+          useAppContext expects
+          com.magicitengineer.batterynotifierandroidmobileapp, but DEC-001
+          approved and the installed app reports
+          com.magicitengineer.batterynotifier.
+        required_outcome: >-
+          Update only the test expectation to the approved application ID and
+          rerun the complete Mobile connectedDebugAndroidTest gate.
+        verification: >-
+          ExampleInstrumentedTest now expects
+          com.magicitengineer.batterynotifier and independently passed under
+          Test on Pixel_9a API 36.
+      - id: "TST-002"
+        severity: "Medium"
+        owner: "implementation"
+        status: "fixed_verified"
+        files:
+          - "BatteryNotifierAndroidMobileApp/app/src/androidTest/java/com/magicitengineer/batterynotifierandroidmobileapp/platform/notification/AndroidMobileAlertNotificationFactoryInstrumentedTest.kt"
+          - "BatteryNotifierAndroidMobileApp/app/src/androidTest/java/com/magicitengineer/batterynotifierandroidmobileapp/platform/notification/AndroidMonitoringNotificationFactoryInstrumentedTest.kt"
+        observed: >-
+          Both tests assert notification.extras["android.localOnly"], which is
+          false on API 36 even though both production factories call
+          setLocalOnly(true) and dumpsys shows the LOCAL_ONLY notification flag.
+        required_outcome: >-
+          Observe the public Notification.FLAG_LOCAL_ONLY bit or an equivalent
+          stable API without changing production notification behavior, then
+          rerun the complete Mobile connectedDebugAndroidTest gate.
+        verification: >-
+          Both tests now assert Notification.FLAG_LOCAL_ONLY. Both passed on
+          the independent Test rerun on Pixel_9a API 36; production
+          notification factories were unchanged.
 
   human_verification:
     status: "pending"
@@ -799,12 +924,51 @@ blockers: []
 loop_control:
   same_cause_failure_limit: 3
   phase_return_limit: 5
-  current_failure_signature: >-
-    RV-002 Wear notification can remain PENDING after same-process service
-    cancellation outside the gateway cancellation catch.
-  consecutive_same_cause_failures: 1
-  total_phase_returns: 2
+  current_failure_signature: null
+  consecutive_same_cause_failures: 0
+  total_phase_returns: 4
   attempts:
+    - attempt: 1
+      occurred_at: "2026-07-24T05:27:02+09:00"
+      phase: "implementation"
+      role: "implementation"
+      command: >-
+        From BatteryNotifierAndroidWearApp: gradlew.bat testDebugUnitTest
+        --tests '*MainComplicationDataTest' --rerun-tasks.
+      failure_signature: >-
+        MainComplicationDataTest called ComplicationText.toString(), which
+        reached android.util.Log.isLoggable in the local JVM Android stub.
+      root_cause_hypothesis: >-
+        The regression observed the returned content description through an
+        Android-dependent diagnostic toString path rather than its public
+        ComplicationText identity and time-dependence contract.
+      corrective_change: >-
+        Assert that both returned complication types retain the exact
+        Stale-specific dynamic ComplicationText, then verify its dynamic age
+        through returnsSameText without invoking Android framework stubs.
+      result: >-
+        pass; the rerun completed 4/4 with zero failures, and the subsequent
+        full Wear debug/release/lint/Android-test compilation gate passed.
+    - attempt: 1
+      occurred_at: "2026-07-23T06:40:58+09:00"
+      phase: "review"
+      role: "review"
+      command: >-
+        Independent final code/spec review of RV-017 plus fresh forced Wear
+        targeted and full debug/release/lint/Android-test compilation checks.
+      failure_signature: >-
+        Stale complication dynamic contentDescription reports last-update age
+        but does not state that the data may be outdated.
+      root_cause_hypothesis: >-
+        Replacing the static Stale description with phone_battery_updated_age
+        fixed the missing age but moved stale_data only to the visible title;
+        accessibility contentDescription lost the Stale warning.
+      corrective_change: >-
+        Implementation introduced receivedAt-based TimeDifferenceComplicationText
+        and Tile dynamic expressions with an absolute-time fallback.
+      result: >-
+        fail; dynamic age is verified, but CPS-001 requires both the outdated
+        warning and last-update time in the Stale content description.
     - attempt: 1
       occurred_at: "2026-07-22T21:41:11+09:00"
       phase: "review"
@@ -908,16 +1072,60 @@ loop_control:
   termination_reason: null
   resume_condition: null
 
-progress_reporting:
+  progress_reporting:
   format_version: 1
   current:
-    reported_at: "2026-07-22T21:41:11+09:00"
+    reported_at: "2026-07-24T12:33:21+09:00"
     work_item_id: "BN-001"
-    role: "implementation"
-    phase: "implementation"
-    actor: "codex"
-    status: "in_progress"
+    role: "test"
+    phase: "test"
+    actor: "unassigned"
+    status: "in_test"
     completed:
+      - "Test independently reran Mobile connectedDebugAndroidTest --rerun-tasks on Pixel_9a Android 16/API 36: BUILD SUCCESSFUL in 3m 43s."
+      - "Fresh Test-owned JUnit XML reports 10/10 pass, 0 failures, 0 errors, 0 skipped, suite time 5.823s."
+      - "TST-001 is fixed_verified: the approved application ID assertion passes."
+      - "TST-002 is fixed_verified: both Notification.FLAG_LOCAL_ONLY assertions pass."
+      - "TST-001 fixed: ExampleInstrumentedTest expects the approved com.magicitengineer.batterynotifier application ID."
+      - "TST-002 fixed: both notification factory tests observe Notification.FLAG_LOCAL_ONLY instead of the API 36-incompatible extras key."
+      - "Production Mobile code was unchanged; the correction is limited to three instrumented-test files."
+      - "Mobile compileDebugAndroidTestKotlin --rerun-tasks passed BUILD SUCCESSFUL in 4m 7s."
+      - "Mobile connectedDebugAndroidTest --rerun-tasks passed BUILD SUCCESSFUL in 9m 47s on Pixel_9a Android 16/API 36."
+      - "Fresh connected JUnit XML reports 10/10 pass with zero failures, errors, or skips; the previous 7/3 gate is superseded."
+      - "Test execution completed on Pixel_9a Android 16/API 36 and returned the gate to Implementation with phase return 4/5."
+      - "RealMobileDataStoreInstrumentedTest passed 3/3 and AndroidBatteryChangedIntentMapperInstrumentedTest passed 4/4."
+      - "Mobile notification permission cold-launch, explicit request, dismiss, deny, allow, and denied-monitoring-continuation runtime checks passed."
+      - "specialUse FGS start/UI stop, ongoing local-only notification with one action, and MY_PACKAGE_REPLACED recovery passed."
+      - "Mobile connectedDebugAndroidTest completed 7 pass / 3 fail; TST-001 and TST-002 identify test-only expectation defects."
+      - "Wear DataStore/runtime, paired sync, complication rendering/TalkBack, and required Pixel hardware cases remain not_run because no Wear target or required hardware is available."
+      - "Full reboot recovery remains blocked by a Pixel_9a AVD boot hang with sys.boot_completed empty and Activity/Notification services unavailable."
+      - "Test actor codex assigned to HEAD ea000cfd5b8f854f80c8858c29b5b91e388ab8b6 with common application ID, Mobile versionCode 2, Wear versionCode 3, and the preserved 11-path candidate."
+      - "Environment discovery found no attached adb target and one available Mobile AVD named Pixel_9a; no Wear AVD is installed."
+      - "Independent RV-017 re-review passed with Critical 0, High 0, Medium 0, Low 0 open findings; all 18 review findings are fixed_verified."
+      - "RV-017 semantic inspection confirms phone identity, outdated-data warning, and dynamic last-update age in both English and Japanese Stale complication descriptions."
+      - "Returned SHORT_TEXT and RANGED_VALUE content descriptions retain the Stale-specific dynamic ComplicationText; 6/10/60-minute age behavior remains covered."
+      - "Independent forced targeted tests pass 11/11 and the forced Wear full gate passes debug/release 52/52, lint 0 errors/28 warnings, and Android-test Kotlin compilation."
+      - "Review-to-Test gate passed; Test is ready but no test actor is assigned."
+      - "RV-017 implementation correction is complete: Stale complication descriptions now include the phone battery, outdated-data warning, and dynamic last-update age in English and Japanese."
+      - "Returned Stale SHORT_TEXT and RANGED_VALUE regressions directly retain the Stale-specific dynamic ComplicationText and verify its 6-to-10-minute change."
+      - "RV-017 targeted MainComplicationDataTest passes 4/4 after replacing an Android-stub-dependent toString assertion."
+      - "Wear full forced gate passes: debug/release 52/52 each, lint 0 errors/28 warnings, and Android-test Kotlin compilation pass."
+      - "Implementation exit diff check passes; RV-017 is fixed_pending_review and handed to an independent reviewer."
+      - "Independent final re-review completed: RV-002 High and RV-018 Low are verified fixed; RV-017 remains Medium and blocks Test handoff pending correction."
+      - "Wear forced full gate passes: debug/release 51/51 each, lint 0 errors/28 warnings, and Android-test Kotlin compilation pass."
+      - "Wear forced targeted evidence passes 35/35 across notification delivery, repository recovery/retry, display timeline, and complication data."
+      - "Mobile unchanged-candidate full command passes: debug/release XML 78/78 each, lint 0 errors/20 warnings, and Android-test Kotlin compilation pass."
+      - "Preflight passes 10/4/0, git diff --check passes, common application ID and even/odd version codes match, and both debug variants use the same certificate."
+      - "No adb target is attached; instrumented, Tile/complication runtime, cancellation runtime, and required real-device scenarios remain not_run."
+      - "Implementation-to-review handoff is complete for RV-002, RV-017, and RV-018; an independent actor different from codex is not yet assigned."
+      - "Mobile unchanged-candidate full gate passes: debug/release 78/78 each, lint 0 errors/20 warnings, and Android-test Kotlin compilation pass."
+      - "Final preflight passes 10 checks with 4 expected warnings and 0 failures; state YAML parses with 13 spec_refs and 18 findings."
+      - "Wear affected-project gate passes after RV-002/RV-017: debug and release each 51/51, lint 0 errors/28 warnings, Android-test Kotlin compilation pass."
+      - "RV-017 implementation correction removes cached relative minutes and uses dynamic receivedAt-based age on Tile and complication system surfaces."
+      - "RV-017 targeted debug suites pass: WearDisplayStateMapperTest 7/7 and MainComplicationDataTest 3/3, including 6-, 10-, and 60-minute regressions."
+      - "RV-002 implementation correction protects threshold-event persistence through initial delivery and protects post-result completion persistence from service cancellation."
+      - "RV-002 targeted debug suite passes, including cancellation immediately after event persistence and during the suspending completion write."
+      - "RV-018 is fixed by adding docs/permissions-and-privacy-specification.md to spec_refs."
       - "Independent re-review gate failed: Critical 0, High open 1 (RV-002), Medium open 1 (RV-017), and Low open 1 (RV-018)."
       - "RV-001, RV-003 through RV-016 are fixed in code; RV-004/006/008/009/010/012/014 retain explicit runtime Test evidence requirements."
       - "Independent full Gradle commands for both apps completed BUILD SUCCESSFUL, including lint and Android-test Kotlin compilation."
@@ -963,15 +1171,66 @@ progress_reporting:
       - "IMP-005/IMP-007 Mobile and Wear POST_NOTIFICATIONS declaration, Proto-backed one-shot request history, user-initiated request, denial/dismiss settings routing, localization, and API 32/33 boundary behavior."
       - "Role-aware progress reporting rules added to the operating documentation."
     in_progress:
-      - "No production correction is active; independent review handed RV-002, RV-017, and RV-018 back to implementation."
+      - "Test actor is unassigned; remaining Wear, paired-sync, system-rendering, channel-combination, reboot-recovery, and required-hardware scenarios are environment-gated."
     next:
-      - "Fix RV-002 first by protecting every post-to-completion cancellation boundary and add service-cancellation regressions."
-      - "Fix RV-017 timeline age progression and add 6-, 10-, and 60-minute surface regressions."
-      - "Fix RV-018 by adding PPS-001 to spec_refs, then return all three findings to the independent reviewer."
-      - "Run Mobile/Wear notification permission allow, deny, dismiss, and channel-disabled combinations on attached API 33+ targets."
-      - "Run Mobile FGS, stop-action, callback, reboot, and package-update recovery cases on an attached emulator or device."
+      - "Assign a Test actor and verify TST-001/TST-002 against the fresh 10/10 Pixel_9a API 36 evidence."
+      - "Record Wear DataStore, Stale complication rendering/TalkBack, paired sync, and Pixel Watch cases as not_run unless a Wear target becomes available."
+      - "Repeat full reboot recovery on a healthy AVD or device; the current Pixel_9a AVD failed to finish boot."
       - "Prepare the Play Console FGS declaration, explanation, demo video, and policy confirmation before publication."
     checks:
+      - "Final SnakeYAML 2.0 parse passed: in_test|test|test|unassigned, Test in_progress_environment_gated, phase returns 4."
+      - "Final git diff --check passed; AVD shutdown completed and adb lists no target."
+      - "Independent Test rerun: Mobile connectedDebugAndroidTest PASS, 10/10, BUILD SUCCESSFUL in 3m 43s on Pixel_9a API 36."
+      - "Independent fresh XML: failures=0, errors=0, skipped=0, time=5.823s; TST-001 and both TST-002 cases pass."
+      - "Final SnakeYAML 2.0 parse passed: in_test|test|test|unassigned, Test ready_for_retest, phase returns 4."
+      - "Final candidate git diff --check passed; AVD stopped and adb lists no target."
+      - "Implementation fix verification: Mobile connectedDebugAndroidTest PASS, 10 tests / 0 failures / 0 errors / 0 skipped, BUILD SUCCESSFUL in 9m 47s."
+      - "Implementation compile check: Mobile compileDebugAndroidTestKotlin --rerun-tasks PASS, BUILD SUCCESSFUL in 4m 7s."
+      - "Fresh XML: TEST-Pixel_9a(AVD) - 16-_app-.xml reports 10/10 and time=6.685s."
+      - "git diff --check passes for the current candidate."
+      - "Final SnakeYAML 2.0 parse passed: in_progress|implementation|implementation|unassigned, Test failed_returned, phase returns 4."
+      - "Final git diff --check passed; the temporary validator and test-generated Kotlin session deletion were cleaned up."
+      - "Mobile connectedDebugAndroidTest: FAIL, 7 pass / 3 fail / 0 error / 0 skipped in TEST-Pixel_9a(AVD) - 16-_app-.xml."
+      - "Real Mobile Proto DataStore: PASS 3/3, including real persistence, 30 concurrent Long allocations, and corruption recovery."
+      - "Mobile battery Intent mapper: PASS 4/4."
+      - "Mobile API 36 notification permission UX: PASS 5, FAIL 0, BLOCKED 0."
+      - "Mobile specialUse FGS runtime: PASS 4, FAIL 0, BLOCKED 1; reboot is environment-blocked while package-update recovery passes."
+      - "Final SnakeYAML 2.0 validation passed: in_test|test|test|unassigned, review completed_passed, Test ready_for_execution, 13 refs, 18 findings, 0 open, phase returns 3."
+      - "Independent RV-017 full Wear forced gate passed BUILD SUCCESSFUL in 10m 11s with 85 tasks executed; debug/release 52/52, zero failures/errors/skips, lint 0 errors/28 warnings, and Android-test Kotlin compilation pass."
+      - "Independent adb devices -l listed no attached target; runtime instrumented, system-rendered complication, and real-device scenarios remain not_run."
+      - "Post-Gradle and post-handoff candidate inventory remains the frozen 11 paths and git diff --check passes."
+      - "Active independent RV-017 targeted forced rerun passed BUILD SUCCESSFUL in 4m 16s: MainComplicationDataTest 4/4 and WearDisplayStateMapperTest 7/7, zero failures/errors/skips."
+      - "Active independent pre-target git diff --check passed with no whitespace errors."
+      - "Active independent RV-017 re-review preflight: approved Android Studio JBR rerun passed 10 checks with 4 expected warnings and 0 failures; the sandbox-only first Java probe was access denied."
+      - "Final SnakeYAML 2.0 parse passed: in_review|review|review|unassigned, 13 spec_refs, 18 findings, phase returns 3."
+      - "Final environment preflight after temporary-validator cleanup passed 11 checks with 3 expected warnings and 0 failures; worktree inventory is 11 paths."
+      - "adb devices -l listed no attached target; runtime instrumented and real-device cases remain not_run."
+      - "RV-017 targeted rerun passed: MainComplicationDataTest 4/4, zero failures/errors/skips."
+      - "Wear full forced command test lint compileDebugAndroidTestKotlin --rerun-tasks passed BUILD SUCCESSFUL in 4m 23s."
+      - "Fresh Wear XML: debug 52/52 and release 52/52, zero failures/errors/skips; lint 0 errors/28 warnings; Android-test Kotlin compilation pass."
+      - "The first regression assertion failed because ComplicationText.toString reached unmocked android.util.Log.isLoggable; assertSame plus returnsSameText removed the JVM-stub dependency and passed."
+      - "Post-implementation git diff --check passed."
+      - "Final SnakeYAML 2.0 parse passed: in_progress|implementation|implementation|codex, 13 spec_refs, 18 findings, phase returns 3."
+      - "Final git diff --check passed; the command-generated tracked empty Kotlin session marker was restored and the candidate returned to the same 11 paths."
+      - "Independent Wear forced targeted command passed BUILD SUCCESSFUL in 3m 18s; Deliver 12/12, repository 13/13, display 7/7, complication 3/3."
+      - "Independent Wear forced full command passed BUILD SUCCESSFUL in 9m 12s; debug/release 51/51 each, lint 0 errors/28 warnings, Android-test Kotlin compilation pass."
+      - "Independent Mobile unchanged-candidate full command passed BUILD SUCCESSFUL in 55s; XML debug/release 78/78 each, lint 0 errors/20 warnings, Android-test Kotlin compilation pass."
+      - "Independent signingReport: Mobile/Wear debug use the same debug certificate; both local release configurations are null and Play App Signing remains an external release gate."
+      - "adb devices -l listed no target; all runtime instrumented and real-device cases remain not_run."
+      - "Independent final re-review preflight passed with 10 passes, 4 expected warnings, and 0 failures after an approved Android Studio JBR probe; the sandbox-only first probe reported Java access denied."
+      - "Independent final re-review git diff --check passed and the 11 candidate paths remained unchanged apart from review-state metadata."
+      - "Final post-handoff git diff --check passes; temporary validation file is absent and 11 intended paths remain modified."
+      - "Final SnakeYAML parse pass after handoff: status=in_review, phase=review, role=review, actor=unassigned, spec_refs=13, findings=18, phase_returns=2."
+      - "Mobile full command test lint compileDebugAndroidTestKotlin passed BUILD SUCCESSFUL in 1m 42s; unit tasks were unchanged-candidate UP-TO-DATE and XML remains debug/release 78/78."
+      - "Mobile lint remains 0 errors/20 warnings; Android-test Kotlin compilation pass."
+      - "Final preflight: 10 pass, 4 expected warnings, 0 fail. adb devices -l: no attached target."
+      - "SnakeYAML parse pass: status=in_progress before handoff, phase=implementation, role=implementation, spec_refs=13, findings=18, phase_returns=2."
+      - "Wear full command test lint compileDebugAndroidTestKotlin passed BUILD SUCCESSFUL in 5m 22s."
+      - "Fresh Wear XML: debug 51/51 and release 51/51, zero failures/errors/skips; lint 0 errors/28 warnings; Android-test Kotlin compilation pass."
+      - "Wear RV-017 targeted command passed: filtered WearDisplayStateMapperTest and MainComplicationDataTest completed BUILD SUCCESSFUL in 4m 15s."
+      - "Fresh RV-017 XML: WearDisplayStateMapperTest 7/7 and MainComplicationDataTest 3/3, zero failures/errors/skips."
+      - "Git diff --check passes after RV-002/RV-017/RV-018 corrections."
+      - "Wear RV-002 targeted command passed: testDebugUnitTest --tests '*DeliverPendingWearNotificationTest' completed BUILD SUCCESSFUL in 1m 22s."
       - "Independent Mobile full command BUILD SUCCESSFUL in 1m 52s; unit tasks were UP-TO-DATE, lint gate passed, and compileDebugAndroidTestKotlin passed."
       - "Independent Wear full command BUILD SUCCESSFUL in 2m 51s; unit tasks were UP-TO-DATE, lint gate passed, and compileDebugAndroidTestKotlin passed."
       - "Fresh Mobile forced debug XML: 78 tests, 0 failures/errors/skips. The combined forced debug/release command did not complete and command-owned Java processes were stopped; release freshness was not claimed."
@@ -1013,10 +1272,177 @@ progress_reporting:
       - "Environment preflight passes with 10 passes, 4 expected warnings, and 0 failures; the application-ID check passes."
       - "Final git diff --check passes."
     blockers:
-      - "Open High RV-002 blocks Review-to-Test handoff."
-      - "Open Medium RV-017 requires correction or explicit disposition before Test handoff."
-      - "No emulator or device is attached for instrumented execution."
+      - "No Wear emulator/device or required Pixel 10 Pro Fold / Pixel Watch 4 hardware is attached."
+      - "The Pixel_9a AVD did not complete the final reboot, so BOOT_COMPLETED recovery remains blocked rather than failed."
   history:
+    - reported_at: "2026-07-24T12:31:43+09:00"
+      role: "test"
+      phase: "test"
+      actor: "codex"
+      event: "tst001_tst002_retest_passed"
+      summary: >-
+        Test independently reran the complete Mobile connected Android-test
+        gate on Pixel_9a Android 16/API 36. BUILD SUCCESSFUL in 3m 43s and fresh
+        XML reports 10/10 with zero failures/errors/skips. TST-001 and TST-002
+        are fixed_verified; no product or test failure remains. Test cannot
+        advance to Human while Wear, paired, reboot-recovery, and required
+        hardware cases remain environment-gated. Phase returns stay 4/5.
+    - reported_at: "2026-07-24T12:25:45+09:00"
+      role: "test"
+      phase: "test"
+      actor: "codex"
+      event: "tst001_tst002_retest_started"
+      summary: >-
+        Assigned Test actor codex to candidate HEAD ea000cfd plus the preserved
+        worktree changes. The first action is an independent Pixel_9a API 36
+        connectedDebugAndroidTest rerun for TST-001/TST-002; no production
+        changes are authorized.
+    - reported_at: "2026-07-24T08:35:32+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "test_findings_fixed_handoff_to_test"
+      summary: >-
+        Fixed TST-001 and TST-002 in three Mobile instrumented-test files only:
+        the approved application ID is now expected and local-only is observed
+        through Notification.FLAG_LOCAL_ONLY. Android-test compilation passed
+        in 4m 7s and the equivalent Pixel_9a API 36 connected gate passed
+        10/10 in 9m 47s with zero failures/errors/skips. Production code was
+        unchanged. Test resumes unassigned; phase returns remain 4/5.
+    - reported_at: "2026-07-24T08:16:14+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "test_finding_implementation_started"
+      summary: >-
+        Assigned Implementation actor codex for TST-001/TST-002 after reading
+        the implementation role, all 13 spec_refs, the test handoff, and the
+        three failing instrumented tests. The correction is limited to the
+        approved application-ID expectation and the stable
+        Notification.FLAG_LOCAL_ONLY observation; production code is excluded.
+    - reported_at: "2026-07-24T07:46:19+09:00"
+      role: "test"
+      phase: "test"
+      actor: "codex"
+      event: "test_gate_failed_returned_to_implementation"
+      summary: >-
+        Pixel_9a API 36 execution passed Mobile real DataStore 3/3, battery
+        Intent mapping 4/4, notification permission UX, specialUse FGS
+        start/stop, and package-update recovery. The complete Mobile
+        connectedDebugAndroidTest gate failed 3/10 because one test expects
+        the pre-DEC-001 package and two tests inspect local-only through
+        Notification.extras despite the verified LOCAL_ONLY flag. Test made no
+        production or test-code correction and returned TST-001/TST-002 to an
+        unassigned Implementation actor as phase return 4/5. Wear and required
+        hardware scenarios remain not_run; full reboot recovery is blocked by
+        an AVD boot hang.
+    - reported_at: "2026-07-24T07:07:53+09:00"
+      role: "test"
+      phase: "test"
+      actor: "codex"
+      event: "test_execution_started"
+      summary: >-
+        Assigned Test actor codex to candidate HEAD ea000cfd with common
+        application ID and Mobile/Wear versionCodes 2/3. No adb target was
+        attached. Pixel_9a is the only installed AVD and there is no Wear AVD,
+        so Mobile instrumented/runtime checks will run while paired-Wear and
+        required hardware scenarios remain environment-gated.
+    - reported_at: "2026-07-24T06:13:39+09:00"
+      role: "review"
+      phase: "review"
+      actor: "/root/independent_review_final"
+      event: "independent_rv017_re_review_passed_handoff_to_test"
+      summary: >-
+        Verified RV-017 by semantic code/resource inspection and fresh forced
+        checks. Stale SHORT_TEXT and RANGED_VALUE content descriptions identify
+        the phone, warn that data may be outdated, and preserve dynamic age in
+        English and Japanese. Open findings are C0/H0/M0/L0; Review-to-Test
+        passed. Test remains unassigned and attached-target runtime evidence is
+        not_run without an adb target.
+    - reported_at: "2026-07-24T05:54:31+09:00"
+      role: "review"
+      phase: "review"
+      actor: "/root/independent_review_final"
+      event: "independent_rv017_re_review_started"
+      summary: >-
+        Assigned an independent reviewer different from implementation actor
+        codex. Froze candidate HEAD
+        ea000cfd5b8f854f80c8858c29b5b91e388ab8b6 and the 11-path dirty
+        worktree, then started semantic review of the Stale complication
+        accessibility correction. Production and test code remain unchanged
+        by the reviewer.
+    - reported_at: "2026-07-24T05:36:24+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "rv017_fixed_and_handed_to_independent_review"
+      summary: >-
+        Added English/Japanese Stale-specific dynamic complication descriptions
+        containing both the outdated-data warning and last-update age. Added
+        direct returned SHORT_TEXT/RANGED_VALUE regression coverage. Targeted
+        4/4 and full Wear debug/release 52/52, lint, and Android-test compilation
+        pass. Handoff is review/unassigned; total phase returns remains 3/5.
+    - reported_at: "2026-07-23T06:40:58+09:00"
+      role: "review"
+      phase: "review"
+      actor: "/root/independent_review_final"
+      event: "independent_final_re_review_changes_requested"
+      summary: >-
+        Verified RV-002 and RV-018 with code-path and fresh automated evidence.
+        RV-017 dynamic 6/10/60-minute behavior, Tile fallback, timeline, and API
+        compilation pass, but Stale complication contentDescription omits the
+        CPS-001 outdated-data warning. Review-to-Test failed and returned to
+        implementation; total failure-driven phase returns are now 3/5.
+    - reported_at: "2026-07-23T06:15:20+09:00"
+      role: "review"
+      phase: "review"
+      actor: "/root/independent_review_final"
+      event: "independent_final_re_review_started"
+      summary: >-
+        Assigned an independent actor different from implementation actor
+        codex. Read AGENTS.md, the complete active state, review rules and
+        checklist, all 13 spec_refs, and the complete 11-path candidate diff.
+        Candidate HEAD is ea000cfd5b8f854f80c8858c29b5b91e388ab8b6;
+        RV-002, RV-017, RV-018 and full regression evidence are under review.
+    - reported_at: "2026-07-23T05:51:33+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "implementation_to_independent_re_review_handoff"
+      summary: >-
+        RV-002, RV-017, and RV-018 corrections are implementation-complete.
+        Wear debug/release each pass 51 tests, Mobile each pass 78; both lint
+        gates have zero errors and Android-test compilation passes. Preflight
+        and state parsing pass. Review is ready but no independent actor is active.
+    - reported_at: "2026-07-23T05:41:58+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "wear_review_fix_exit_gate_passed"
+      summary: >-
+        The complete Wear gate passes after RV-002 and RV-017: debug and
+        release each run 51 tests with zero failures/errors/skips, lint has
+        zero errors and 28 warnings, and Android-test Kotlin compilation passes.
+    - reported_at: "2026-07-23T05:35:32+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "rv017_dynamic_surface_age_fixed"
+      summary: >-
+        Removed fixed cached age from system-surface timelines. Tile now uses
+        platform-time dynamic minutes with an absolute-time fallback, while
+        complication text counts up from receivedAt. The 6-, 10-, and
+        60-minute regressions pass 10/10 across the two targeted suites.
+    - reported_at: "2026-07-23T05:26:23+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "rv002_cancellation_windows_fixed"
+      summary: >-
+        Protected threshold-event persistence through initial notification
+        delivery and made every post-to-completion write NonCancellable. Added
+        service-cancellation regressions at both review-identified boundaries;
+        the targeted Wear debug suite passes. RV-018 spec_refs tracking is also fixed.
     - reported_at: "2026-07-22T21:41:11+09:00"
       role: "review"
       phase: "review"
@@ -1444,6 +1870,84 @@ risks:
 
 evidence:
   independent_review:
+    - reviewed_at: "2026-07-24T06:13:39+09:00"
+      actor: "/root/independent_review_final"
+      candidate_base_head: "ea000cfd5b8f854f80c8858c29b5b91e388ab8b6"
+      candidate_scope: >-
+        Independent RV-017 final re-review of all 13 spec_refs, the frozen
+        11-path candidate, the Stale complication production/resource/test
+        changes, and fresh targeted/full Wear evidence.
+      independence: "review actor differs from implementation actor codex"
+      result: "passed"
+      finding_totals:
+        critical_open: 0
+        high_open: 0
+        medium_open: 0
+        low_open: 0
+        fixed_verified: 18
+      candidate_paths:
+        - ".agents/work-items/bn-001-phone-to-watch-battery-sync/state.yaml"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/application/notification/DeliverPendingWearNotification.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/complication/MainComplicationService.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/wearable/WearDataLayerListenerService.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/domain/presentation/WearDisplayTimeline.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/tile/MainTileService.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/main/res/values-ja/strings.xml"
+        - "BatteryNotifierAndroidWearApp/app/src/main/res/values/strings.xml"
+        - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/application/notification/DeliverPendingWearNotificationTest.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/complication/MainComplicationDataTest.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/domain/presentation/WearDisplayStateMapperTest.kt"
+      checks:
+        - "Environment preflight passed 10 checks with 4 expected warnings and 0 failures after the approved Android Studio JBR rerun."
+        - "git diff --check passed; candidate remained the frozen 11 paths after Gradle execution."
+        - "Forced targeted debug passed 11/11: MainComplicationDataTest 4/4 and WearDisplayStateMapperTest 7/7."
+        - "Forced full Wear gate passed in 10m 11s: debug/release 52/52 each, lint 0 errors/28 warnings, and Android-test Kotlin compilation."
+        - "adb devices -l listed no target; runtime system rendering, TalkBack, instrumented, and real-device cases remain not_run."
+      gate: >-
+        Pass. RV-017 is fixed_verified and no Critical, High, Medium, or Low
+        findings remain open. Advance to Test; attached-target runtime evidence
+        remains required and is not implied by this review.
+    - reviewed_at: "2026-07-23T06:15:20+09:00"
+      actor: "/root/independent_review_final"
+      candidate_base_head: "ea000cfd5b8f854f80c8858c29b5b91e388ab8b6"
+      candidate_scope: >-
+        Independent final fix verification of RV-002, RV-017, and RV-018,
+        including all 13 spec_refs, the complete 11-path dirty worktree,
+        related runtime sources/tests, and the unchanged Mobile regression gate.
+      independence: "review actor differs from implementation actor codex"
+      result: "changes_requested"
+      finding_totals:
+        critical_open: 0
+        high_open: 0
+        medium_open: 1
+        low_open: 0
+        fixed_verified: 17
+      candidate_paths:
+        - ".agents/work-items/bn-001-phone-to-watch-battery-sync/state.yaml"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/application/notification/DeliverPendingWearNotification.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/complication/MainComplicationService.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/wearable/WearDataLayerListenerService.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/domain/presentation/WearDisplayTimeline.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/tile/MainTileService.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/main/res/values-ja/strings.xml"
+        - "BatteryNotifierAndroidWearApp/app/src/main/res/values/strings.xml"
+        - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/application/notification/DeliverPendingWearNotificationTest.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/complication/MainComplicationDataTest.kt"
+        - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/domain/presentation/WearDisplayStateMapperTest.kt"
+      checks:
+        - "Environment preflight: pass=10, warn=4, fail=0 after approved Android Studio JBR probe; sandbox-only first Java probe was access denied."
+        - "git diff --check: pass; candidate inventory remains 11 paths including review-state metadata."
+        - "Wear forced targeted debug: 35/35 pass across DeliverPendingWearNotificationTest, ProtoWearStateRepositoryTest, WearDisplayStateMapperTest, and MainComplicationDataTest."
+        - "Wear forced full gate: BUILD SUCCESSFUL in 9m 12s; debug/release 51/51 each, lint 0 errors/28 warnings, Android-test compilation pass."
+        - "Mobile unchanged-candidate full gate: BUILD SUCCESSFUL in 55s; debug/release XML 78/78 each, lint 0 errors/20 warnings, Android-test compilation pass."
+        - "Mobile/Wear signingReport: debug variants share one certificate; local release configs are null, so Play App Signing equality remains an external gate."
+        - "Data Layer application ID/path/version checks pass: common application ID, Mobile even versionCode 2, Wear odd versionCode 3, and exact fixed v1 paths."
+        - "adb devices -l: no target; runtime instrumented and real-device scenarios remain not_run."
+        - "Final SnakeYAML parse and diff validation: state is implementation/codex with 13 refs, 18 findings, phase returns 3; no whitespace errors and exactly the original 11 candidate paths."
+      gate: >-
+        Fail. RV-002 and RV-018 are verified fixed, but RV-017 Medium violates
+        CPS-001 Stale accessibility content-description requirements. Return
+        to implementation; do not advance to Test until the fix is re-reviewed.
     - reviewed_at: "2026-07-22T21:41:11+09:00"
       actor: "/root/independent_review"
       candidate_base_head: "f460839120062188e27514cf2e7bd5e4f7975580"
@@ -1519,6 +2023,28 @@ evidence:
         proceed without changing application ID, signing, permissions, or
         distribution policy.
   implementation_progress:
+    - completed_at: "2026-07-23T05:51:33+09:00"
+      actor: "codex"
+      task: "RV-002, RV-017, and RV-018 independent re-review corrections"
+      status: "done_ready_for_independent_re_review"
+      requirement_refs:
+        - "FR-040"
+        - "FR-044"
+        - "WDS-001"
+        - "CPS-001"
+        - "ADR-014"
+        - "PPS-001"
+      evidence:
+        - "RV-002 cancellation regressions pass after persistence and during completion write."
+        - "RV-017 dynamic Tile/complication age regressions pass at 6, 10, and 60 minutes."
+        - "RV-018 adds PPS-001 to the required spec_refs; SnakeYAML parses 13 refs."
+        - "Wear debug/release 51/51 each; lint 0 errors/28 warnings; Android-test compile pass."
+        - "Mobile debug/release 78/78 each; lint 0 errors/20 warnings; Android-test compile pass."
+        - "Preflight 10 pass/4 expected warnings/0 fail; adb has no attached target."
+        - "git diff --check pass before final handoff update."
+      known_limitations:
+        - "Tile/complication system rendering and service cancellation on a real Wear target remain not_run."
+        - "All required Mobile/Wear attached-device and Pixel hardware gates remain in Test/Human phases."
     - completed_at: "2026-07-22T16:21:24+09:00"
       actor: "codex"
       task: "IMP-005 and IMP-008 implementation exit"
@@ -1914,6 +2440,58 @@ evidence:
         Selected stable DataStore 1.2.1 and the documented Protobuf plugin
         0.9.5 / protobuf-kotlin-lite 4.32.1 setup.
   commands:
+    - command: >-
+        Final SnakeYAML 2.0 parse, temporary-validator removal, candidate status
+        inventory, and git diff --check after the review handoff
+      result: "pass"
+      output: >-
+        YAML_OK=in_progress|implementation|implementation|codex|refs=13|
+        findings=18|returns=3; temporary validator absent; generated tracked
+        empty Kotlin session marker restored; 11 candidate paths; no whitespace errors.
+    - command: >-
+        Independent final re-review from repository root: powershell
+        -ExecutionPolicy Bypass -File .\scripts\preflight.ps1, followed by
+        git -c safe.directory=C:/Users/yoshihisa/Desktop/www/battery-notifier
+        diff --check
+      result: "pass_with_warnings"
+      output: >-
+        Approved Android Studio JBR probe: pass=10, warn=4, fail=0; diff check
+        reported no whitespace errors. The sandbox-only first Java probe was
+        access denied and was treated as an environment condition.
+    - command: >-
+        From BatteryNotifierAndroidWearApp: Gradle testDebugUnitTest filtered
+        to DeliverPendingWearNotificationTest, ProtoWearStateRepositoryTest,
+        WearDisplayStateMapperTest, and MainComplicationDataTest with
+        --rerun-tasks, no daemon, offline, one worker, in-process Kotlin, and
+        TieredStopAtLevel=1
+      result: "pass"
+      output: >-
+        BUILD SUCCESSFUL in 3m 18s; fresh XML 35/35 with zero failures,
+        errors, or skips (12 notification, 13 repository, 7 display, 3
+        complication).
+    - command: >-
+        From BatteryNotifierAndroidWearApp: Gradle test lint
+        compileDebugAndroidTestKotlin with --rerun-tasks and the same scoped
+        JVM/offline/one-worker settings
+      result: "pass_with_warnings"
+      output: >-
+        BUILD SUCCESSFUL in 9m 12s; 85 tasks executed; debug/release 51/51
+        each, lint 0 errors/28 warnings, Android-test Kotlin compilation pass.
+    - command: >-
+        From BatteryNotifierAndroidMobileApp: Gradle test lint
+        compileDebugAndroidTestKotlin with no daemon, offline, one worker,
+        in-process Kotlin, and TieredStopAtLevel=1
+      result: "pass_with_warnings"
+      output: >-
+        BUILD SUCCESSFUL in 55s; unchanged-candidate debug/release XML 78/78
+        each, lint 0 errors/20 warnings, Android-test Kotlin compilation pass.
+    - command: >-
+        adb devices -l and Mobile/Wear Gradle signingReport
+      result: "not_run_no_target_with_signing_verified"
+      output: >-
+        ADB listed no target. Both debug variants use the same debug certificate;
+        both local release signing configs are null, so the approved Play App
+        Signing certificate lineage remains an external release verification.
     - command: >-
         Independent review final state validation using local SnakeYAML 2.0,
         followed by git diff --check
@@ -2509,11 +3087,25 @@ evidence:
       an unquoted diagnostic retry was parsed as a nonexistent Gradle task and
       did not reach code compilation.
   automated_checks:
+    - name: "RV-017 returned complication content-description regression"
+      result: "pass"
+      details: >-
+        MainComplicationDataTest passes 4/4. Returned Stale SHORT_TEXT and
+        RANGED_VALUE data retain the Stale-specific dynamic ComplicationText,
+        which includes the outdated-data warning fixture and changes between
+        six and ten minutes.
+    - name: "Wear RV-017 full implementation exit gate"
+      result: "pass_with_warnings"
+      details: >-
+        test lint compileDebugAndroidTestKotlin --rerun-tasks completed BUILD
+        SUCCESSFUL in 4m 23s. Debug/release are 52/52 each, Android-test Kotlin
+        compilation passes, and lint reports 0 errors/28 warnings.
     - name: "Environment preflight"
       result: "pass_with_warnings"
       details: >-
-        10 passes, 4 expected warnings, and 0 failures. The common application
-        ID check passes for com.magicitengineer.batterynotifier.
+        Final rerun passed 11 checks with 3 expected warnings and 0 failures.
+        Java 21, Android SDK/compileSdk 36, both Gradle wrappers, repository
+        access, and the common application ID are verified.
     - name: "Mobile unit tests"
       result: "pass"
       details: "Debug 70/70 and release 70/70 passed."
@@ -2533,8 +3125,18 @@ evidence:
         Three cases compile: real .pb persistence, 30 concurrent serialized
         updates with exact Long sequence allocation, and corruption recovery.
     - name: "Mobile real DataStore instrumented test execution"
-      result: "not_run"
-      reason: "No Android device or emulator was attached."
+      result: "pass"
+      details: >-
+        Pixel_9a API 36 executed RealMobileDataStoreInstrumentedTest 3/3:
+        real Proto persistence, 30 concurrent exact Long sequence allocations,
+        and malformed-Proto corruption recovery.
+    - name: "Mobile connected debug Android-test gate"
+      result: "pass_verified_by_test"
+      details: >-
+        Implementation corrected TST-001/TST-002 test expectations only and
+        passed the equivalent Pixel_9a API 36 gate. Test then independently
+        reran it: BUILD SUCCESSFUL in 3m 43s; fresh XML reports 10 pass, 0 fail,
+        0 error, 0 skipped.
     - name: "Mobile monitoring notification instrumented test compilation"
       result: "pass"
       details: >-
@@ -2551,10 +3153,11 @@ evidence:
         POST_NOTIFICATIONS is declared and the request UX is implemented, but no
         Android device or emulator is attached.
     - name: "Mobile FGS and recovery device execution"
-      result: "not_run"
-      reason: >-
-        No Android device or emulator was attached for start/stop, callback,
-        process restart, BOOT_COMPLETED, or MY_PACKAGE_REPLACED execution.
+      result: "partial_pass_blocked"
+      details: >-
+        Pixel_9a API 36 passed FGS start, UI Stop, notification contract, and
+        MY_PACKAGE_REPLACED recovery. BOOT_COMPLETED recovery remains blocked
+        because the final AVD reboot never completed system boot.
     - name: "Merged Mobile FGS manifest contract"
       result: "pass"
       details: >-
@@ -2564,11 +3167,11 @@ evidence:
         package is com.magicitengineer.batterynotifier.
     - name: "Wear unit tests"
       result: "pass"
-      details: "Debug 35/35 and release 35/35 passed."
+      details: "Fresh forced debug 52/52 and release 52/52 passed."
     - name: "Wear lint"
       result: "pass_with_warnings"
       details: >-
-        0 errors and 26 non-blocking warnings: dependency, inlined API,
+        0 errors and 28 non-blocking warnings: dependency, inlined API,
         typography, and unused template-resource notices.
     - name: "Wear Android test compilation"
       result: "pass"
@@ -2581,34 +3184,35 @@ evidence:
         Package is com.magicitengineer.batterynotifier and
         android.permission.POST_NOTIFICATIONS is declared.
     - name: "Notification permission runtime execution"
-      result: "not_run"
-      reason: >-
-        adb lists no attached target for allow, deny, dismiss, channel-disabled,
-        and Mobile/Wear permission-combination cases.
+      result: "partial_pass"
+      details: >-
+        Mobile API 36 cold-launch, explicit request, dismiss, deny, allow, and
+        denied-monitoring-continuation cases pass. Wear, channel-disabled, and
+        cross-device permission combinations remain not_run without a Wear
+        target.
 
 handoff:
-  from_role: "review"
-  to_role: "implementation"
+  from_role: "implementation"
+  to_role: "test"
   summary: >-
-    Independent re-review confirmed RV-001 and RV-003 through RV-016 fixed,
-    retained RV-002 as an open High cancellation/recovery defect, and added
-    RV-017 Medium plus RV-018 Low. Review-to-Test failed. Runtime device cases
-    remain not_run and production code was not changed by the reviewer.
+    Implementation fixed TST-001/TST-002 in three Mobile instrumented-test
+    files without changing production code. The approved application ID and
+    Notification.FLAG_LOCAL_ONLY are now asserted. Android-test compilation
+    passes and Pixel_9a API 36 connectedDebugAndroidTest passes 10/10. Wear and
+    required hardware scenarios remain not_run, and full reboot recovery
+    remains environment-blocked. Historical phase returns remain 4/5.
   first_action: >-
-    Fix RV-002 so service cancellation at every point from PENDING persistence
-    through completion cannot strand PENDING in the same process, then add
-    apply-to-deliver and post-to-completion cancellation regressions.
+    Assign a Test actor, verify the fresh 10/10 XML and TST-001/TST-002
+    corrections, then continue the remaining attached-Wear and reboot recovery
+    scenarios when suitable targets are available.
 
 next_actions:
-  - "Implementation fixes RV-002 High first and adds service-cancellation boundary regressions."
-  - "Implementation fixes RV-017 truthful timeline age and adds 6-, 10-, and 60-minute surface tests."
-  - "Implementation fixes RV-018 by adding docs/permissions-and-privacy-specification.md to spec_refs."
-  - "Return RV-002, RV-017, and RV-018 to /root/independent_review before Test handoff."
+  - "Assign a Test actor and verify TST-001/TST-002 against the fresh Mobile 10/10 connected result."
   - "Run RealWearDataStoreInstrumentedTest on an attached Wear emulator or device during the Test phase."
-  - "Run API 33+ Mobile/Wear notification permission allow, deny, dismiss, channel-disabled, and four permission-combination cases on attached targets."
-  - "Run RealMobileDataStoreInstrumentedTest and the Mobile FGS start/stop, battery callback, process restart, boot, and package-update recovery cases on an attached emulator or device."
+  - "Verify Stale SHORT_TEXT and RANGED_VALUE system rendering and TalkBack at representative 6-, 10-, and 60-minute ages in English and Japanese."
+  - "Run Wear notification permission, channel-disabled, and four permission-combination cases on attached targets."
+  - "Repeat Mobile BOOT_COMPLETED recovery on a healthy emulator/device; Pixel_9a failed to complete the final reboot."
   - "Before Google Play publication, complete and approve the Play Console FGS declaration, explanation, demo video, and current policy confirmation."
-  - "After implementation exit evidence is complete, assign an independent reviewer actor different from codex and use the prepared checklist."
 
-updated_at: "2026-07-22T21:41:11+09:00"
-updated_by: "/root/independent_review"
+updated_at: "2026-07-24T12:33:21+09:00"
+updated_by: "codex"

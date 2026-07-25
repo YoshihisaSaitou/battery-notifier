@@ -23,7 +23,7 @@ class AndroidMonitoringNotificationFactoryInstrumentedTest {
 
         assertEquals(AndroidMonitoringNotificationFactory.CHANNEL_ID, notification.channelId)
         assertTrue(notification.flags and Notification.FLAG_ONGOING_EVENT != 0)
-        assertTrue(notification.extras.getBoolean("android.localOnly"))
+        assertTrue(notification.flags and Notification.FLAG_LOCAL_ONLY != 0)
         assertNotNull(notification.contentIntent)
         assertEquals(1, notification.actions.size)
         assertEquals(context.getString(R.string.monitoring_stop_action), notification.actions[0].title)

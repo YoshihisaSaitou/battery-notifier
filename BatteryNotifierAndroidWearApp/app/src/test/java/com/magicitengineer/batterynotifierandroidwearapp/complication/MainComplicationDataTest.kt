@@ -5,8 +5,11 @@ import androidx.wear.watchface.complications.data.RangedValueComplicationData
 import androidx.wear.watchface.complications.data.ShortTextComplicationData
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.Instant
 
 class MainComplicationDataTest {
     @Test
@@ -43,5 +46,60 @@ class MainComplicationDataTest {
 
         assertTrue(data is RangedValueComplicationData)
         assertNotNull((data as RangedValueComplicationData).title)
+    }
+
+    @Test
+    fun `relative age text changes at six ten and sixty minutes`() {
+        val receivedAt = 1_000_000L
+        val text = relativeAgeComplicationText(receivedAt, "Updated ^1 ago")
+        val atSixMinutes = Instant.ofEpochMilli(receivedAt + 6 * 60_000L)
+        val atTenMinutes = Instant.ofEpochMilli(receivedAt + 10 * 60_000L)
+        val atSixtyMinutes = Instant.ofEpochMilli(receivedAt + 60 * 60_000L)
+
+        assertFalse(text.returnsSameText(atSixMinutes, atTenMinutes))
+        assertFalse(text.returnsSameText(atTenMinutes, atSixtyMinutes))
+    }
+
+    @Test
+    fun `stale short and ranged data descriptions include warning and dynamic age`() {
+        val receivedAt = 1_000_000L
+        val atSixMinutes = Instant.ofEpochMilli(receivedAt + 6 * 60_000L)
+        val atTenMinutes = Instant.ofEpochMilli(receivedAt + 10 * 60_000L)
+        val description = relativeAgeComplicationText(
+            receivedAt,
+            "Phone battery 68%, data may be outdated, updated ^1 ago",
+        )
+
+        val returnedDescriptions = listOf(
+            buildBatteryComplicationData(
+                ComplicationType.SHORT_TEXT,
+                68,
+                "68%!",
+                description,
+                visibleStatus = description,
+            ) as ShortTextComplicationData,
+            buildBatteryComplicationData(
+                ComplicationType.RANGED_VALUE,
+                68,
+                "68%!",
+                description,
+                visibleStatus = description,
+            ) as RangedValueComplicationData,
+        ).map { data ->
+            when (data) {
+                is ShortTextComplicationData -> data.contentDescription
+                is RangedValueComplicationData -> data.contentDescription
+                else -> null
+            }
+        }
+
+        returnedDescriptions.forEach { returnedDescription ->
+            assertNotNull(returnedDescription)
+            assertSame(description, returnedDescription)
+            assertFalse(
+                requireNotNull(returnedDescription)
+                    .returnsSameText(atSixMinutes, atTenMinutes),
+            )
+        }
     }
 }

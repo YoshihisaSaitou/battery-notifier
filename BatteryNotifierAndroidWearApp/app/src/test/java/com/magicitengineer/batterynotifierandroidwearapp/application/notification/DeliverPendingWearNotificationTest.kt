@@ -2,6 +2,7 @@ package com.magicitengineer.batterynotifierandroidwearapp.application.notificati
 
 import androidx.datastore.core.DataStore
 import com.magicitengineer.batterynotifierandroidwearapp.data.datastore.ProtoWearStateRepository
+import com.magicitengineer.batterynotifierandroidwearapp.data.datastore.WearStateRepository
 import com.magicitengineer.batterynotifierandroidwearapp.data.datastore.WearStateSanitizer
 import com.magicitengineer.batterynotifierandroidwearapp.data.datastore.proto.WearStateProto
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.NotificationDisposition
@@ -9,10 +10,13 @@ import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.ReceivedThr
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.ReceivedPhoneState
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.WearDataLayerContract
 import com.magicitengineer.batterynotifierandroidwearapp.data.wearable.ownsInitialWearNotificationDelivery
+import com.magicitengineer.batterynotifierandroidwearapp.data.wearable.protectInitialWearNotificationDelivery
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -199,6 +203,59 @@ class DeliverPendingWearNotificationTest {
             repository.state.first().notificationDisposition,
         )
         assertEquals(1, repository.state.first().notificationPostAttemptCount)
+    }
+
+    @Test
+    fun `service cancellation after event persistence still reaches initial delivery`() = runBlocking {
+        val persistenceCompleted = CompletableDeferred<Unit>()
+        val allowDelivery = CompletableDeferred<Unit>()
+        var deliveryReached = false
+        val job = launch {
+            protectInitialWearNotificationDelivery(WearDataLayerContract.THRESHOLD_EVENT_PATH) {
+                persistenceCompleted.complete(Unit)
+                allowDelivery.await()
+                deliveryReached = true
+            }
+        }
+
+        persistenceCompleted.await()
+        job.cancel()
+        allowDelivery.complete(Unit)
+        job.join()
+
+        assertTrue(deliveryReached)
+        assertTrue(job.isCancelled)
+    }
+
+    @Test
+    fun `service cancellation after post cannot interrupt completion persistence`() = runBlocking {
+        val delegate = repository()
+        val initial = delegate.applyThresholdEvent(event(), RECEIVED_AT).state
+        val completionStarted = CompletableDeferred<Unit>()
+        val allowCompletion = CompletableDeferred<Unit>()
+        val blockingRepository = object : WearStateRepository by delegate {
+            override suspend fun completeNotification(
+                eventId: String,
+                disposition: NotificationDisposition,
+            ) = run {
+                completionStarted.complete(Unit)
+                allowCompletion.await()
+                delegate.completeNotification(eventId, disposition)
+            }
+        }
+        val delivery = DeliverPendingWearNotification(blockingRepository) {
+            WearNotificationPostResult.POSTED
+        }
+        val job = launch { delivery.deliver(initial) }
+
+        completionStarted.await()
+        job.cancel()
+        allowCompletion.complete(Unit)
+        job.join()
+
+        assertEquals(NotificationDisposition.POSTED, delegate.state.first().notificationDisposition)
+        assertEquals(1, delegate.state.first().notificationPostAttemptCount)
+        assertTrue(job.isCancelled)
     }
 
     @Test

@@ -47,6 +47,17 @@ class WearDisplayStateMapperTest {
         assertEquals(1_120_001L, timeline.entries[1].endEpochMillisExclusive)
         assertEquals(1_300_001L, timeline.entries[2].endEpochMillisExclusive)
         assertEquals(Freshness.STALE, timeline.defaultState.freshness)
+        assertTrue(timeline.entries.all { it.displayState.ageMinutes == null })
+        assertEquals(null, timeline.defaultState.ageMinutes)
+    }
+
+    @Test
+    fun relativeAgeRemainsTruthfulAtSixTenAndSixtyMinutes() {
+        val state = state(receivedAt = 1_000_000L)
+
+        assertEquals(6L, map(state, 1_360_000L).ageMinutes)
+        assertEquals(10L, map(state, 1_600_000L).ageMinutes)
+        assertEquals(60L, map(state, 4_600_000L).ageMinutes)
     }
 
     @Test

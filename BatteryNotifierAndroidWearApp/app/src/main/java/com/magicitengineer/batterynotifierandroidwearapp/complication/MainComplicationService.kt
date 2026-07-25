@@ -3,11 +3,15 @@ package com.magicitengineer.batterynotifierandroidwearapp.complication
 import android.app.PendingIntent
 import android.content.Intent
 import androidx.wear.watchface.complications.data.ComplicationData
+import androidx.wear.watchface.complications.data.ComplicationText
 import androidx.wear.watchface.complications.data.ComplicationType
+import androidx.wear.watchface.complications.data.CountUpTimeReference
 import androidx.wear.watchface.complications.data.NoDataComplicationData
 import androidx.wear.watchface.complications.data.PlainComplicationText
 import androidx.wear.watchface.complications.data.RangedValueComplicationData
 import androidx.wear.watchface.complications.data.ShortTextComplicationData
+import androidx.wear.watchface.complications.data.TimeDifferenceComplicationText
+import androidx.wear.watchface.complications.data.TimeDifferenceStyle
 import androidx.wear.watchface.complications.datasource.ComplicationRequest
 import androidx.wear.watchface.complications.datasource.ComplicationDataTimeline
 import androidx.wear.watchface.complications.datasource.SuspendingTimelineComplicationDataSourceService
@@ -21,6 +25,7 @@ import com.magicitengineer.batterynotifierandroidwearapp.domain.presentation.Wea
 import com.magicitengineer.batterynotifierandroidwearapp.presentation.MainActivity
 import kotlinx.coroutines.flow.first
 import java.time.Instant
+import java.util.concurrent.TimeUnit
 
 internal fun buildBatteryComplicationData(
     type: ComplicationType,
@@ -29,10 +34,24 @@ internal fun buildBatteryComplicationData(
     descriptionValue: String,
     visibleStatusValue: String,
     tapAction: PendingIntent? = null,
+): ComplicationData? = buildBatteryComplicationData(
+    type = type,
+    level = level,
+    shortTextValue = shortTextValue,
+    description = PlainComplicationText.Builder(descriptionValue).build(),
+    visibleStatus = PlainComplicationText.Builder(visibleStatusValue).build(),
+    tapAction = tapAction,
+)
+
+internal fun buildBatteryComplicationData(
+    type: ComplicationType,
+    level: Int,
+    shortTextValue: String,
+    description: ComplicationText,
+    visibleStatus: ComplicationText,
+    tapAction: PendingIntent? = null,
 ): ComplicationData? {
     val shortText = PlainComplicationText.Builder(shortTextValue).build()
-    val description = PlainComplicationText.Builder(descriptionValue).build()
-    val visibleStatus = PlainComplicationText.Builder(visibleStatusValue).build()
     return when (type) {
         ComplicationType.SHORT_TEXT -> ShortTextComplicationData.Builder(
             text = shortText,
@@ -103,44 +122,67 @@ class MainComplicationService : SuspendingTimelineComplicationDataSourceService(
                 },
                 level,
             )
-        val descriptionValue = buildDescription(displayState, level)
-        val visibleStatusValue = when {
+        val description = buildDescription(displayState, level)
+        val visibleStatus = when {
                 displayState.clockWarning -> getString(R.string.clock_warning)
                 displayState.freshness == Freshness.STALE -> getString(R.string.stale_data)
-                displayState.freshness == Freshness.DELAYED -> getString(
-                    R.string.delayed_updated,
-                    displayState.ageMinutes ?: 0,
-                )
+                displayState.freshness == Freshness.DELAYED -> null
                 displayState.isCharging -> getString(R.string.charging)
                 !displayState.monitoringEnabled -> getString(R.string.monitoring_off)
                 else -> getString(R.string.discharging)
             }
+        val visibleStatusText = if (
+            displayState.freshness == Freshness.DELAYED &&
+            !displayState.clockWarning &&
+            displayState.receivedAtEpochMillis != null
+        ) {
+            relativeAgeComplicationText(
+                receivedAtEpochMillis = displayState.receivedAtEpochMillis,
+                surroundingText = getString(R.string.complication_updated_age),
+            )
+        } else {
+            PlainComplicationText.Builder(requireNotNull(visibleStatus)).build()
+        }
         return buildBatteryComplicationData(
             type = type,
             level = level,
             shortTextValue = shortTextValue,
-            descriptionValue = descriptionValue,
-            visibleStatusValue = visibleStatusValue,
+            description = description,
+            visibleStatus = visibleStatusText,
             tapAction = mainActivityAction(),
         )
     }
 
-    private fun buildDescription(displayState: WearDisplayState, level: Int): String = buildString {
-        append(getString(R.string.phone_battery_percent, level))
-        append(", ")
-        append(
-            when {
-                displayState.clockWarning -> getString(R.string.clock_warning)
-                displayState.freshness == Freshness.STALE -> getString(R.string.stale_data)
-                displayState.freshness == Freshness.DELAYED -> getString(
-                    R.string.delayed_updated,
-                    displayState.ageMinutes ?: 0,
-                )
-                displayState.isCharging -> getString(R.string.charging)
-                !displayState.monitoringEnabled -> getString(R.string.monitoring_off)
-                else -> getString(R.string.discharging)
-            }
+    private fun buildDescription(
+        displayState: WearDisplayState,
+        level: Int,
+    ): ComplicationText = if (
+        !displayState.clockWarning &&
+        (displayState.freshness == Freshness.DELAYED ||
+            displayState.freshness == Freshness.STALE) &&
+        displayState.receivedAtEpochMillis != null
+    ) {
+        relativeAgeComplicationText(
+            receivedAtEpochMillis = displayState.receivedAtEpochMillis,
+            surroundingText = getString(
+                if (displayState.freshness == Freshness.STALE) {
+                    R.string.phone_battery_stale_updated_age
+                } else {
+                    R.string.phone_battery_updated_age
+                },
+                level,
+            ),
         )
+    } else {
+        val status = when {
+            displayState.clockWarning -> getString(R.string.clock_warning)
+            displayState.isCharging -> getString(R.string.charging)
+            !displayState.monitoringEnabled -> getString(R.string.monitoring_off)
+            else -> getString(R.string.discharging)
+        }
+        PlainComplicationText.Builder(
+            "${getString(R.string.phone_battery_percent, level)}, $status",
+        ).build()
     }
 
     private fun mainActivityAction(): PendingIntent = PendingIntent.getActivity(
@@ -149,4 +191,19 @@ class MainComplicationService : SuspendingTimelineComplicationDataSourceService(
         Intent(this, MainActivity::class.java),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
+}
+
+internal fun relativeAgeComplicationText(
+    receivedAtEpochMillis: Long,
+    surroundingText: String,
+): TimeDifferenceComplicationText {
+    require(receivedAtEpochMillis > 0L)
+    return TimeDifferenceComplicationText.Builder(
+        style = TimeDifferenceStyle.SHORT_SINGLE_UNIT,
+        countUpTimeReference = CountUpTimeReference(
+            Instant.ofEpochMilli(receivedAtEpochMillis),
+        ),
+    ).setMinimumTimeUnit(TimeUnit.MINUTES)
+        .setText(surroundingText)
+        .build()
 }

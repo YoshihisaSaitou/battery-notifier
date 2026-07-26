@@ -17,14 +17,16 @@ current_actor:
   id: null
 
 last_transition:
-  from_phase: "implementation"
+  from_phase: "review"
   to_phase: "test"
   reason: >-
-    Implementation corrected only the three TST-001/TST-002 instrumented-test
-    assertions. The Android-test compilation passed and the equivalent
-    Pixel_9a API 36 connectedDebugAndroidTest gate completed 10/10 with zero
-    failures, errors, or skips. Production code was unchanged. Test resumes;
-    the historical failure-driven phase-return count remains 4 of 5.
+    Independent actor /root/independent_tst003_review verified the narrow
+    TST-003/IMP-009 candidate with Critical 0, High 0, Medium 0, and Low 0 open
+    findings. English and Japanese No Data resources return one percent with
+    formatted=false, existing formatted percentage resources are unchanged,
+    reviewer-owned API 36 instrumentation passed 2/2, and the runtime hierarchy
+    contains visible/accessibility --% with no --%%. Review-to-Test passes;
+    Test must now independently repeat TC-E033.
 
 spec_refs:
   - "docs/product-requirements.md"
@@ -156,7 +158,7 @@ phases:
           - "docs/test-plan-and-cases.md"
 
   implementation:
-    status: "completed_test_fix"
+    status: "completed_tst003"
     owner: "codex"
     tasks:
       - id: "IMP-001"
@@ -238,10 +240,18 @@ phases:
           - "FR-041"
           - "FR-044"
           - "FR-045"
+      - id: "IMP-009"
+        title: "Correct Wear No Data literal percent rendering"
+        status: "done"
+        requirement_refs:
+          - "FR-033"
+          - "FR-052"
+        test_refs:
+          - "TC-E033"
 
   review:
-    status: "completed_passed"
-    owner: "/root/independent_review_final"
+    status: "completed_passed_tst003"
+    owner: "/root/independent_tst003_review"
     preparation:
       status: "fixes_ready_for_independent_reviewer"
       checklist: ".agents/work-items/bn-001-phone-to-watch-battery-sync/review-checklist.md"
@@ -619,7 +629,7 @@ phases:
           refs from the required-reading list and verified PPS-001 is present.
 
   test:
-    status: "in_progress_environment_gated"
+    status: "partial_pass_tst003_complication_runtime_blocked"
     owner: "unassigned"
     scenarios:
       - id: "TEST-001"
@@ -656,7 +666,7 @@ phases:
           - "TC-E022"
       - id: "TEST-006"
         title: "Fresh, Delayed, Stale, and No Data display"
-        status: "not_run"
+        status: "partial_pass_blocked"
         test_refs:
           - "TC-E030"
           - "TC-E031"
@@ -682,17 +692,125 @@ phases:
           - "TC-E055"
           - "TC-E056"
     results:
+      - id: "TC-E033-RETEST-001"
+        title: "No Data display and complication retest after TST-003"
+        status: "partial_pass_blocked"
+        test_refs: ["TC-E033"]
+        requirement_refs: ["FR-033", "FR-052"]
+        environment: >-
+          Wear_OS_6_1_API_36 AVD, Android 16 / API 36,
+          google/sdk_gwear_x86_64/emu64xa, 454x454 at 320 dpi;
+          debug application ID com.magicitengineer.batterynotifier,
+          versionCode 3, versionName 1.0, targetSdk 36.
+        build: >-
+          Candidate HEAD f584fa7019a172dfd2796075b539b08120f9f5e7 with
+          the recorded uncommitted TST-003 resource/test changes. From
+          BatteryNotifierAndroidWearApp: .\gradlew.bat assembleDebug
+          assembleDebugAndroidTest --no-daemon --offline --max-workers=1
+          --console=plain '-Pkotlin.compiler.execution.strategy=in-process';
+          BUILD SUCCESSFUL in 1m 13s.
+        execution: >-
+          Installed app-debug.apk and app-debug-androidTest.apk with adb
+          install -r -t. Ran am instrument -w -r -e class
+          com.magicitengineer.batterynotifierandroidwearapp.presentation.NoDataStringInstrumentedTest
+          com.magicitengineer.batterynotifier.test/androidx.test.runner.AndroidJUnitRunner;
+          then cleared the app, cold-launched MainActivity, dumped the UI
+          hierarchy, captured a screenshot, and inspected activity/log state.
+        expected: >-
+          English and Japanese No Data resources return one percent; the app
+          displays --%, exposes "Phone battery --%" to accessibility, shows
+          connection help, does not contain --%%, and remains healthy.
+          A compatible watch-face slot receives NoDataComplicationData.
+        actual: >-
+          Instrumentation passed 2/2 in 0.098s. The app hierarchy contains
+          visible --%, "Phone battery --%", "No phone data yet", and
+          "Open the phone app and check the connection"; it contains no --%%.
+          MainActivity is top-resumed and no app FATAL/ANR signature was found.
+          MainComplicationService is registered for SHORT_TEXT/RANGED_VALUE and
+          its no-level branch returns NoDataComplicationData, but a system
+          watch-face request was not captured: the API 36 editor did not expose
+          a provider chooser/active slot through the available UI and shell
+          paths despite activating a complication-capable face and launching
+          its editor with the official component extra.
+        totals: "Pass 4, Fail 0, Blocked 1"
+        evidence: >-
+          C:/tmp/bn001-tst003-test.png;
+          C:/tmp/bn001-tst003-test-window.xml;
+          direct am instrument output OK (2 tests);
+          dumpsys package registration for MainComplicationService;
+          C:/tmp/numerique-editor.png and C:/tmp/longpress-provider.png.
+        blocker: >-
+          Complete the system-rendered complication portion by manually
+          assigning Battery Notifier to a compatible active watch-face slot or
+          by adding an independently reviewed instrumentation harness that
+          invokes MainComplicationService.onComplicationRequest. Do not count
+          static code inspection as a runtime pass.
       - id: "DATASTORE-INSTRUMENTED-002"
         title: "Real Wear Proto DataStore retry persistence and concurrency"
-        status: "not_run"
+        status: "pass"
         compile_result: "pass"
         compile_command: >-
           From BatteryNotifierAndroidWearApp: .\gradlew.bat
           compileDebugAndroidTestKotlin --console=plain
           '-Pkotlin.compiler.execution.strategy=in-process'
-        reason: >-
-          Three real-file cases compile, but execution requires an attached
-          Wear emulator or device and adb lists no target.
+        execution_command: >-
+          From BatteryNotifierAndroidWearApp with ANDROID_SERIAL=emulator-5554:
+          .\gradlew.bat connectedDebugAndroidTest --rerun-tasks --no-daemon
+          --offline --max-workers=1 --console=plain
+          '-Pkotlin.compiler.execution.strategy=in-process'
+          '-Pandroid.testInstrumentationRunnerArguments.class=com.magicitengineer.batterynotifierandroidwearapp.data.datastore.RealWearDataStoreInstrumentedTest'
+        environment: >-
+          Wear_OS_6_1_API_36 AVD, Android 16 / API 36,
+          google/sdk_gwear_x86_64/emu64xa build
+          BP2A.250605.006.E4, 454x454 at 320 dpi.
+        totals: "Pass 3, Fail 0, Error 0, Skipped 0"
+        evidence: >-
+          BatteryNotifierAndroidWearApp/app/build/outputs/androidTest-results/connected/debug/TEST-Wear_OS_6_1_API_36(AVD) - 16-_app-.xml;
+          suite time 5.511s; Gradle BUILD SUCCESSFUL in 11m 58s.
+      - id: "WEAR-NO-DATA-RUNTIME-001"
+        title: "Wear No Data application surface on API 36"
+        status: "pass_fixed_verified_by_test"
+        test_refs: ["TC-E033"]
+        requirement_refs: ["FR-033", "FR-052"]
+        environment: >-
+          Wear_OS_6_1_API_36 AVD, Android 16 / API 36,
+          debug application ID com.magicitengineer.batterynotifier,
+          454x454 at 320 dpi.
+        steps: >-
+          Install the debug APK, launch the Wear launcher activity with no
+          synchronized phone state, capture the screen, and dump the
+          accessibility hierarchy.
+        expected: >-
+          The app No Data value and phone-battery content description use --%.
+        actual: >-
+          The visible value is --%% and the root content description is
+          "Phone battery --%%". The Activity remains resumed and does not crash.
+        evidence: >-
+          C:/tmp/bn001-wear.png and C:/tmp/bn001-wear-window.xml.
+        implementation_verification: >-
+          After IMP-009, the API 36 hierarchy contains visible --% and
+          "Phone battery --%" accessibility text, contains no --%%, and
+          MainActivity remains top-resumed. Evidence:
+          C:/tmp/bn001-tst003-fixed.png and
+          C:/tmp/bn001-tst003-fixed-window.xml. Independent Test confirmation
+          remains pending after Review.
+        independent_review_verification: >-
+          Reviewer /root/independent_tst003_review independently installed the
+          candidate APKs on Wear_OS_6_1_API_36, passed
+          NoDataStringInstrumentedTest 2/2, cleared and launched the app, and
+          verified visible --%, content description "Phone battery --%",
+          connection help, no --%%, and top-resumed MainActivity. Evidence:
+          C:/tmp/bn001-tst003-review.png and
+          C:/tmp/bn001-tst003-review-window.xml. This Review evidence does not
+          replace the requested independent Test-role TC-E033 rerun.
+        test_verification: >-
+          Test actor codex independently rebuilt and installed the candidate,
+          passed NoDataStringInstrumentedTest 2/2, cleared app data, and
+          cold-launched MainActivity. The hierarchy contains visible --%,
+          "Phone battery --%", and both connection-help strings, contains no
+          --%%, and MainActivity is top-resumed. Evidence:
+          C:/tmp/bn001-tst003-test.png and
+          C:/tmp/bn001-tst003-test-window.xml.
       - id: "DATASTORE-INSTRUMENTED-001"
         title: "Real Mobile Proto DataStore persistence, concurrency, and corruption recovery"
         status: "pass"
@@ -800,6 +918,56 @@ phases:
           Both tests now assert Notification.FLAG_LOCAL_ONLY. Both passed on
           the independent Test rerun on Pixel_9a API 36; production
           notification factories were unchanged.
+      - id: "TST-003"
+        severity: "Medium"
+        owner: "test"
+        status: "fixed_verified_by_test"
+        test_refs: ["TC-E033"]
+        requirement_refs: ["FR-033", "FR-052"]
+        files:
+          - "BatteryNotifierAndroidWearApp/app/src/main/res/values/strings.xml"
+          - "BatteryNotifierAndroidWearApp/app/src/main/res/values-ja/strings.xml"
+          - "BatteryNotifierAndroidWearApp/app/src/androidTest/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/NoDataStringInstrumentedTest.kt"
+        observed: >-
+          On Wear_OS_6_1_API_36 the No Data Activity renders --%% and exposes
+          "Phone battery --%%" to accessibility. Both locales define
+          phone_battery_no_data and no_data_short with --%% even though these
+          strings are read without formatting arguments.
+        required_outcome: >-
+          Render a single literal percent sign for the app, Tile/complication
+          placeholder, and accessibility descriptions in English and Japanese;
+          add a regression assertion and rerun the Wear unit/lint gate plus the
+          API 36 No Data runtime case.
+        loop_effect: >-
+          Returning Test to Implementation remains historical phase return 5
+          of 5. Human approval satisfied the resume condition; the first
+          corrective attempt passed and did not increment the consecutive
+          failure counter.
+        verification: >-
+          Before the resource change, NoDataStringInstrumentedTest reproduced
+          the defect with 0/2 pass: expected --% and actual --%% in English and
+          Japanese. The four No Data strings now use one literal percent and
+          formatted=false. The same targeted test passes 2/2; the complete
+          API 36 instrumentation suite passes 5/5; debug and release unit tests
+          pass 52/52 each; lint reports 0 errors and 19 warnings; and the API 36
+          runtime hierarchy verifies one visible/accessibility percent with no
+          double-percent text.
+        independent_review: >-
+          Pass with Critical 0, High 0, Medium 0, and Low 0 open findings.
+          Reviewer-owned API 36 direct instrumentation passed 2/2. Static XML
+          comparison found zero changes to existing %1$d%% formatted resources,
+          exactly two production files changed, and each English/Japanese No
+          Data resource has formatted=false with one percent. Reviewer runtime
+          smoke confirmed the app and accessibility hierarchy use --% and no
+          --%%.
+        test_verification: >-
+          Test independently rebuilt and reinstalled the candidate on
+          Wear_OS_6_1_API_36. The English/Japanese regression passed 2/2, and
+          the app runtime passed visible value, accessibility, connection help,
+          no-double-percent, resumed-Activity, and no-crash checks. TST-003 is
+          fixed. The broader TC-E033 system-rendered complication request is a
+          separate environment/harness blocker, not a reproduced TST-003
+          product failure.
 
   human_verification:
     status: "pending"
@@ -926,8 +1094,32 @@ loop_control:
   phase_return_limit: 5
   current_failure_signature: null
   consecutive_same_cause_failures: 0
-  total_phase_returns: 4
+  total_phase_returns: 5
   attempts:
+    - attempt: 1
+      occurred_at: "2026-07-26T19:58:43+09:00"
+      phase: "implementation"
+      role: "implementation"
+      command: >-
+        On Wear_OS_6_1_API_36, install the assembled debug application and test
+        APKs and run NoDataStringInstrumentedTest directly with am instrument;
+        then rerun it after the resource correction, execute the full 5-case
+        instrumentation suite, the forced Wear test/lint/Android-test compile
+        gate, and the No Data runtime hierarchy smoke.
+      failure_signature: "TST-003 Wear No Data renders --%% instead of --%"
+      root_cause_hypothesis: >-
+        The four No Data values used %% even though getString was called without
+        formatting arguments, so Android returned both percent characters
+        literally in app, short placeholder, and accessibility text.
+      corrective_change: >-
+        Marked the English and Japanese phone_battery_no_data and no_data_short
+        resources formatted=false and changed each value to one literal percent.
+        Added a two-locale instrumented regression for both resources.
+      result: >-
+        pass; the pre-fix regression reproduced 0/2 and the equivalent post-fix
+        run passed 2/2. Full API 36 instrumentation passed 5/5, debug/release
+        unit suites passed 52/52 each, lint completed with 0 errors and 19
+        warnings, and the runtime hierarchy contains --% with no --%%.
     - attempt: 1
       occurred_at: "2026-07-24T05:27:02+09:00"
       phase: "implementation"
@@ -1072,16 +1264,39 @@ loop_control:
   termination_reason: null
   resume_condition: null
 
-  progress_reporting:
+progress_reporting:
   format_version: 1
   current:
-    reported_at: "2026-07-24T12:33:21+09:00"
+    reported_at: "2026-07-26T21:02:49+09:00"
     work_item_id: "BN-001"
     role: "test"
     phase: "test"
     actor: "unassigned"
     status: "in_test"
     completed:
+      - "Test independently rebuilt and installed the frozen candidate on Wear_OS_6_1_API_36; assembleDebug plus assembleDebugAndroidTest passed in 1m 13s."
+      - "Test-owned NoDataStringInstrumentedTest passed English/Japanese 2/2 in 0.098s."
+      - "TC-E033 app surface passed: visible --%, Phone battery --% accessibility, both connection-help strings, no --%%, top-resumed MainActivity, and no FATAL/ANR signature."
+      - "TST-003 and WEAR-NO-DATA-RUNTIME-001 are fixed_verified_by_test; the original failure evidence remains preserved."
+      - "The broader system-rendered NoData complication request is blocked rather than passed; provider registration and static NoDataComplicationData path do not replace a captured system request."
+      - "Independent TST-003 Review passed with Critical 0, High 0, Medium 0, and Low 0 open findings."
+      - "Reviewer static comparison verified one literal percent plus formatted=false for the four English/Japanese No Data resources and zero changes to existing formatted percentage resources."
+      - "Reviewer-owned Wear_OS_6_1_API_36 NoDataStringInstrumentedTest passed 2/2."
+      - "Reviewer-owned API 36 runtime smoke verified visible --%, Phone battery --% accessibility text, connection help, no --%%, and top-resumed MainActivity."
+      - "Review-to-Test gate passed; Test must independently repeat TC-E033 and must not treat Review execution as Test evidence."
+      - "IMP-009 completed the human-approved TST-003 correction and handed the candidate from Implementation to independent Review."
+      - "The pre-fix English/Japanese NoDataStringInstrumentedTest reproduced the defect with 0/2 pass and expected --% versus actual --%%."
+      - "Four No Data resources now use formatted=false and one literal percent; no production Kotlin or normative specification changed."
+      - "The corrected targeted instrumentation passes 2/2 and the complete API 36 Wear instrumentation passes 5/5."
+      - "API 36 runtime hierarchy shows visible --% and Phone battery --%, contains no --%%, and MainActivity remains top-resumed."
+      - "Wear full gate passes: debug/release 52/52 each, lint 0 errors/19 warnings, and Android-test Kotlin compilation."
+      - "Human explicitly approved the narrow TST-003 correction on 2026-07-26, satisfying the recorded resume condition."
+      - "Implementation resumed as IMP-009 without erasing the historical 5 phase returns or prior Test evidence."
+      - "Wear_OS_6_1_API_36 RealWearDataStoreInstrumentedTest passed 3/3 with fresh JUnit XML and BUILD SUCCESSFUL."
+      - "Wear debug/release unit tests each passed 52/52; lint completed with 0 errors and 19 warnings."
+      - "Wear No Data runtime smoke kept MainActivity resumed without a crash but failed TC-E033: visible/accessibility values render --%% instead of --%."
+      - "TST-003 is recorded as a Medium implementation-owned defect in four English/Japanese No Data resources."
+      - "The Test-to-Implementation return raises total_phase_returns from 4 to the limit of 5; the automated loop is blocked for human prioritization."
       - "Test independently reran Mobile connectedDebugAndroidTest --rerun-tasks on Pixel_9a Android 16/API 36: BUILD SUCCESSFUL in 3m 43s."
       - "Fresh Test-owned JUnit XML reports 10/10 pass, 0 failures, 0 errors, 0 skipped, suite time 5.823s."
       - "TST-001 is fixed_verified: the approved application ID assertion passes."
@@ -1171,13 +1386,45 @@ loop_control:
       - "IMP-005/IMP-007 Mobile and Wear POST_NOTIFICATIONS declaration, Proto-backed one-shot request history, user-initiated request, denial/dismiss settings routing, localization, and API 32/33 boundary behavior."
       - "Role-aware progress reporting rules added to the operating documentation."
     in_progress:
-      - "Test actor is unassigned; remaining Wear, paired-sync, system-rendering, channel-combination, reboot-recovery, and required-hardware scenarios are environment-gated."
+      - "No active Test actor; TC-E033 is partial_pass_blocked only on the system-rendered complication request."
     next:
-      - "Assign a Test actor and verify TST-001/TST-002 against the fresh 10/10 Pixel_9a API 36 evidence."
+      - "Complete TC-E033 by manually assigning Battery Notifier to a compatible watch-face slot, or approve and independently review an instrumentation harness for MainComplicationService.onComplicationRequest."
       - "Record Wear DataStore, Stale complication rendering/TalkBack, paired sync, and Pixel Watch cases as not_run unless a Wear target becomes available."
       - "Repeat full reboot recovery on a healthy AVD or device; the current Pixel_9a AVD failed to finish boot."
       - "Prepare the Play Console FGS declaration, explanation, demo video, and policy confirmation before publication."
     checks:
+      - "Test build: PASS; assembleDebug plus assembleDebugAndroidTest BUILD SUCCESSFUL in 1m 13s."
+      - "Test direct API 36 instrumentation: PASS 2/2, time 0.098s."
+      - "Test TC-E033 app/UI/accessibility: PASS; --%, Phone battery --%, connection help, no --%%, MainActivity top-resumed."
+      - "Test TC-E033 system complication: BLOCKED; provider registered and NoData code path inspected, but no system watch-face request was captured."
+      - "TC-E033 totals: Pass 4, Fail 0, Blocked 1."
+      - "Wear_OS_6_1_API_36 shutdown completed after Test; adb devices -l lists no attached target."
+      - "Independent Review finding totals: Critical 0, High 0, Medium 0, Low 0 open."
+      - "Independent Review static resource check: PASS; both locales have phone_battery_no_data/no_data_short with formatted=false and one percent, formatted %1$d%% resources have delta 0, and production changes are exactly two resource XML files."
+      - "Independent Review API 36 direct instrumentation: PASS 2/2 for NoDataStringInstrumentedTest."
+      - "Independent Review API 36 runtime smoke: PASS; visible/accessibility --%, no --%%, connection help present, MainActivity top-resumed."
+      - "Independent Review evidence: C:/tmp/bn001-tst003-review.png and C:/tmp/bn001-tst003-review-window.xml."
+      - "Independent Review reused fresh implementation full-gate reports only as supporting evidence: debug/release 52/52 each and lint 0 errors/19 warnings; reviewer-owned targeted runtime evidence is recorded separately."
+      - "Independent Review git diff --check: PASS."
+      - "TST-003 pre-fix targeted instrumentation: FAIL as expected, 0/2; both locales returned --%%."
+      - "TST-003 post-fix targeted instrumentation: PASS 2/2 on Wear_OS_6_1_API_36."
+      - "Wear API 36 full direct instrumentation: PASS 5/5, including RealWearDataStore 3/3 and No Data resources 2/2."
+      - "Wear full affected-project gate: PASS, debug/release unit tests 52/52 each and Android-test Kotlin compilation."
+      - "Wear lint: PASS with 0 errors/19 warnings; two TypographyDashes warnings are non-blocking because --% is the specified placeholder."
+      - "API 36 No Data runtime implementation verification: PASS; visible/accessibility --%, no --%%, MainActivity top-resumed."
+      - "git diff --check: PASS."
+      - "Wear_OS_6_1_API_36 shutdown completed; adb devices -l lists no attached target."
+      - "Wear connected real DataStore: PASS 3/3, failures=0, errors=0, skipped=0, suite time 5.511s."
+      - "Wear unit gate: debug 52/52 and release 52/52 PASS."
+      - "Wear lint: BUILD SUCCESSFUL, 0 errors and 19 warnings; lint did not detect the runtime double-percent defect."
+      - "WEAR-NO-DATA-RUNTIME-001: FAIL; screenshot and UI hierarchy both show --%%."
+      - "Installed Wear debug identity: com.magicitengineer.batterynotifier, versionCode 3, versionName 1.0, minSdk 30, targetSdk 36."
+      - "MainActivity remained top-resumed; the app log contained no FATAL exception during the No Data smoke."
+      - "Final SnakeYAML parse passed: blocked|implementation|human|phase returns 5|progress blocked."
+      - "Final git diff --check passed; Wear_OS_6_1_API_36 was shut down and adb lists no target."
+      - "Loop control: consecutive same-cause corrective failures 0; total phase returns 5/5; automated loop blocked."
+      - "2026-07-26 preflight: repository, SDK 36, wrappers, adb path, clean worktree, and common application ID pass; sandbox-only Android Studio JBR start is access denied."
+      - "Wear_OS_6_1_API_36 config exists as x86_64 large-round 454x454, target android-36, android-wear-signed system image; runtime attachment is pending."
       - "Final SnakeYAML 2.0 parse passed: in_test|test|test|unassigned, Test in_progress_environment_gated, phase returns 4."
       - "Final git diff --check passed; AVD shutdown completed and adb lists no target."
       - "Independent Test rerun: Mobile connectedDebugAndroidTest PASS, 10/10, BUILD SUCCESSFUL in 3m 43s on Pixel_9a API 36."
@@ -1272,9 +1519,113 @@ loop_control:
       - "Environment preflight passes with 10 passes, 4 expected warnings, and 0 failures; the application-ID check passes."
       - "Final git diff --check passes."
     blockers:
-      - "No Wear emulator/device or required Pixel 10 Pro Fold / Pixel Watch 4 hardware is attached."
+      - "TC-E033 system-rendered complication remains blocked until Battery Notifier is assigned to a compatible active watch-face slot or an independently reviewed service-request harness is available."
+      - "Required Pixel 10 Pro Fold / Pixel Watch 4 hardware is not attached; emulator evidence cannot replace those release gates."
       - "The Pixel_9a AVD did not complete the final reboot, so BOOT_COMPLETED recovery remains blocked rather than failed."
   history:
+    - reported_at: "2026-07-26T21:02:49+09:00"
+      role: "test"
+      phase: "test"
+      actor: "codex"
+      event: "tc_e033_retest_partial_pass_complication_blocked"
+      summary: >-
+        Independently rebuilt and installed the frozen candidate on
+        Wear_OS_6_1_API_36. NoDataStringInstrumentedTest passed 2/2 and the
+        No Data app surface passed visible value, accessibility, connection
+        help, no-double-percent, resumed-Activity, and no-crash checks.
+        TST-003 is fixed_verified_by_test. TC-E033 totals are Pass 4, Fail 0,
+        Blocked 1 because no system watch-face request to
+        MainComplicationService was captured; registration and static
+        NoDataComplicationData inspection were not counted as a runtime pass.
+        No product failure or phase return was recorded; total phase returns
+        remain 5.
+    - reported_at: "2026-07-26T20:34:59+09:00"
+      role: "test"
+      phase: "test"
+      actor: "codex"
+      event: "tst003_test_retest_started"
+      summary: >-
+        Accepted the independently passed Review handoff for candidate HEAD
+        f584fa7019a172dfd2796075b539b08120f9f5e7. Test will independently run
+        NoDataStringInstrumentedTest and TC-E033 on Wear_OS_6_1_API_36, verify
+        visible --%, accessibility text, connection help, absence of --%%,
+        NoData complication behavior, and MainActivity runtime health without
+        changing production code.
+    - reported_at: "2026-07-26T20:23:53+09:00"
+      role: "review"
+      phase: "review"
+      actor: "/root/independent_tst003_review"
+      event: "independent_tst003_review_passed_handoff_to_test"
+      summary: >-
+        Independently verified the frozen TST-003/IMP-009 candidate without
+        changing production code. Both locales return one literal percent with
+        formatted=false, existing formatted percentage resources are
+        unchanged, reviewer-owned API 36 instrumentation passed 2/2, and the
+        reviewer runtime hierarchy contains visible/accessibility --% with no
+        --%%. Open findings are C0/H0/M0/L0 and Review-to-Test passes. Test is
+        unassigned and must independently repeat TC-E033.
+    - reported_at: "2026-07-26T20:16:59+09:00"
+      role: "review"
+      phase: "review"
+      actor: "/root/independent_tst003_review"
+      event: "independent_tst003_review_started"
+      summary: >-
+        Assigned a reviewer different from implementation actor codex. Read
+        AGENTS.md, the complete active state, review rules, all 13 spec_refs,
+        the checklist, the four resource values, their production consumers,
+        and NoDataStringInstrumentedTest. Froze candidate HEAD
+        f584fa7019a172dfd2796075b539b08120f9f5e7 with five intended paths.
+        Review is limited to TST-003/IMP-009 and will not patch production code.
+    - reported_at: "2026-07-26T19:58:43+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "tst003_fixed_handoff_to_independent_review"
+      summary: >-
+        IMP-009 changed only four English/Japanese No Data resources and added
+        a two-locale instrumented regression. The pre-fix run reproduced 0/2;
+        post-fix targeted instrumentation passed 2/2, full API 36
+        instrumentation passed 5/5, debug/release unit suites passed 52/52
+        each, lint completed with 0 errors/19 warnings, and runtime hierarchy
+        verified one visible/accessibility percent with no --%%. TST-003 is
+        fixed_pending_review; reviewer actor must differ from codex.
+    - reported_at: "2026-07-26T19:03:40+09:00"
+      role: "implementation"
+      phase: "implementation"
+      actor: "codex"
+      event: "tst003_human_authorized_resume"
+      summary: >-
+        The human explicitly approved the narrow TST-003 correction, satisfying
+        the recorded resume condition. Implementation resumes as IMP-009 with
+        historical phase returns preserved at 5. The approved approach is to
+        add an instrumented single-percent resource regression first, reproduce
+        the failure on Wear_OS_6_1_API_36, correct only the four English and
+        Japanese No Data strings, then rerun the targeted runtime and full Wear
+        gates.
+    - reported_at: "2026-07-26T16:17:10+09:00"
+      role: "test"
+      phase: "test"
+      actor: "codex"
+      event: "wear_api36_test_failed_phase_return_limit_reached"
+      summary: >-
+        RealWearDataStoreInstrumentedTest passed 3/3 on Wear_OS_6_1_API_36, and
+        Wear debug/release unit tests passed 52/52 with lint 0 errors and 19
+        warnings. Runtime No Data smoke failed TC-E033 because the app and
+        accessibility description render --%% instead of --%. TST-003 returns
+        the defect to Implementation and raises total phase returns to 5/5;
+        the automated loop is blocked and handed to the human role for
+        prioritization. No corrective attempt or production change was made.
+    - reported_at: "2026-07-26T15:42:53+09:00"
+      role: "test"
+      phase: "test"
+      actor: "codex"
+      event: "wear_api36_test_started"
+      summary: >-
+        Assigned Test actor codex to HEAD f584fa7019a172dfd2796075b539b08120f9f5e7.
+        The new Wear_OS_6_1_API_36 AVD config is present as an android-36
+        x86_64 large-round 454x454 image. The first runtime action is to attach
+        it through adb and execute RealWearDataStoreInstrumentedTest; no
+        production-code changes are authorized.
     - reported_at: "2026-07-24T12:31:43+09:00"
       role: "test"
       phase: "test"
@@ -1870,6 +2221,39 @@ risks:
 
 evidence:
   independent_review:
+    - reviewed_at: "2026-07-26T20:23:53+09:00"
+      actor: "/root/independent_tst003_review"
+      candidate_base_head: "f584fa7019a172dfd2796075b539b08120f9f5e7"
+      candidate_scope: >-
+        Independent TST-003/IMP-009 verification of the two English/Japanese No
+        Data resource files, NoDataStringInstrumentedTest, direct resource
+        consumers in the app and Tile, review checklist/state traceability, and
+        recorded plus reviewer-owned Wear_OS_6_1_API_36 evidence.
+      independence: "review actor differs from implementation actor codex"
+      result: "passed"
+      finding_totals:
+        critical_open: 0
+        high_open: 0
+        medium_open: 0
+        low_open: 0
+      candidate_paths:
+        - ".agents/work-items/bn-001-phone-to-watch-battery-sync/review-checklist.md"
+        - ".agents/work-items/bn-001-phone-to-watch-battery-sync/state.yaml"
+        - "BatteryNotifierAndroidWearApp/app/src/main/res/values-ja/strings.xml"
+        - "BatteryNotifierAndroidWearApp/app/src/main/res/values/strings.xml"
+        - "BatteryNotifierAndroidWearApp/app/src/androidTest/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/NoDataStringInstrumentedTest.kt"
+      checks:
+        - "Static XML comparison passed: both locales have one literal percent and formatted=false in phone_battery_no_data/no_data_short; existing %1$d%% resources have delta 0."
+        - "Production diff scope passed: exactly the two English/Japanese resource XML files changed; no production Kotlin changed."
+        - "Reviewer-owned direct API 36 NoDataStringInstrumentedTest passed 2/2."
+        - "Reviewer-owned API 36 runtime smoke passed: visible --%, Phone battery --% accessibility text, no --%%, connection help, and top-resumed MainActivity."
+        - "Runtime evidence: C:/tmp/bn001-tst003-review.png and C:/tmp/bn001-tst003-review-window.xml."
+        - "Fresh implementation supporting reports verify debug/release 52/52 and lint 0 errors/19 warnings; two TypographyDashes warnings are accepted because --% is normative."
+        - "git diff --check passed."
+      gate: >-
+        Pass. TST-003 is fixed_verified_by_review with no open Critical, High,
+        Medium, or Low finding. Advance to Test for an independent TC-E033 rerun;
+        Review runtime execution does not replace Test evidence.
     - reviewed_at: "2026-07-24T06:13:39+09:00"
       actor: "/root/independent_review_final"
       candidate_base_head: "ea000cfd5b8f854f80c8858c29b5b91e388ab8b6"
@@ -3171,13 +3555,14 @@ evidence:
     - name: "Wear lint"
       result: "pass_with_warnings"
       details: >-
-        0 errors and 28 non-blocking warnings: dependency, inlined API,
-        typography, and unused template-resource notices.
+        0 errors and 19 non-blocking warnings. Two TypographyDashes warnings
+        are retained because --% is the specified No Data placeholder.
     - name: "Wear Android test compilation"
       result: "pass"
       details: >-
-        RealWearDataStoreInstrumentedTest compiles 3 cases covering real-file
-        retry persistence, concurrent reservation, and corruption recovery.
+        The full direct API 36 instrumentation run passes 5/5:
+        RealWearDataStoreInstrumentedTest 3/3 plus the English/Japanese
+        NoDataStringInstrumentedTest 2/2.
     - name: "Merged Wear notification manifest contract"
       result: "pass"
       details: >-
@@ -3192,27 +3577,29 @@ evidence:
         target.
 
 handoff:
-  from_role: "implementation"
+  from_role: "test"
   to_role: "test"
   summary: >-
-    Implementation fixed TST-001/TST-002 in three Mobile instrumented-test
-    files without changing production code. The approved application ID and
-    Notification.FLAG_LOCAL_ONLY are now asserted. Android-test compilation
-    passes and Pixel_9a API 36 connectedDebugAndroidTest passes 10/10. Wear and
-    required hardware scenarios remain not_run, and full reboot recovery
-    remains environment-blocked. Historical phase returns remain 4/5.
+    Test independently rebuilt and installed the frozen TST-003 candidate on
+    Wear_OS_6_1_API_36. English/Japanese instrumentation passed 2/2 and the app
+    No Data surface passed visible --%, accessibility, connection help,
+    no-double-percent, resumed-Activity, and no-crash checks. TST-003 and
+    WEAR-NO-DATA-RUNTIME-001 are fixed_verified_by_test. TC-E033 remains
+    partial_pass_blocked only because no system watch-face request to
+    MainComplicationService was captured. No product failure or phase return
+    occurred; historical phase returns remain 5.
   first_action: >-
-    Assign a Test actor, verify the fresh 10/10 XML and TST-001/TST-002
-    corrections, then continue the remaining attached-Wear and reboot recovery
-    scenarios when suitable targets are available.
+    Complete the system complication portion by manually assigning Battery
+    Notifier to a compatible active watch-face slot, or obtain approval for an
+    instrumentation harness and pass it through independent Review before
+    Test invokes MainComplicationService.onComplicationRequest.
 
 next_actions:
-  - "Assign a Test actor and verify TST-001/TST-002 against the fresh Mobile 10/10 connected result."
-  - "Run RealWearDataStoreInstrumentedTest on an attached Wear emulator or device during the Test phase."
+  - "Complete TC-E033 system complication runtime evidence through a compatible active slot or an independently reviewed service-request harness."
   - "Verify Stale SHORT_TEXT and RANGED_VALUE system rendering and TalkBack at representative 6-, 10-, and 60-minute ages in English and Japanese."
   - "Run Wear notification permission, channel-disabled, and four permission-combination cases on attached targets."
   - "Repeat Mobile BOOT_COMPLETED recovery on a healthy emulator/device; Pixel_9a failed to complete the final reboot."
   - "Before Google Play publication, complete and approve the Play Console FGS declaration, explanation, demo video, and current policy confirmation."
 
-updated_at: "2026-07-24T12:33:21+09:00"
+updated_at: "2026-07-26T21:02:49+09:00"
 updated_by: "codex"

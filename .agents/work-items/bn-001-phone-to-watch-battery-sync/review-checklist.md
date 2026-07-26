@@ -56,6 +56,13 @@ If the worktree changes after review starts, invalidate the affected findings an
 - Verify `MainActivity.onStart` consumes at most one automatic retry per foreground transition and the explicit retry button is shown only for `RESERVED_FAILED`.
 - Compile and, when a Wear target is attached, execute `RealWearDataStoreInstrumentedTest` to confirm real-file persistence, concurrent reservation serialization, and corruption recovery; compilation alone is not runtime evidence.
 
+## IMP-009 TST-003 No Data percent focus
+
+- Verify `phone_battery_no_data` and `no_data_short` return one literal percent sign in both English and Japanese without changing formatted percentage resources.
+- Verify the Wear app No Data value and accessibility content description render `--%`, not `--%%`.
+- Run `NoDataStringInstrumentedTest` on the API 36 Wear AVD and confirm both locale cases pass.
+- Confirm the four resource edits are the only production changes for TST-003 and that the existing `TypographyDashes` lint warnings remain non-blocking because `--%` is the specified placeholder.
+
 ## Finding template
 
 ```yaml

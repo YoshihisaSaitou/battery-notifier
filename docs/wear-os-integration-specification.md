@@ -3,7 +3,7 @@
 文書ID: WIS-001  
 版: 0.1  
 状態: Draft  
-最終更新: 2026-07-20
+最終更新: 2026-07-29
 
 ## 1. 目的
 
@@ -23,6 +23,7 @@ Mobileの電池状態と到達イベントをWearへ安全かつ省電力に同�
 |---|---|---|
 | DataClient / DataItem | 最新状態と到達イベント | 切断中にバッファされ、再接続時に同期できる |
 | MessageClient | Wearからの即時状態要求 | 保存不要のベストエフォート要求に適する |
+| MessageClient | Wearからのしきい値変更要求とMobileの結果応答 | 接続中RPCとして扱い、遅延した自動適用を避ける |
 | NodeClient | 現在到達可能なnodeの診断 | UIの接続参考情報に使う |
 | CapabilityClient | 対応アプリ/nodeの発見 | Mobile/Wear機能の存在確認に使う |
 
@@ -118,3 +119,68 @@ Mobileの電池状態と到達イベントをWearへ安全かつ省電力に同�
 - [Sync data items](https://developer.android.com/training/wearables/data/data-items)
 - [Handle Data Layer events](https://developer.android.com/training/wearables/data/events)
 
+## 13. Wearからのしきい値変更（BN-002提案）
+
+設定の唯一の正本とProto DataStore writerはMobileに維持する。Wearは`ChangeThreshold`を直接実行せず、Mobileへ要求して結果とphone-stateを確認する。
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant W as Wear UI/DataStore
+    participant WM as Wear MessageClient
+    participant M as Mobile Listener/Application
+    participant MD as Mobile DataStore
+    participant S as Phone-state sender
+    U->>W: 15%を保存
+    W->>W: requestId・下書き・未確定状態を保存
+    W->>WM: change-threshold(15, expected=20)
+    WM->>M: 接続中message
+    M->>M: payload検証・競合判定
+    M->>MD: 設定・alert state・sequence・結果を原子的に確定
+    M->>S: phone-stateをurgent送信
+    M-->>W: change-threshold-result
+    W->>W: resultとphone-stateの収束を確認
+    W-->>U: 適用済み15%
+```
+
+### 接続中
+
+- Wearは対応Mobile capabilityと到達可能nodeを確認し、要求元nodeを識別できるMessageClientで送る。
+- Mobileの`WearableListenerService`は要求pathを完全一致で受信し、Android型をdomainへ渡さず型付き値へ変換する。
+- Mobileは設定変更を電池callback、Mobile UIの設定変更、監視操作と同じ直列化境界へ入れる。
+- Mobileは要求元nodeへ結果を返し、確定済みphone-stateもurgent送信する。
+- MessageClientの送信成功だけではMobile適用成功とみなさない。Wearは結果受信まで未確定とする。
+
+### 切断中・送信失敗
+
+- Wearは編集下書きと`requestId`をProto DataStoreに保持する。
+- 「接続を確認できないため保存していません」と表示し、有効なしきい値表示は最後のphone-state値から変えない。
+- DataItemへcommandを置かず、再接続だけで古い要求を自動適用しない。
+- node到達を確認できた後、ユーザーの明示的な「再試行」で同じ`requestId`を送る。
+
+### 結果喪失・再接続
+
+- Mobileで適用後に結果messageだけが失われても、要求結果はMobile Proto DataStoreに残る。
+- Wearが同じ`requestId`を再試行すると、Mobileは設定変更とstate sequence増加を繰り返さず保存済み結果を返す。
+- Wearが別nodeへ自動broadcastしない。要求時に選択した対応Mobile nodeが不明な場合は送信せず、接続案内を表示する。
+
+### 競合
+
+- Wear要求は最後に受信した有効なしきい値を`expectedThresholdPercent`として含める。
+- Mobileの現在値が期待値と異なり、要求値とも異なる場合は`CONFLICT`を返し、Mobile設定を変更しない。
+- Wearは結果の有効値を表示し、ユーザーが新しい`requestId`で編集し直せるようにする。
+
+### Stale・No Data・再起動
+
+- Staleは編集を禁止しないが、古い値を基準にした要求が競合し得ることを表示する。
+- No Dataまたは互換Mobile capabilityなしでは保存操作を無効にする。
+- Wear再起動は未確定要求を復元するだけで自動送信しない。
+- Mobile再起動は保存済み直近結果を復元し、同じ`requestId`へ冪等に応答する。
+
+### 互換性
+
+- 旧Mobileは変更要求capabilityを公開しないため、新Wearは編集保存を無効にする。
+- 新Mobileと旧Wearは既存のphone-state同期を継続する。
+- 未対応schemaは設定を変更せず診断へ記録する。安全に`requestId`を読めないpayloadへ結果を捏造しない。
+
+公式Android資料の確認日: 2026-07-29。MessageClientはRPC/remote-control用途で、接続が必要かつ永続化・自動再試行を持たない。DataItemは切断時にbufferされるため、本機能では遅延した設定適用を避ける目的でcommandに使用しない。

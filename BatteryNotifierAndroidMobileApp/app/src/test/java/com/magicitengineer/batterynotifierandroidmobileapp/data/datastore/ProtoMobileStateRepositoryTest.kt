@@ -5,6 +5,11 @@ import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.AlertRule
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.battery.BatteryReading
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.notification.MobileNotificationDisposition
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.settings.THRESHOLD_CHANGE_SCHEMA_VERSION
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.settings.ThresholdChangeProcessingOutcome
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.settings.ThresholdChangeRequest
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.settings.ThresholdChangeResult
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.settings.ThresholdChangeResultCode
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.sync.SyncDeliveryUpdate
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.sync.SyncFailureClassification
 import kotlinx.coroutines.flow.Flow
@@ -272,6 +277,149 @@ class ProtoMobileStateRepositoryTest {
         assertEquals(completed.state, stale.state)
     }
 
+    @Test
+    fun wearThresholdRequestUpdatesRuleSequenceAndOutboxAtomically() = runBlocking {
+        val store = InMemoryDataStore(MobileStateSanitizer.defaultValue())
+        val repository = ProtoMobileStateRepository(store)
+        repository.updateAlertRule(AlertRule(thresholdPercent = 20, monitoringEnabled = true))
+        repository.processBatteryReading(
+            BatteryReading(55, isCharging = false, capturedAtEpochMillis = 1_000L),
+            FIRST_EVENT_ID,
+        )
+
+        val processing = repository.applyThresholdChangeRequest(
+            ThresholdChangeRequest(
+                schemaVersion = THRESHOLD_CHANGE_SCHEMA_VERSION,
+                requestId = THRESHOLD_REQUEST_ID,
+                thresholdPercent = 30,
+                expectedThresholdPercent = 20,
+            )
+        )
+
+        assertTrue(processing.settingChanged)
+        assertFalse(processing.replayed)
+        assertEquals(ThresholdChangeResultCode.APPLIED, processing.result?.resultCode)
+        assertEquals(30, processing.state.alertRule.thresholdPercent)
+        assertEquals(2L, processing.state.sequence)
+        assertEquals(2L, processing.state.lastSnapshot?.sequence)
+        assertEquals(2L, processing.state.pendingStateSequence)
+        assertEquals(processing.result, processing.state.lastThresholdChangeResult)
+        assertEquals(processing.state, MobileStateProtoMapper.toDomain(store.current()))
+    }
+
+    @Test
+    fun staleExpectedThresholdReturnsConflictWithoutChangingRuleOrSequence() = runBlocking {
+        val repository = ProtoMobileStateRepository(
+            InMemoryDataStore(MobileStateSanitizer.defaultValue())
+        )
+        repository.processBatteryReading(
+            BatteryReading(55, isCharging = false, capturedAtEpochMillis = 1_000L),
+            FIRST_EVENT_ID,
+        )
+
+        val processing = repository.applyThresholdChangeRequest(
+            ThresholdChangeRequest(
+                schemaVersion = THRESHOLD_CHANGE_SCHEMA_VERSION,
+                requestId = THRESHOLD_REQUEST_ID,
+                thresholdPercent = 30,
+                expectedThresholdPercent = 25,
+            )
+        )
+
+        assertFalse(processing.settingChanged)
+        assertFalse(processing.replayed)
+        assertEquals(ThresholdChangeResultCode.CONFLICT, processing.result?.resultCode)
+        assertEquals(20, processing.result?.effectiveThresholdPercent)
+        assertEquals(20, processing.state.alertRule.thresholdPercent)
+        assertEquals(1L, processing.state.sequence)
+    }
+
+    @Test
+    fun duplicateThresholdRequestReplaysPersistedResultWithoutASecondMutation() = runBlocking {
+        val repository = ProtoMobileStateRepository(
+            InMemoryDataStore(MobileStateSanitizer.defaultValue())
+        )
+        repository.processBatteryReading(
+            BatteryReading(55, isCharging = false, capturedAtEpochMillis = 1_000L),
+            FIRST_EVENT_ID,
+        )
+        val request = ThresholdChangeRequest(
+            schemaVersion = THRESHOLD_CHANGE_SCHEMA_VERSION,
+            requestId = THRESHOLD_REQUEST_ID,
+            thresholdPercent = 30,
+            expectedThresholdPercent = 20,
+        )
+
+        val results = List(10) {
+            repository.applyThresholdChangeRequest(request)
+        }
+        val first = results.first()
+
+        assertTrue(first.settingChanged)
+        results.drop(1).forEach { replay ->
+            assertTrue(replay.replayed)
+            assertFalse(replay.settingChanged)
+            assertEquals(first.result, replay.result)
+            assertEquals(first.state, replay.state)
+        }
+    }
+
+    @Test
+    fun thresholdRequestWithoutSnapshotIsDeferredWithoutMutationOrResult() = runBlocking {
+        val repository = ProtoMobileStateRepository(
+            InMemoryDataStore(MobileStateSanitizer.defaultValue())
+        )
+
+        val processing = repository.applyThresholdChangeRequest(
+            ThresholdChangeRequest(
+                schemaVersion = THRESHOLD_CHANGE_SCHEMA_VERSION,
+                requestId = THRESHOLD_REQUEST_ID,
+                thresholdPercent = 30,
+                expectedThresholdPercent = 20,
+            )
+        )
+
+        assertEquals(
+            ThresholdChangeProcessingOutcome.PHONE_STATE_UNAVAILABLE,
+            processing.outcome,
+        )
+        assertFalse(processing.settingChanged)
+        assertFalse(processing.replayed)
+        assertNull(processing.result)
+        assertEquals(20, processing.state.alertRule.thresholdPercent)
+        assertEquals(0L, processing.state.sequence)
+        assertEquals(0L, processing.state.pendingStateSequence)
+        assertNull(processing.state.lastThresholdChangeResult)
+    }
+
+    @Test
+    fun thresholdResultDomainRejectsNonPositivePhoneStateSequence() {
+        listOf(0L, -1L).forEach { sequence ->
+            assertTrue(
+                runCatching {
+                    ThresholdChangeResult(
+                        requestId = THRESHOLD_REQUEST_ID,
+                        resultCode = ThresholdChangeResultCode.APPLIED,
+                        effectiveThresholdPercent = 30,
+                        phoneStateSequence = sequence,
+                    )
+                }.isFailure
+            )
+        }
+    }
+
+    @Test
+    fun unsupportedThresholdSchemaUsesItsDedicatedDiagnosticCounter() = runBlocking {
+        val repository = ProtoMobileStateRepository(
+            InMemoryDataStore(MobileStateSanitizer.defaultValue())
+        )
+
+        val state = repository.recordUnsupportedSchema(receivedVersion = 2)
+
+        assertEquals(1L, state.unsupportedSchemaCount)
+        assertEquals(0L, state.invalidInputCount)
+    }
+
     private class InMemoryDataStore<T>(initial: T) : DataStore<T> {
         private val values = MutableStateFlow(initial)
         private val mutex = Mutex()
@@ -290,5 +438,6 @@ class ProtoMobileStateRepositoryTest {
     private companion object {
         const val FIRST_EVENT_ID = "550e8400-e29b-41d4-a716-446655440000"
         const val SECOND_EVENT_ID = "550e8400-e29b-41d4-a716-446655440001"
+        const val THRESHOLD_REQUEST_ID = "550e8400-e29b-41d4-a716-446655440002"
     }
 }

@@ -3,7 +3,7 @@
 文書ID: L10N-001  
 版: 0.1  
 状態: Draft  
-最終更新: 2026-07-20
+最終更新: 2026-07-29
 
 ## 1. 対応言語
 
@@ -50,6 +50,13 @@ data_stale
 last_updated_minutes_ago
 sync_now
 allow_notifications
+change_threshold
+save_threshold
+threshold_checking_phone
+threshold_saved_confirming_sync
+threshold_not_saved
+threshold_conflict
+retry_threshold_change
 ```
 
 ## 4. 表記ルール
@@ -63,6 +70,10 @@ allow_notifications
 | Stale | 古いデータの可能性 | Data may be outdated |
 | Monitoring | 監視 | Monitoring |
 | Sync | 同期 | Sync |
+| 未確定 | まだ保存されていません | Not saved yet |
+| 競合 | スマートフォンで設定が変更されました | Setting changed on phone |
+
+BN-002では要求payloadと結果payloadに完成済み文言を含めず、Wearが現在のLocaleで編集、送信中、適用済み、未保存、競合、拒否、再試行の文言を組み立てる。
 
 - 日本語は簡潔な「です・ます」調を基本とする。
 - 英語はsentence caseを使用する。
@@ -90,4 +101,3 @@ allow_notifications
 - 通知、Tile、コンプリケーション、TalkBack読み上げを日英で確認する。
 - フォント最大、疑似ローカライズ、24時間/12時間表記を確認する。
 - 全Localeでformat引数の型と個数が一致することをLintで確認する。
-

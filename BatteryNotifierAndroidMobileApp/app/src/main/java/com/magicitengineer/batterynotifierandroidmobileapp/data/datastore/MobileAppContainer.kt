@@ -7,11 +7,14 @@ import com.magicitengineer.batterynotifierandroidmobileapp.application.monitorin
 import com.magicitengineer.batterynotifierandroidmobileapp.application.monitoring.RepositoryMonitoringStartBaselineResetter
 import com.magicitengineer.batterynotifierandroidmobileapp.application.notification.DeliverPendingMobileNotification
 import com.magicitengineer.batterynotifierandroidmobileapp.application.settings.RepositoryThresholdSettingUpdater
+import com.magicitengineer.batterynotifierandroidmobileapp.application.settings.RepositoryWearThresholdChangeProcessor
 import com.magicitengineer.batterynotifierandroidmobileapp.application.settings.ThresholdSettingsController
 import com.magicitengineer.batterynotifierandroidmobileapp.application.sync.MobileDataLayerSender
 import com.magicitengineer.batterynotifierandroidmobileapp.application.sync.MobileRuntimeTriggerHandler
 import com.magicitengineer.batterynotifierandroidmobileapp.application.sync.MobileSyncCoordinator
+import com.magicitengineer.batterynotifierandroidmobileapp.application.sync.WearThresholdChangeHandler
 import com.magicitengineer.batterynotifierandroidmobileapp.data.wearable.GooglePlayServicesMobileSyncGateway
+import com.magicitengineer.batterynotifierandroidmobileapp.data.wearable.GooglePlayServicesThresholdChangeResultGateway
 import com.magicitengineer.batterynotifierandroidmobileapp.platform.battery.AndroidBatteryChangedCallback
 import com.magicitengineer.batterynotifierandroidmobileapp.platform.battery.AndroidBatteryChangedIntentMapper
 import com.magicitengineer.batterynotifierandroidmobileapp.platform.battery.AndroidCurrentBatteryReadingSource
@@ -38,6 +41,15 @@ object MobileAppContainer {
 
     fun monitoringController(context: Context): MonitoringController =
         components(context).monitoringController
+
+    fun repository(context: Context): MobileStateRepository =
+        components(context).repository
+
+    fun wearThresholdChangeHandler(context: Context): WearThresholdChangeHandler =
+        WearThresholdChangeHandler(
+            runner = syncCoordinator(context),
+            resultGateway = GooglePlayServicesThresholdChangeResultGateway(context),
+        )
 
     private fun components(context: Context): MobileComponents =
         componentsInstance ?: synchronized(this) {
@@ -71,8 +83,10 @@ object MobileAppContainer {
                 repository = repository,
                 gateway = AndroidMobileAlertNotificationGateway(context),
             ),
+            wearThresholdChangeProcessor = RepositoryWearThresholdChangeProcessor(repository),
         )
         return MobileComponents(
+            repository = repository,
             coordinator = coordinator,
             thresholdSettingsController = ThresholdSettingsController(
                 repository = repository,
@@ -90,6 +104,7 @@ object MobileAppContainer {
     }
 
     private data class MobileComponents(
+        val repository: MobileStateRepository,
         val coordinator: MobileSyncCoordinator,
         val thresholdSettingsController: ThresholdSettingsController,
         val batteryChangedCallback: AndroidBatteryChangedCallback,

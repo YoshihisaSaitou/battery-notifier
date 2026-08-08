@@ -3,7 +3,7 @@
 文書ID: SAD-001  
 版: 0.1  
 状態: Draft  
-最終更新: 2026-07-20
+最終更新: 2026-07-29
 
 ## 1. アーキテクチャ方針
 
@@ -32,6 +32,10 @@ flowchart LR
     WearStore --> Tile["Wear Tile"]
     WearStore --> Complication["Complication Data Source"]
     WearListener --> WearNotify["Wear Notification"]
+    WearUI --> WearCommand["Wear Threshold Request"]
+    WearCommand --> PlayServices
+    PlayServices --> MobileCommand["Mobile Threshold Request Handler"]
+    MobileCommand --> MobileApp
 ```
 
 Data Layerは配送路であり永続ストレージではない。各端末は受信した正常値を自身のDataStoreへ保存する。
@@ -121,6 +125,17 @@ Mobile/Wearのapplication IDと署名は一致させる。現在の雛形は異�
 7. 最新状態とイベントをData Layerへ送る。
 8. Wearが検証・順序判定・保存し、UI/Tile/Complication/通知を更新する。
 
+### 7.1 Wear起点設定変更（BN-002提案）
+
+1. Wear Presentationは下書きをApplication層へ渡し、Proto DataStoreへ未確定要求を保存する。
+2. Wear Data/PlatformがMessageClientで型付き要求を対応Mobile nodeへ送る。
+3. Mobile Data/Platformがmessageを型付き値へ変換し、Application層へ渡す。
+4. Mobile ApplicationはMobile UIのしきい値変更と同じ直列化境界で期待値、冪等キー、domain ruleを評価する。
+5. Mobile DataStoreが設定、alert state、state sequence、outbox、直近要求結果を原子的に保存する。
+6. Mobileはphone-stateと要求結果を送る。Wearは結果だけで新しい正本を作らず、phone-stateへ収束する。
+
+WearからMobile DataStoreを直接更新する境界は作らない。Wearの未確定要求はUI復旧用であり、設定の正本ではない。
+
 ## 8. 並行処理
 
 - 電池イベント処理は単一`CoroutineScope`と`Mutex`または単一actorで直列化する。
@@ -128,6 +143,8 @@ Mobile/Wearのapplication IDと署名は一致させる。現在の雛形は異�
 - 通知と同期は保存済みのoutbox状態から実行し、成功後に配信済みフラグを更新する。
 - 同期失敗は状態を失わず、次の電池更新、node変化、手動同期で再試行する。
 - ViewModelは保存層のFlowを読むだけとし、複数の独立した真実のソースを作らない。
+- Mobile UI変更とWear要求を同じMutex/actorへ直列化し、期待値比較から保存までを割り込ませない。
+- `requestId`の処理済み結果を設定変更と同じtransactionで保存し、結果message喪失後の再試行で再適用しない。
 
 ## 9. エラー処理
 
@@ -149,4 +166,3 @@ Mobile/Wearのapplication IDと署名は一致させる。現在の雛形は異�
 - Pull Request相当の作業完了条件は、仕様更新、テスト、レビュー、`state.yaml`更新である。
 
 詳細決定は[architecture-decision-records.md](architecture-decision-records.md)を参照する。
-

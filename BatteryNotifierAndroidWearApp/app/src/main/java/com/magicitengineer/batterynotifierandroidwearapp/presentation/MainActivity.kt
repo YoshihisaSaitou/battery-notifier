@@ -42,10 +42,12 @@ import androidx.wear.tooling.preview.devices.WearDevices
 import com.magicitengineer.batterynotifierandroidwearapp.R
 import com.magicitengineer.batterynotifierandroidwearapp.application.sync.PhoneStateRequestResult
 import com.magicitengineer.batterynotifierandroidwearapp.application.sync.RequestPhoneState
+import com.magicitengineer.batterynotifierandroidwearapp.domain.settings.ThresholdChangeStatus
 import com.magicitengineer.batterynotifierandroidwearapp.data.datastore.WearAppContainer
 import com.magicitengineer.batterynotifierandroidwearapp.domain.presentation.Freshness
 import com.magicitengineer.batterynotifierandroidwearapp.domain.presentation.WearDisplayState
 import com.magicitengineer.batterynotifierandroidwearapp.domain.presentation.WearDisplayStateMapper
+import com.magicitengineer.batterynotifierandroidwearapp.domain.presentation.WearThresholdDisplayPolicy
 import com.magicitengineer.batterynotifierandroidwearapp.domain.state.WearPersistentState
 import com.magicitengineer.batterynotifierandroidwearapp.presentation.theme.BatteryNotifierAndroidWearAppTheme
 import com.magicitengineer.batterynotifierandroidwearapp.platform.wearable.GooglePlayServicesPhoneStateRequestGateway
@@ -66,13 +68,20 @@ class MainActivity : ComponentActivity() {
     private val notificationDelivery by lazy {
         WearAppContainer.notificationDelivery(this)
     }
+    private val thresholdSettingsController by lazy {
+        WearAppContainer.thresholdSettingsController(this)
+    }
     private var notificationsEnabled by mutableStateOf(false)
     private var batteryAlertChannelDisabled = false
+    private var thresholdWriterAvailable by mutableStateOf(false)
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         setTheme(android.R.style.Theme_DeviceDefault)
         refreshNotificationPermissionState()
+        lifecycleScope.launch {
+            repository.recoverInterruptedThresholdChange()
+        }
         val requestPhoneState = RequestPhoneState(
             GooglePlayServicesPhoneStateRequestGateway(this)
         )
@@ -86,6 +95,7 @@ class MainActivity : ComponentActivity() {
             var nowEpochMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
             var retryUiState by remember { mutableStateOf(RetryUiState.IDLE) }
             var notificationRetryInProgress by remember { mutableStateOf(false) }
+            var thresholdEditing by remember { mutableStateOf(false) }
             LaunchedEffect(lifecycleOwner) {
                 lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                     while (true) {
@@ -97,10 +107,14 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(persistentState.phoneStateReceivedAtEpochMillis) {
                 nowEpochMillis = System.currentTimeMillis()
             }
-            val displayState = WearDisplayStateMapper.map(
+            val mappedDisplayState = WearDisplayStateMapper.map(
                     state = persistentState,
                     nowEpochMillis = nowEpochMillis.coerceAtLeast(1L),
                 )
+            val displayState = mappedDisplayState.copy(
+                thresholdPercent =
+                    WearThresholdDisplayPolicy.effectiveThresholdPercent(persistentState)
+            )
             val notificationPermissionState = notificationPermissionUiState(
                 notificationsEnabled = notificationsEnabled,
                 requestPreviouslyCompleted = persistentState.notificationPermissionRequested,
@@ -152,6 +166,40 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 },
+                thresholdDraftPercent = persistentState.thresholdDraftPercent
+                    ?: displayState.thresholdPercent,
+                thresholdChangeStatus = persistentState.thresholdChangeStatus,
+                thresholdWriterAvailable = thresholdWriterAvailable,
+                thresholdEditing = thresholdEditing,
+                onThresholdEdit = {
+                    thresholdEditing = true
+                    coroutineScope.launch {
+                        thresholdWriterAvailable =
+                            thresholdSettingsController.isAvailable()
+                    }
+                },
+                onThresholdDraftChange = { value ->
+                    coroutineScope.launch {
+                        thresholdSettingsController.updateDraft(value)
+                    }
+                },
+                onThresholdSave = {
+                    thresholdEditing = false
+                    coroutineScope.launch {
+                        thresholdSettingsController.save()
+                    }
+                },
+                onThresholdRetry = {
+                    coroutineScope.launch {
+                        thresholdSettingsController.retry()
+                    }
+                },
+                onThresholdCancel = {
+                    thresholdEditing = false
+                    coroutineScope.launch {
+                        thresholdSettingsController.cancel()
+                    }
+                },
             )
         }
     }
@@ -159,6 +207,9 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         refreshNotificationPermissionState()
+        lifecycleScope.launch {
+            thresholdWriterAvailable = thresholdSettingsController.isAvailable()
+        }
     }
 
     @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
@@ -222,6 +273,15 @@ private fun WearApp(
     onNotificationPermissionAction: () -> Unit = {},
     notificationRetryInProgress: Boolean = false,
     onNotificationRetry: () -> Unit = {},
+    thresholdDraftPercent: Int? = displayState.thresholdPercent,
+    thresholdChangeStatus: ThresholdChangeStatus = ThresholdChangeStatus.IDLE,
+    thresholdWriterAvailable: Boolean = false,
+    thresholdEditing: Boolean = false,
+    onThresholdEdit: () -> Unit = {},
+    onThresholdDraftChange: (Int) -> Unit = {},
+    onThresholdSave: () -> Unit = {},
+    onThresholdRetry: () -> Unit = {},
+    onThresholdCancel: () -> Unit = {},
 ) {
     BatteryNotifierAndroidWearAppTheme {
         Box(
@@ -238,6 +298,15 @@ private fun WearApp(
                 onNotificationPermissionAction = onNotificationPermissionAction,
                 notificationRetryInProgress = notificationRetryInProgress,
                 onNotificationRetry = onNotificationRetry,
+                thresholdDraftPercent = thresholdDraftPercent,
+                thresholdChangeStatus = thresholdChangeStatus,
+                thresholdWriterAvailable = thresholdWriterAvailable,
+                thresholdEditing = thresholdEditing,
+                onThresholdEdit = onThresholdEdit,
+                onThresholdDraftChange = onThresholdDraftChange,
+                onThresholdSave = onThresholdSave,
+                onThresholdRetry = onThresholdRetry,
+                onThresholdCancel = onThresholdCancel,
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -253,6 +322,15 @@ private fun BatteryStateList(
     onNotificationPermissionAction: () -> Unit,
     notificationRetryInProgress: Boolean,
     onNotificationRetry: () -> Unit,
+    thresholdDraftPercent: Int?,
+    thresholdChangeStatus: ThresholdChangeStatus,
+    thresholdWriterAvailable: Boolean,
+    thresholdEditing: Boolean,
+    onThresholdEdit: () -> Unit,
+    onThresholdDraftChange: (Int) -> Unit,
+    onThresholdSave: () -> Unit,
+    onThresholdRetry: () -> Unit,
+    onThresholdCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val batteryDescription = displayState.levelPercent?.let {
@@ -309,6 +387,88 @@ private fun BatteryStateList(
             }
             displayState.thresholdPercent?.let { threshold ->
                 item { StateText(stringResource(R.string.threshold_value, threshold)) }
+            }
+            if (thresholdEditing && thresholdDraftPercent != null) {
+                item {
+                    StateText(
+                        stringResource(
+                            R.string.threshold_draft_value,
+                            thresholdDraftPercent,
+                        )
+                    )
+                }
+                item {
+                    Button(
+                        onClick = {
+                            onThresholdDraftChange(
+                                (thresholdDraftPercent - 1).coerceAtLeast(5)
+                            )
+                        },
+                        enabled = thresholdDraftPercent > 5,
+                    ) {
+                        Text(stringResource(R.string.decrease_threshold))
+                    }
+                }
+                item {
+                    Button(
+                        onClick = {
+                            onThresholdDraftChange(
+                                (thresholdDraftPercent + 1).coerceAtMost(100)
+                            )
+                        },
+                        enabled = thresholdDraftPercent < 100,
+                    ) {
+                        Text(stringResource(R.string.increase_threshold))
+                    }
+                }
+                item {
+                    Button(
+                        onClick = onThresholdSave,
+                        enabled = thresholdWriterAvailable,
+                    ) {
+                        Text(stringResource(R.string.save_threshold))
+                    }
+                }
+                if (!thresholdWriterAvailable) {
+                    item {
+                        StateText(stringResource(R.string.threshold_writer_unavailable))
+                    }
+                }
+                item {
+                    Button(onClick = onThresholdCancel) {
+                        Text(stringResource(R.string.cancel_threshold_change))
+                    }
+                }
+            } else {
+                ThresholdChangeStatusText(thresholdChangeStatus)
+                when (thresholdChangeStatus) {
+                    ThresholdChangeStatus.SENDING -> Unit
+                    ThresholdChangeStatus.WAITING_RESULT,
+                    ThresholdChangeStatus.SEND_FAILED,
+                    ThresholdChangeStatus.APPLIED_WAITING_STATE -> {
+                        item {
+                            Button(onClick = onThresholdRetry) {
+                                Text(stringResource(R.string.retry_threshold_change))
+                            }
+                        }
+                        item {
+                            Button(onClick = onThresholdCancel) {
+                                Text(stringResource(R.string.cancel_threshold_change))
+                            }
+                        }
+                    }
+
+                    ThresholdChangeStatus.IDLE,
+                    ThresholdChangeStatus.APPLIED,
+                    ThresholdChangeStatus.CONFLICT,
+                    ThresholdChangeStatus.REJECTED -> {
+                        item {
+                            Button(onClick = onThresholdEdit) {
+                                Text(stringResource(R.string.change_threshold))
+                            }
+                        }
+                    }
+                }
             }
         }
         if (displayState.incompatibleSchema) {
@@ -400,6 +560,35 @@ private fun BatteryStateList(
             retryStatusText?.let { text ->
                 item { StateText(text) }
             }
+        }
+    }
+}
+
+private fun androidx.wear.compose.foundation.lazy.ScalingLazyListScope.ThresholdChangeStatusText(
+    status: ThresholdChangeStatus,
+) {
+    when (status) {
+        ThresholdChangeStatus.IDLE -> Unit
+        ThresholdChangeStatus.SENDING -> item {
+            StateText(stringResource(R.string.threshold_checking_phone))
+        }
+        ThresholdChangeStatus.WAITING_RESULT -> item {
+            StateText(stringResource(R.string.threshold_waiting_result))
+        }
+        ThresholdChangeStatus.SEND_FAILED -> item {
+            StateText(stringResource(R.string.threshold_not_saved))
+        }
+        ThresholdChangeStatus.APPLIED_WAITING_STATE -> item {
+            StateText(stringResource(R.string.threshold_saved_confirming_sync))
+        }
+        ThresholdChangeStatus.APPLIED -> item {
+            StateText(stringResource(R.string.threshold_saved))
+        }
+        ThresholdChangeStatus.CONFLICT -> item {
+            StateText(stringResource(R.string.threshold_conflict))
+        }
+        ThresholdChangeStatus.REJECTED -> item {
+            StateText(stringResource(R.string.threshold_rejected))
         }
     }
 }

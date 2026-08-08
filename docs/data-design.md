@@ -3,7 +3,7 @@
 文書ID: DDS-001  
 版: 0.1  
 状態: Draft  
-最終更新: 2026-07-20
+最終更新: 2026-07-29
 
 ## 1. ドメインモデル
 
@@ -45,6 +45,25 @@
 | `expiresAtEpochMillis` | Long | Wear通知有効期限。既定は発生+5分 |
 | `sequence` | Long | 状態と同じ順序系列 |
 
+### ThresholdChangeRequest
+
+WearからMobileへ送る変更要求であり、設定の正本ではない。
+
+| 項目 | 型 | 制約 | 説明 |
+|---|---|---|---|
+| `requestId` | String | UUID v4、最大64文字 | 再試行と結果照合の冪等キー |
+| `thresholdPercent` | Int | 5..100 | ユーザーが要求する値 |
+| `expectedThresholdPercent` | Int | 5..100 | Wearが最後に確認したMobileの有効値 |
+
+### ThresholdChangeResult
+
+| 項目 | 型 | 制約 | 説明 |
+|---|---|---|---|
+| `requestId` | String | 要求と一致 | 結果照合キー |
+| `resultCode` | Enum | `APPLIED`、`CONFLICT`、`REJECTED` | Mobileでの確定結果 |
+| `effectiveThresholdPercent` | Int | 5..100 | 結果時点のMobile有効値 |
+| `phoneStateSequence` | Long | 1以上 | 結果に対応してMobileが確定したstate順序 |
+
 ## 2. Mobile Proto DataStore
 
 推奨ファイル名: `battery_notifier_mobile.pb`
@@ -56,6 +75,7 @@
 | Alert | armed、previous level、last event、Mobile通知済みeventId |
 | Sync outbox | pending state sequence、pending event、最終成功時刻、最終エラー分類 |
 | Diagnostics | invalid input count、unsupported schema count |
+| Wear threshold request result | 直近requestId、resultCode、有効しきい値、対応state sequence |
 
 保持するイベントは最新の未期限切れ1件と直近処理IDだけでよい。履歴分析はv1.0対象外とする。
 
@@ -70,6 +90,7 @@
 | State | last valid sync envelope、receivedAtEpochMillis |
 | Notification | last processed eventId、processedAtEpochMillis |
 | Diagnostics | invalid payload count、unsupported schema、last receive error |
+| Threshold edit | 下書き、expected threshold、未確定requestId、送信/結果状態 |
 
 鮮度は保存せず、`now - receivedAtEpochMillis`で都度算出する。端末時刻変更を跨ぐ画面内計測には`elapsedRealtime`を併用してよいが、再起動を跨ぐ永続値にはepoch millisを用いる。
 
@@ -84,6 +105,8 @@
 | 最新状態 | `/battery-notifier/v1/phone-state` | 固定パスを上書き |
 | 到達イベント | `/battery-notifier/v1/threshold-event` | 固定パスをeventId/sequence付きで上書き |
 | 状態要求 | `/battery-notifier/v1/request-state` | MessageClient。ベストエフォート |
+| しきい値変更要求 | `/battery-notifier/v1/change-threshold` | MessageClient。WearからMobileへの接続中RPC |
+| しきい値変更結果 | `/battery-notifier/v1/change-threshold-result` | MessageClient。Mobileから要求元Wearへの応答 |
 
 DataItemパスをイベントごとに増やさない。固定パスにして不要DataItemを蓄積させず、値が同じ場合でも`sequence`の変更で同期を発生させる。
 
@@ -155,3 +178,39 @@ DataItemパスをイベントごとに増やさない。固定パスにして不
 ```
 
 JSONは説明用であり、実装はDataMapを使用する。
+
+## 9. Wearしきい値変更メッセージ契約（BN-002提案）
+
+メッセージpayloadは`DataMap.toByteArray()`相当の型付きbinaryとし、Kotlin文字列やLocale依存文言を含めない。両pathは完全一致で判定する。
+
+### change-threshold request
+
+| Key | DataMap型 | 必須 | 制約 |
+|---|---|---|---|
+| `schemaVersion` | Int | Yes | 1 |
+| `requestId` | String | Yes | UUID、最大64文字 |
+| `thresholdPercent` | Int | Yes | 5..100 |
+| `expectedThresholdPercent` | Int | Yes | 5..100 |
+
+### change-threshold-result
+
+| Key | DataMap型 | 必須 | 制約 |
+|---|---|---|---|
+| `schemaVersion` | Int | Yes | 1 |
+| `requestId` | String | Yes | 要求と一致するUUID |
+| `resultCode` | String | Yes | `APPLIED`、`CONFLICT`、`REJECTED` |
+| `effectiveThresholdPercent` | Int | Yes | 5..100 |
+| `phoneStateSequence` | Long | Yes | 1以上 |
+
+### 検証・原子性・冪等性
+
+1. Mobileはpath、schema、必須key、型、UUID、範囲を全体検証し、部分採用しない。
+2. 同じ`requestId`がMobile Proto DataStoreの直近処理済み要求と一致する場合、設定を再適用せず保存済み結果を再送する。
+3. `thresholdPercent == Mobileの現在値`なら、期待値にかかわらず冪等な`APPLIED`として現在値を返してよい。
+4. それ以外で`expectedThresholdPercent != Mobileの現在値`なら`CONFLICT`とし、設定を変更しない。
+5. 適用する場合は、既存のしきい値変更domain処理、alert state再評価、Mobile state `sequence`増加、同期outbox、要求結果を同じ直列化境界で確定する。設定変更だけで到達イベントを作らない。
+6. 結果送信が失敗しても保存済み結果を保持し、同じ`requestId`の再試行へ再送する。
+7. Wearは`requestId`が現在の未確定要求と一致する正常な結果だけを採用する。未知・古い・異常な結果で表示値や下書きを変更しない。
+8. Wearは`APPLIED`結果を受けても、後続または既受信のphone-stateが`phoneStateSequence`以上へ収束するまで「同期確認中」と表示できる。最終表示の正本はphone-stateのしきい値である。
+
+MessageClientは接続が必要で永続再送を行わない。未送信または結果不明の要求はWear Proto DataStoreへ保持するが、再接続や再起動だけでは自動送信しない。

@@ -15,9 +15,12 @@ import com.magicitengineer.batterynotifierandroidmobileapp.application.settings.
 import com.magicitengineer.batterynotifierandroidmobileapp.application.settings.ThresholdSaveResult
 import com.magicitengineer.batterynotifierandroidmobileapp.application.settings.ThresholdSettingUpdater
 import com.magicitengineer.batterynotifierandroidmobileapp.application.settings.ThresholdSettingsRunner
+import com.magicitengineer.batterynotifierandroidmobileapp.application.settings.WearThresholdChangeProcessor
 import com.magicitengineer.batterynotifierandroidmobileapp.application.settings.toSettingsState
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.AlertRule
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.battery.BatteryReadResult
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.settings.ThresholdChangeRequest
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.settings.ThresholdChangeProcessingOutcome
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -85,7 +88,12 @@ class MobileSyncCoordinator(
         PendingMobileNotificationDeliverer {
             MobileNotificationDeliveryResult.NotPending
         },
-) : MobileSyncTriggerRunner, ThresholdSettingsRunner, MobileBatteryChangeRunner, MonitoringRunner {
+    private val wearThresholdChangeProcessor: WearThresholdChangeProcessor =
+        WearThresholdChangeProcessor {
+            error("Wear threshold changes are not configured")
+        },
+) : MobileSyncTriggerRunner, ThresholdSettingsRunner, MobileBatteryChangeRunner, MonitoringRunner,
+    WearThresholdChangeRunner {
     private val mutex = Mutex()
 
     override suspend fun sync(
@@ -117,6 +125,37 @@ class MobileSyncCoordinator(
         syncAfterRefreshLocked(
             trigger = MobileSyncTrigger.BATTERY_CHANGED,
             refreshResult = batteryReadResultProcessor.process(result),
+        )
+    }
+
+    override suspend fun applyWearThresholdChange(
+        request: ThresholdChangeRequest,
+    ): WearThresholdChangeCoordinationResult = mutex.withLock {
+        var processing = wearThresholdChangeProcessor.process(request)
+        val initializationRefresh = if (
+            processing.outcome == ThresholdChangeProcessingOutcome.PHONE_STATE_UNAVAILABLE
+        ) {
+            refresher.refresh().also { refreshResult ->
+                if (refreshResult is BatteryRefreshResult.Refreshed) {
+                    processing = wearThresholdChangeProcessor.process(request)
+                }
+            }
+        } else {
+            null
+        }
+        val pendingReplay = processing.replayed &&
+            processing.state.pendingStateSequence > 0
+        WearThresholdChangeCoordinationResult(
+            processingResult = processing,
+            syncResult = if (
+                initializationRefresh is BatteryRefreshResult.Refreshed ||
+                processing.settingChanged ||
+                pendingReplay
+            ) {
+                syncLocked(MobileSyncTrigger.SETTINGS_CHANGED)
+            } else {
+                null
+            },
         )
     }
 

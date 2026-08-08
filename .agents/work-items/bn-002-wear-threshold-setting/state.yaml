@@ -1,0 +1,2424 @@
+schema_version: 1
+
+work_item:
+  id: "BN-002"
+  slug: "bn-002-wear-threshold-setting"
+  title: "Wear-initiated notification threshold setting"
+  scope: >-
+    Let the user request a 5..100 percent notification-threshold change from
+    the Wear app while Mobile remains the only authoritative settings writer.
+    Define request/result messaging, validation, idempotency, conflict handling,
+    disconnected behavior, localized UI, and implementation/test gates.
+
+status: "in_test"
+current_phase: "test"
+current_role: "test"
+current_actor:
+  type: "unassigned"
+  id: "unassigned"
+
+last_transition:
+  from_phase: "review"
+  to_phase: "test"
+  reason: >-
+    Re-review verified the exact APPLIED_WAITING_STATE fixture with pending and
+    result absent, its IDLE/cleared-field/idempotence/domain assertions, and the
+    test-only scope. Reviewer core rerun passed 3/3 and implementation's unchanged
+    state-machine suite passed 44/44, so RV-010 is closed and Review -> Test passes.
+
+spec_refs:
+  - "docs/product-requirements.md"
+  - "docs/functional-requirements.md"
+  - "docs/data-design.md"
+  - "docs/wear-os-integration-specification.md"
+  - "docs/wear-os-display-specification.md"
+  - "docs/screen-specification-and-navigation.md"
+  - "docs/use-case-specification.md"
+  - "docs/localization-specification.md"
+  - "docs/system-architecture-design.md"
+  - "docs/test-plan-and-cases.md"
+  - "docs/architecture-decision-records.md"
+  - "docs/permissions-and-privacy-specification.md"
+
+affected_components:
+  - "BatteryNotifierAndroidMobileApp"
+  - "BatteryNotifierAndroidWearApp"
+  - "docs"
+
+traceability:
+  product_requirements:
+    - "PR-014"
+  functional_requirements:
+    - "FR-007"
+    - "FR-008"
+    - "FR-009"
+  acceptance_criteria:
+    - "AC-015"
+    - "AC-016"
+    - "AC-017"
+  architecture_decisions:
+    - "ADR-015"
+  tests:
+    - "TC-U026"
+    - "TC-U027"
+    - "TC-U028"
+    - "TC-U029"
+    - "TC-U030"
+    - "TC-E077"
+    - "TC-E078"
+    - "TC-E079"
+    - "TC-E080"
+    - "TC-E081"
+    - "TC-E082"
+    - "TC-E083"
+
+phases:
+  specification:
+    status: "completed_approved"
+    owner: "codex"
+    tasks:
+      - id: "SPEC-008"
+        title: "Define the Wear threshold request and Mobile result contract"
+        status: "done"
+        evidence:
+          - "docs/data-design.md"
+          - "docs/wear-os-integration-specification.md"
+      - id: "SPEC-009"
+        title: "Define connected, disconnected, retry, conflict, and restart behavior"
+        status: "done"
+        evidence:
+          - "docs/wear-os-integration-specification.md"
+          - "docs/functional-requirements.md"
+      - id: "SPEC-010"
+        title: "Define Wear UI states, localization, and accessibility"
+        status: "done"
+        evidence:
+          - "docs/wear-os-display-specification.md"
+          - "docs/screen-specification-and-navigation.md"
+          - "docs/use-case-specification.md"
+          - "docs/localization-specification.md"
+      - id: "SPEC-011"
+        title: "Define acceptance criteria and test traceability"
+        status: "done"
+        evidence:
+          - "docs/functional-requirements.md"
+          - "docs/test-plan-and-cases.md"
+      - id: "SPEC-012"
+        title: "Record the single-writer architecture decision"
+        status: "done"
+        evidence:
+          - "docs/architecture-decision-records.md"
+  implementation:
+    status: "completed"
+    owner: "codex"
+    tasks:
+      - id: "IMP-010"
+        title: "Persist Mobile command-result idempotency state and Wear pending request state"
+        status: "done"
+        evidence:
+          - "BatteryNotifierAndroidMobileApp/app/src/main/proto/mobile_state.proto"
+          - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/data/datastore/MobileStateRepository.kt"
+          - "BatteryNotifierAndroidWearApp/app/src/main/proto/wear_state.proto"
+          - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateRepository.kt"
+      - id: "IMP-011"
+        title: "Implement Wear request sender and Mobile request/result message handlers"
+        status: "done"
+        evidence:
+          - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/platform/wearable/GooglePlayServicesThresholdChangeRequestGateway.kt"
+          - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/data/wearable/MobileDataLayerListenerService.kt"
+          - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/application/sync/WearThresholdChangeHandler.kt"
+      - id: "IMP-012"
+        title: "Implement localized Wear threshold editor and request status UI"
+        status: "done"
+        evidence:
+          - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt"
+          - "BatteryNotifierAndroidWearApp/app/src/main/res/values/strings.xml"
+          - "BatteryNotifierAndroidWearApp/app/src/main/res/values-ja/strings.xml"
+      - id: "IMP-013"
+        title: "Add unit/contract tests and define UI/instrumented scenarios"
+        status: "done"
+        evidence:
+          - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/data/datastore/ProtoMobileStateRepositoryTest.kt"
+          - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/data/wearable/ThresholdChangeRequestValidatorTest.kt"
+          - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/application/settings/WearThresholdSettingsControllerTest.kt"
+          - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/ProtoWearStateRepositoryTest.kt"
+          - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/data/wearable/ThresholdChangeResultValidatorTest.kt"
+          - "docs/test-plan-and-cases.md"
+      - id: "IMP-014"
+        title: "Address independent review findings RV-001 through RV-006"
+        status: "done"
+        evidence:
+          - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateRepository.kt"
+          - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/domain/presentation/WearDisplayState.kt"
+          - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt"
+          - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/ProtoWearStateRepositoryTest.kt"
+          - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/application/settings/WearThresholdSettingsControllerTest.kt"
+          - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/application/sync/MobileSyncCoordinator.kt"
+          - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/data/wearable/ThresholdChangeMessageCodec.kt"
+          - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/application/sync/MobileSyncCoordinatorTest.kt"
+      - id: "IMP-015"
+        title: "Address independent re-review findings RV-002, RV-007, and RV-008"
+        status: "done"
+        evidence:
+          - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateRepository.kt"
+          - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/application/settings/WearThresholdSettingsController.kt"
+          - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/ProtoWearStateRepositoryTest.kt"
+          - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/application/settings/WearThresholdSettingsControllerTest.kt"
+          - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/data/wearable/MobileDataLayerListenerService.kt"
+          - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/data/wearable/ThresholdChangeRequestValidatorTest.kt"
+          - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/application/sync/MobileSyncCoordinatorTest.kt"
+      - id: "IMP-016"
+        title: "Address final independent re-review findings RV-008 and RV-009"
+        status: "done"
+        evidence:
+          - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateRepository.kt"
+          - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateSanitizer.kt"
+          - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/wearable/ThresholdChangeMessageCodec.kt"
+          - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/domain/settings/ThresholdChangeModels.kt"
+          - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/application/settings/WearThresholdSettingsControllerTest.kt"
+          - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateSanitizerMigrationTest.kt"
+          - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/data/wearable/ThresholdChangeResultValidatorTest.kt"
+          - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/application/sync/MobileSyncCoordinator.kt"
+          - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/application/sync/WearThresholdChangeHandler.kt"
+          - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/data/datastore/MobileStateRepository.kt"
+          - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/data/datastore/MobileStateSanitizer.kt"
+          - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/domain/settings/ThresholdChangeModels.kt"
+          - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/application/sync/MobileSyncCoordinatorTest.kt"
+          - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/data/datastore/MobileStateSanitizerTest.kt"
+          - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/data/datastore/ProtoMobileStateRepositoryTest.kt"
+      - id: "IMP-017"
+        title: "Address independent re-review finding RV-010"
+        status: "done"
+        evidence:
+          - ".agents/work-items/bn-002-wear-threshold-setting/wear-threshold-state-transition-matrix.md"
+          - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateSanitizer.kt"
+          - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateSanitizerMigrationTest.kt"
+      - id: "IMP-018"
+        title: "Harden the implementation role against incomplete state-machine fixes"
+        status: "done"
+        evidence:
+          - ".agents/roles/implementation.md"
+  review:
+    status: "completed_pass"
+    owner: "codex-review-5"
+    gate_recommendation: "approved_for_test"
+    finding_totals:
+      critical: 0
+      high: 0
+      medium: 0
+      low: 0
+  test:
+    status: "ready"
+    owner: "unassigned"
+  human_verification:
+    status: "not_started"
+    owner: "human"
+
+decisions_needed:
+  - id: "DEC-005"
+    owner: "human"
+    status: "approved"
+    question: >-
+      Approve ADR-015: Wear may initiate a threshold change through a
+      request/result MessageClient exchange, while Mobile alone validates,
+      persists, orders, and publishes the effective setting.
+    proposed_answer: >-
+      Approve. This meets the requested Wear editing experience without
+      introducing a second settings writer. Disconnected requests are not
+      auto-applied later: the draft remains on Wear and the user explicitly
+      retries after reconnection.
+    decision: >-
+      Approved by the human on 2026-07-29 with the explicit direction to
+      proceed to implementation.
+    alternatives:
+      - >-
+        Make Wear a second durable writer and define bidirectional
+        last-write/conflict resolution. This materially increases state,
+        migration, race, and recovery complexity.
+      - >-
+        Queue a durable Wear DataItem command for automatic application after
+        reconnection. This improves offline convenience but can apply a stale
+        setting later without a fresh user action.
+
+blockers:
+  - id: "BLK-005"
+    type: "human_decision"
+    status: "resolved"
+    summary: "ADR-015 must be approved or revised before production code changes."
+    unblock_condition: "Human explicitly approves DEC-005 or selects an alternative."
+    resolution: "ADR-015 was approved by the human on 2026-07-29."
+  - id: "BLK-006"
+    type: "phase_return_limit"
+    status: "resolved"
+    summary: >-
+      The fifth failure-driven Review -> Implementation return was reached when
+      IMP-017 omitted the exact RV-010 missing-pending-and-result regression
+      fixture required by the finding and transition matrix.
+    unblock_condition: >-
+      Human explicitly prioritizes and authorizes a resume approach, such as one
+      bounded test-only correction followed by independent re-review, or changes
+      the work-item scope/architecture direction.
+    resolution: >-
+      The human explicitly authorized the bounded test-only correction and
+      re-review on 2026-08-08. Production and specification scope remain frozen.
+
+risks:
+  - id: "RSK-008"
+    severity: "medium"
+    summary: >-
+      A request can be applied on Mobile while its result message is lost.
+      Persisting and replaying the result for the same requestId is required to
+      avoid duplicate semantic application and ambiguous retry behavior.
+  - id: "RSK-009"
+    severity: "medium"
+    summary: >-
+      A stale Wear screen can overwrite a newer Mobile setting unless the
+      request includes expectedThresholdPercent and Mobile rejects conflicts.
+  - id: "RSK-010"
+    severity: "low"
+    summary: >-
+      41mm/45mm and large-font layouts need a scrollable, accessible editor
+      with one-percent controls and an explicit save action.
+
+review_findings:
+  - id: "RV-001"
+    severity: "High"
+    status: "verified_closed"
+    location: >-
+      BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateRepository.kt:396
+    related_locations:
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt:436"
+    violated_requirement: "FR-009, TC-E082"
+    scenario: >-
+      prepareThresholdChange persists SENDING before MessageClient starts. If
+      the Wear process ends after that write but before
+      markThresholdChangeSendResult, restart restores SENDING. The UI provides
+      neither retry nor cancel for SENDING, so the request is permanently
+      stranded.
+    required_outcome: >-
+      On process recreation, recover an interrupted SENDING request into a
+      retryable/cancellable state without automatic transmission. Add a test
+      that recreates the repository immediately after preparation and proves
+      explicit retry uses the same requestId.
+    verification_evidence:
+      - >-
+        ProtoWearStateRepositoryTest and
+        WearThresholdSettingsControllerTest recover persisted SENDING to
+        SEND_FAILED and explicitly retry the same requestId without auto-send.
+  - id: "RV-002"
+    severity: "High"
+    status: "verified_closed"
+    location: >-
+      BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt:380
+    related_locations:
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateRepository.kt:435"
+    violated_requirement: "AC-016 and wear-os-integration-specification.md:171"
+    scenario: >-
+      Wear last received threshold 20, Mobile changes to 25, and a stale Wear
+      request receives CONFLICT with effectiveThresholdPercent 25 before the
+      new phone-state arrives. The repository stores 25 only as the draft, but
+      the non-editing UI renders displayState.thresholdPercent from the old
+      phone-state and continues to show 20.
+    required_outcome: >-
+      Display the result's effective Mobile threshold alongside the conflict
+      state immediately, without falsely advancing the phone-state sequence,
+      and keep it until an equal-or-newer phone-state confirms or supersedes
+      it. Add presentation/state tests for the 20 -> conflict(25) ordering.
+    verification_evidence:
+      - >-
+        Conflict/rejected results retain the confirmed effective threshold
+        until an equal-or-newer phone-state arrives; WearDisplayStateMapperTest
+        covers old phone-state 20 with conflict effective value 25.
+      - >-
+        Independent re-review found the reverse callback order remains broken:
+        when phone-state sequence 12 with threshold 30 is stored before a
+        delayed CONFLICT result for sequence 11 with effective threshold 25,
+        the result is stored without reconciling the existing newer
+        phone-state and the display regresses to 25.
+      - >-
+        IMP-015 reconciles CONFLICT/REJECTED results against the already
+        persisted lastPhoneState before retaining a result override.
+        ProtoWearStateRepositoryTest covers result-first and phone-state-first
+        orders for both result codes.
+      - >-
+        Final independent re-review traced both callback orders through
+        applyThresholdChangeResult and applyPhoneState and reran the focused
+        Wear suite with 39/39 passing tests.
+  - id: "RV-003"
+    severity: "High"
+    status: "verified_closed"
+    location: >-
+      BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateRepository.kt:149
+    related_locations:
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt:161"
+    violated_requirement: "FR-007 and wear-os-display-specification.md:90"
+    scenario: >-
+      After a completed Wear change leaves draft 30, Mobile later changes the
+      effective threshold to 25 and sends a newer phone-state. applyPhoneState
+      updates lastPhoneState but leaves the terminal draft at 30. Opening the
+      editor uses that old draft; saving without an intentional edit changes
+      Mobile back to 30 because expectedThresholdPercent correctly uses 25.
+    required_outcome: >-
+      Rebase the next editor draft from each newer confirmed phone-state when
+      no request or active edit is pending, while preserving a genuinely
+      active draft. Add regression coverage for a Mobile-side change after an
+      APPLIED/CONFLICT/REJECTED terminal state.
+    verification_evidence:
+      - >-
+        Terminal and cancelled flows clear the inactive draft while an actual
+        edited draft remains persisted. ProtoWearStateRepositoryTest proves a
+        later Mobile value 25 seeds the next request instead of stale 30.
+  - id: "RV-004"
+    severity: "High"
+    status: "verified_closed"
+    location: >-
+      BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/data/wearable/ThresholdChangeMessageCodec.kt:21
+    related_locations:
+      - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/data/wearable/MobileDataLayerListenerService.kt:49"
+      - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/data/datastore/MobileStateRepository.kt:285"
+    violated_requirement: "FR-065, FR-066, data-design.md:207"
+    scenario: >-
+      A structurally typed request with schemaVersion 0 or a negative value is
+      classified as UnsupportedSchema. The listener forwards that value to
+      recordUnsupportedSchema, whose positive-value require throws from an
+      uncaught launch coroutine instead of safely rejecting the payload.
+    required_outcome: >-
+      Treat non-positive schema versions as malformed or record them without
+      throwing. Preserve the last valid state and increment exactly one
+      diagnostic counter. Add validator/listener-boundary regression tests for
+      zero and negative schema versions.
+    verification_evidence:
+      - >-
+        ThresholdChangeRequestValidatorTest classifies schema 0 and -1 as
+        malformed; Mobile recordUnsupportedSchema is also defensive and no
+        longer throws for non-positive external input.
+  - id: "RV-005"
+    severity: "Medium"
+    status: "verified_closed"
+    location: >-
+      BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateRepository.kt:384
+    related_locations:
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/application/settings/WearThresholdSettingsController.kt:43"
+    violated_requirement: "FR-009 one-pending-request rule"
+    scenario: >-
+      Two save callbacks reaching prepareThresholdChange concurrently each
+      create a new requestId; the later DataStore update replaces the first
+      pending request while the first message can still be sent. UI
+      recomposition is not an atomic concurrency boundary.
+    required_outcome: >-
+      Atomically refuse creation of a second request while any request is
+      pending, keep the original requestId, and prevent a second send. Add a
+      concurrent-save test that asserts one prepared and one sent request.
+    verification_evidence:
+      - >-
+        Repository preparation now atomically returns ALREADY_PENDING.
+        Concurrent repository/controller tests prove one preparation, one
+        send, and preservation of the first requestId.
+  - id: "RV-006"
+    severity: "Medium"
+    status: "verified_closed"
+    location: >-
+      BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/application/sync/MobileSyncCoordinator.kt:136
+    violated_requirement: "AC-015 convergence and RSK-008 recovery"
+    scenario: >-
+      Mobile can apply and persist a request, fail the phone-state DataItem
+      write, then successfully send the APPLIED result. Wear waits in
+      APPLIED_WAITING_STATE. An explicit retry is replayed with
+      settingChanged=false, so the coordinator skips syncPending and only
+      resends the result; without another runtime trigger, the phone-state
+      never converges.
+    required_outcome: >-
+      A replay of an applied result with a still-pending state outbox must
+      retry state delivery without allocating another sequence or event.
+      Cover state-send failure plus result success plus same-request retry.
+    verification_evidence:
+      - >-
+        MobileSyncCoordinatorTest proves replayed APPLIED with pending state
+        outbox calls syncPending while sequence and pending sequence remain 12.
+  - id: "RV-007"
+    severity: "Medium"
+    status: "verified_closed"
+    location: >-
+      BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/ProtoWearStateRepositoryTest.kt:298
+    related_locations:
+      - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/data/wearable/ThresholdChangeRequestValidatorTest.kt:55"
+      - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/application/sync/MobileSyncCoordinatorTest.kt:432"
+    violated_requirement: "Review-fix regression evidence for RV-003, RV-004, and RV-006"
+    scenario: >-
+      Current regressions cover only APPLIED draft rebasing, validator-level
+      non-positive schema rejection, and a preconstructed pending replay.
+      They do not prove CONFLICT/REJECTED terminal rebasing plus active-draft
+      preservation, listener-boundary exactly-one diagnostics without a
+      crash, or the complete state-send-failure/result-success/same-request
+      retry chain with no new event.
+    required_outcome: >-
+      Add focused regressions for every terminal result and active-draft
+      preservation, the listener boundary for schema zero and negative values,
+      and the complete Mobile delivery/replay chain including unchanged
+      sequence and no new event.
+    verification_evidence:
+      - >-
+        Independent inspection of the three focused test classes found the
+        production fixes plausible but the stated edge cases unasserted.
+      - >-
+        IMP-015 adds CONFLICT/REJECTED terminal rebasing and active-draft
+        preservation tests, listener-boundary exactly-one invalid diagnostics
+        for schema 0/-1, and an actual repository/coordinator/handler chain for
+        state failure, result success, same-request retry, unchanged sequence,
+        and no event.
+      - >-
+        Final independent re-review confirmed the requested assertions and
+        reran the focused Mobile 23/23 and Wear 39/39 suites successfully.
+  - id: "RV-008"
+    severity: "Medium"
+    status: "verified_closed"
+    location: >-
+      BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/application/settings/WearThresholdSettingsController.kt:58
+    related_locations:
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt:192"
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt:446"
+    violated_requirement: "FR-009 one-pending-request rule and deterministic retry state"
+    scenario: >-
+      Two rapid retry actions can both read the same SEND_FAILED or
+      WAITING_RESULT request and call the gateway because retry does not
+      atomically reserve SENDING and the UI remains enabled. Reverse completion
+      order can then leave a misleading local status even though Mobile
+      idempotency prevents a duplicate setting mutation.
+    required_outcome: >-
+      Atomically reserve a pending request for retry by moving it to SENDING,
+      refuse a competing retry, and add a delayed/concurrent gateway test that
+      proves only one retry transmission and deterministic completion state.
+      Retrying from APPLIED_WAITING_STATE must also retain enough result state
+      to reconcile an arriving confirming phone-state while the gateway is in
+      flight, so result-message loss cannot leave a confirmed change waiting.
+    verification_evidence:
+      - >-
+        Independent code inspection found no in-flight guard in the controller
+        or retry/cancel UI while the persisted status remains retryable.
+      - >-
+        IMP-015 adds a DataStore-atomic retry reservation that changes the
+        pending request to SENDING before gateway invocation, refuses a second
+        reservation, protects completion from overwriting a result callback,
+        and verifies one gateway call with a delayed concurrent test.
+      - >-
+        Final independent re-review verified the atomic reservation itself but
+        found a remaining ordering defect: retrying APPLIED_WAITING_STATE moves
+        to SENDING; a confirming phone-state arriving before gateway completion
+        then clears the stored result because reconciliation only recognizes
+        APPLIED_WAITING_STATE. If the replayed result is lost, send completion
+        leaves WAITING_RESULT even though confirmation already arrived. The
+        current concurrent retry regression starts only from SEND_FAILED.
+      - >-
+        IMP-016 makes APPLIED-result reconciliation independent of the
+        transient SENDING status, preserves APPLIED_WAITING_STATE on send
+        completion or process recovery while an APPLIED result is stored, and
+        adds a controller regression where confirming phone-state arrives
+        before delayed gateway completion. Independent verification remains
+        required.
+      - >-
+        Independent re-review traced both gateway/result/phone-state callback
+        orders and process recovery. The stored APPLIED result survives SENDING,
+        reconciliation is result-code based, and the reviewer-selected Wear
+        repository/controller suite passed 28/28 within the 35-test targeted
+        group.
+  - id: "RV-009"
+    severity: "Medium"
+    status: "verified_closed"
+    location: >-
+      BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/wearable/ThresholdChangeMessageCodec.kt:45
+    related_locations:
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/domain/settings/ThresholdChangeModels.kt:39"
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateSanitizer.kt:169"
+      - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/domain/settings/ThresholdChangeModels.kt:40"
+      - "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/data/datastore/MobileStateSanitizer.kt:86"
+    violated_requirement: "data-design.md:65 and data-design.md:203"
+    scenario: >-
+      The result contract requires phoneStateSequence to be 1 or greater, but
+      both domain models, both persisted-state sanitizers, and the Wear result
+      validator accept 0. Mobile also keeps sequence 0 when it processes an
+      otherwise valid request before any battery snapshot exists, applies the
+      setting, creates no state outbox, and emits an APPLIED result with
+      sequence 0. Wear accepts it but has no corresponding phone-state through
+      which APPLIED_WAITING_STATE can converge.
+    required_outcome: >-
+      Ensure Mobile associates every result with a positive, publishable
+      phone-state sequence, including the no-snapshot lifecycle boundary, or
+      safely rejects/defers the request without applying it. Reject result
+      sequences less than 1 at Mobile/Wear domain and persistence boundaries
+      and at Wear message validation. Add no-snapshot plus zero/negative
+      rejection regressions proving no applied-but-unconfirmable state.
+    verification_evidence:
+      - >-
+        Static contract comparison found every implementation predicate uses
+        non-negative rather than positive while the two normative data-design
+        tables require 1 or greater. Existing validator tests do not exercise
+        zero or negative phoneStateSequence values.
+      - >-
+        MobileStateRepository computes nextSequence only when lastSnapshot is
+        non-null, so a default sequence-0 state can apply a threshold change
+        and persist/reply with result sequence 0 without creating a state
+        outbox.
+      - >-
+        IMP-016 defers Mobile processing without mutation or result until a
+        phone snapshot is available, attempts one serialized battery refresh,
+        and leaves the Wear request pending for explicit retry if refresh is
+        unavailable. Mobile/Wear domain models and sanitizers plus the Wear
+        message validator now reject sequences below 1; focused no-snapshot,
+        zero, and negative regressions pass. Independent verification remains
+        required.
+      - >-
+        Independent re-review verified refresh success and unavailable paths,
+        positive sequence construction, and Mobile/Wear domain, persistence,
+        and message-validation boundaries. Reviewer-selected Mobile 39/39 and
+        Wear validation/sanitizer targets 7/7 passed.
+  - id: "RV-010"
+    severity: "Medium"
+    status: "verified_closed"
+    location: >-
+      BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateSanitizer.kt:112
+    related_locations:
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateSanitizer.kt:115"
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateSanitizer.kt:128"
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/domain/state/WearPersistentState.kt:48"
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateProtoMapper.kt:18"
+    violated_requirement: "FR-005 and Wear process-recreation recovery"
+    scenario: >-
+      Restore a persisted proto whose status is APPLIED_WAITING_STATE but whose
+      pendingThresholdChangeRequest is absent. The sanitizer captures that
+      status, repairs the builder to IDLE at lines 115..127, then reuses the
+      stale captured status at lines 128..132 and changes the builder back to
+      WAITING_RESULT because no result is present. WearStateProtoMapper then
+      constructs WearPersistentState with WAITING_RESULT and no pending request,
+      violating its line 48..55 invariant and throwing during state restoration.
+    required_outcome: >-
+      Base each dependent repair on the builder's current post-repair status, or
+      make the repair ordering otherwise deterministic, so an active status
+      without a pending request sanitizes to a valid safe state. Add a migration
+      regression for APPLIED_WAITING_STATE without pending/result that proves
+      sanitize and toDomain return a non-crashing valid state.
+    verification_evidence:
+      - >-
+        Independent static execution-path analysis proves the second condition
+        reads the stale local thresholdStatus after the first condition mutated
+        the builder. Existing WearStateSanitizerMigrationTest covers invalid
+        result sequence but not the missing-pending APPLIED_WAITING_STATE shape.
+      - >-
+        IMP-017 records the complete Wear threshold transition matrix, then
+        recomputes status from the current builder after missing/invalid-pending
+        repair. A fourteen-combination table-driven regression covers all four
+        active statuses with missing/invalid pending state, valid result
+        preservation, APPLIED missing/invalid result fallback, sanitizer
+        idempotence, and successful WearStateProtoMapper domain mapping.
+      - >-
+        Implementation verification passed the sanitizer class 3/3, the
+        reviewer-relevant Wear state-machine suite 44/44, and the full Wear
+        debug/release suites 75/75 each with zero Lint Errors. Independent
+        verification remains required.
+      - >-
+        Independent re-review verified that statusAfterPendingRepair fixes the
+        runtime path and reran the related Wear suite successfully at 44/44.
+        However, WearStateSanitizerMigrationTest lines 63..70 label a case
+        "without pending" while always passing validResult; no case constructs
+        APPLIED_WAITING_STATE with both pending and result absent. This omits the
+        exact required_outcome fixture and the matrix's "Result any" branch, so
+        fix verification is incomplete despite the passing suite.
+      - >-
+        The human-authorized bounded correction adds the exact
+        thresholdState(APPLIED_WAITING_STATE) input with pending and result both
+        absent. Existing table assertions require IDLE, cleared fields, second-
+        sanitize idempotence, and successful domain mapping. Implementation
+        reruns passed the sanitizer class 3/3 and unchanged state-machine suite
+        44/44 with zero failures, errors, or skips; Review verification is active.
+      - >-
+        Re-review inspected the actual fixture at lines 62..70 and the shared
+        assertions at lines 135..146. The input has neither pending nor result;
+        the assertions require IDLE, both fields absent, second-sanitize equality,
+        and successful domain mapping. A reviewer rerun produced fresh JUnit XML
+        at 2026-08-08 14:46 JST with 3/3 passing and zero failures/errors/skips.
+
+evidence:
+  - id: "EVD-BN002-001"
+    type: "official_platform_reference"
+    result: "reviewed"
+    artifact: "https://developer.android.com/training/wearables/data/client-types"
+    summary: >-
+      MessageClient is intended for RPC/remote-control requests, requires a
+      connected node, and has no persistence or built-in retry.
+    verified_at: "2026-07-29"
+  - id: "EVD-BN002-002"
+    type: "official_platform_reference"
+    result: "reviewed"
+    artifact: "https://developer.android.com/training/wearables/data/data-items"
+    summary: >-
+      DataItems buffer while disconnected. The proposal intentionally avoids a
+      durable command DataItem so an old threshold request is not silently
+      applied after a long disconnection.
+    verified_at: "2026-07-29"
+  - id: "EVD-BN002-003"
+    type: "repository_inspection"
+    result: "pass"
+    artifact: >-
+      BN-001 state and all listed normative specifications were read before the
+      BN-002 proposal; BN-001 remains done and unchanged.
+  - id: "EVD-BN002-004"
+    type: "human_decision"
+    result: "approved"
+    artifact: "docs/architecture-decision-records.md#adr-015-wearはmobileへしきい値変更を要求しmobileを単一writerに保つ"
+    summary: >-
+      The human approved ADR-015 and directed Codex to proceed to
+      implementation.
+    verified_at: "2026-07-29"
+  - id: "EVD-BN002-005"
+    type: "implementation"
+    result: "complete"
+    artifact: >-
+      Mobile/Wear Proto state, repositories, MessageClient adapters/listeners,
+      capability publication/query, localized Wear editor, and request status
+      UI under BatteryNotifierAndroidMobileApp/app/src and
+      BatteryNotifierAndroidWearApp/app/src.
+    summary: >-
+      Mobile remains the sole settings writer. Wear persists the draft and
+      pending request, sends only to a reachable compatible capability, never
+      auto-resends on reconnect, and explicitly retries with the same
+      requestId.
+    verified_at: "2026-07-29"
+  - id: "EVD-BN002-006"
+    type: "implementation_gate"
+    result: "pass"
+    artifact: "BatteryNotifierAndroidMobileApp/app/build/reports/lint-results-debug.html"
+    summary: >-
+      Mobile Gradle test and lint completed with BUILD SUCCESSFUL; 73 tasks,
+      19 executed and 54 up-to-date on the final production-code run.
+    verified_at: "2026-07-29"
+  - id: "EVD-BN002-007"
+    type: "implementation_gate"
+    result: "pass"
+    artifact: "BatteryNotifierAndroidWearApp/app/build/reports/lint-results-debug.html"
+    summary: >-
+      Wear Gradle test and lint completed with BUILD SUCCESSFUL; 73 tasks,
+      34 executed and 39 up-to-date on the final production-code run.
+    verified_at: "2026-07-29"
+  - id: "EVD-BN002-008"
+    type: "scoped_diff_check"
+    result: "pass"
+    artifact: >-
+      git diff --check -- .agents/work-items/bn-002-wear-threshold-setting
+      docs BatteryNotifierAndroidMobileApp/app/src
+      BatteryNotifierAndroidWearApp/app/src
+    summary: "No BN-002 whitespace errors were reported."
+    verified_at: "2026-07-29"
+  - id: "EVD-BN002-009"
+    type: "independent_review"
+    result: "changes_requested"
+    artifact: ".agents/work-items/bn-002-wear-threshold-setting/state.yaml#review_findings"
+    summary: >-
+      Reviewed the uncommitted BN-002 worktree against all spec_refs and the
+      review checklist. Found 0 Critical, 4 High, 2 Medium, and 0 Low findings;
+      the Review -> Test gate is rejected.
+    verified_at: "2026-07-29"
+  - id: "EVD-BN002-010"
+    type: "review_test_rerun"
+    result: "pass"
+    artifact: >-
+      BatteryNotifierAndroidMobileApp/app/build/test-results/testDebugUnitTest
+      and
+      BatteryNotifierAndroidWearApp/app/build/test-results/testDebugUnitTest
+    summary: >-
+      Reviewer reran Mobile repository/validator/coordinator tests (32 tests,
+      0 failures) and Wear repository/validator/controller tests (21 tests,
+      0 failures). Passing tests do not cover the six review scenarios.
+    verified_at: "2026-07-29"
+  - id: "EVD-BN002-011"
+    type: "implementation_review_fix"
+    result: "complete"
+    artifact: >-
+      RV-001..RV-006 production changes and regression tests under
+      BatteryNotifierAndroidMobileApp/app/src and
+      BatteryNotifierAndroidWearApp/app/src.
+    summary: >-
+      Implemented interrupted-send recovery, conflict effective-value display,
+      inactive-draft rebasing, non-positive schema rejection, atomic pending
+      admission, and pending-outbox replay convergence.
+    verified_at: "2026-07-29"
+  - id: "EVD-BN002-012"
+    type: "implementation_targeted_regression"
+    result: "pass"
+    artifact: >-
+      Mobile and Wear app/build/test-results/testDebugUnitTest XML reports.
+    summary: >-
+      Mobile review-fix targets passed 21/21 and Wear review-fix targets
+      passed 34/34 with zero failures.
+    verified_at: "2026-07-29"
+  - id: "EVD-BN002-013"
+    type: "implementation_gate"
+    result: "pass"
+    artifact: >-
+      BatteryNotifierAndroidMobileApp/app/build/reports/lint-results-debug.xml
+      and
+      BatteryNotifierAndroidWearApp/app/build/reports/lint-results-debug.xml.
+    summary: >-
+      Mobile test/lint BUILD SUCCESSFUL in 6m 28s (73 tasks: 14 executed);
+      Wear test/lint BUILD SUCCESSFUL in 6m 1s (73 tasks: 15 executed).
+      Mobile debug/release each passed 87 tests, Wear debug/release each passed
+      66 tests, and both lint reports contain zero Error findings.
+    verified_at: "2026-07-29"
+  - id: "EVD-BN002-014"
+    type: "handoff_integrity"
+    result: "pass"
+    artifact: ".agents/work-items/bn-002-wear-threshold-setting/state.yaml"
+    summary: >-
+      Final BN-002 scoped git diff check reported no whitespace errors and
+      SnakeYAML parsed status=in_review, phase=review, role=review, six
+      findings, IMP-014=done, and 13 recorded test results.
+    verified_at: "2026-07-29"
+  - id: "EVD-BN002-015"
+    type: "independent_re_review"
+    result: "changes_requested"
+    artifact: ".agents/work-items/bn-002-wear-threshold-setting/state.yaml#review_findings"
+    summary: >-
+      Independent fix verification closed RV-001, RV-003, RV-004, RV-005,
+      and RV-006, reopened High RV-002 for reverse callback ordering, and
+      recorded Medium RV-007 and RV-008. Open totals are 0 Critical, 1 High,
+      2 Medium, and 0 Low; the Review -> Test gate is rejected.
+    verified_at: "2026-07-31"
+  - id: "EVD-BN002-016"
+    type: "independent_re_review_checks"
+    result: "pass"
+    artifact: >-
+      BatteryNotifierAndroidMobileApp/app/build/test-results/testDebugUnitTest,
+      BatteryNotifierAndroidWearApp/app/build/test-results/testDebugUnitTest,
+      and the BN-002 scoped git diff.
+    summary: >-
+      The independent reviewer passed 34/34 focused Mobile tests and 34/34
+      focused Wear tests, and the 39-file BN-002 scoped git diff check.
+      Passing checks do not cover the reopened reverse-order behavior or the
+      RV-007/RV-008 scenarios.
+    verified_at: "2026-07-31"
+  - id: "EVD-BN002-017"
+    type: "review_handoff_integrity"
+    result: "pass"
+    artifact: ".agents/work-items/bn-002-wear-threshold-setting/state.yaml"
+    summary: >-
+      Gradle-distributed SnakeYAML parsed the re-review handoff with
+      status=ready, phase=implementation, role=implementation, eight retained
+      findings, fifteen test-result records, and two total phase returns.
+      The state-file scoped git diff check also passed.
+    verified_at: "2026-07-31"
+  - id: "EVD-BN002-018"
+    type: "implementation_targeted_regression"
+    result: "pass"
+    artifact: >-
+      BatteryNotifierAndroidMobileApp/app/build/test-results/testDebugUnitTest
+    summary: >-
+      IMP-015 Mobile targeted regressions passed 23/23 with zero failures:
+      MobileSyncCoordinatorTest and ThresholdChangeRequestValidatorTest,
+      including the complete state-send-failure/result-success/same-request
+      retry chain and listener-boundary non-positive schema diagnostics.
+    verified_at: "2026-07-31"
+  - id: "EVD-BN002-019"
+    type: "implementation_targeted_regression"
+    result: "pass"
+    artifact: >-
+      BatteryNotifierAndroidWearApp/app/build/test-results/testDebugUnitTest
+    summary: >-
+      IMP-015 Wear targeted regressions passed 35/35 with zero failures:
+      ProtoWearStateRepositoryTest, WearThresholdSettingsControllerTest, and
+      WearDisplayStateMapperTest. Coverage includes both result/phone-state
+      callback orders, all terminal draft behavior, active draft preservation,
+      and concurrent retry admission.
+    verified_at: "2026-07-31"
+  - id: "EVD-BN002-020"
+    type: "implementation_gate"
+    result: "pass"
+    artifact: >-
+      BatteryNotifierAndroidMobileApp/app/build/reports/lint-results-debug.xml
+    summary: >-
+      IMP-015 Mobile full test/lint gate completed BUILD SUCCESSFUL in 9m 40s;
+      73 tasks (14 executed, 59 up-to-date), debug/release each passed 89
+      tests with zero failures/errors/skips, and lint reported 0 Errors and
+      14 Warnings.
+    verified_at: "2026-07-31"
+  - id: "EVD-BN002-021"
+    type: "implementation_gate"
+    result: "pass"
+    artifact: >-
+      BatteryNotifierAndroidWearApp/app/build/reports/lint-results-debug.xml
+    summary: >-
+      IMP-015 Wear full test/lint gate completed BUILD SUCCESSFUL in 9m 53s;
+      73 tasks (14 executed, 59 up-to-date), debug/release each passed 71
+      tests with zero failures/errors/skips, and lint reported 0 Errors and
+      11 Warnings.
+    verified_at: "2026-07-31"
+  - id: "EVD-BN002-022"
+    type: "implementation_handoff_integrity"
+    result: "pass"
+    artifact: ".agents/work-items/bn-002-wear-threshold-setting/state.yaml"
+    summary: >-
+      Final BN-002 scoped git diff check reported no whitespace errors and
+      Gradle-distributed SnakeYAML parsed status=in_review, phase=review,
+      role=review, eight retained findings, IMP-015=done, twenty test-result
+      records, and two total phase returns.
+    verified_at: "2026-07-31"
+  - id: "EVD-BN002-023"
+    type: "final_independent_re_review"
+    result: "changes_requested"
+    artifact: ".agents/work-items/bn-002-wear-threshold-setting/state.yaml#review_findings"
+    summary: >-
+      Final independent re-review verified and closed RV-002 and RV-007,
+      reopened Medium RV-008 for an APPLIED_WAITING_STATE retry/phone-state
+      ordering defect, and found Medium RV-009 for a no-snapshot Mobile result
+      with sequence 0 plus non-positive validation gaps. Open totals are 0
+      Critical, 0 High, 2 Medium, and 0 Low; Review -> Test is rejected.
+    verified_at: "2026-08-02"
+  - id: "EVD-BN002-024"
+    type: "final_independent_re_review_checks"
+    result: "pass"
+    artifact: >-
+      BatteryNotifierAndroidMobileApp/app/build/test-results/testDebugUnitTest,
+      BatteryNotifierAndroidWearApp/app/build/test-results/testDebugUnitTest,
+      and the BN-002 scoped git diff.
+    summary: >-
+      MobileSyncCoordinatorTest and ThresholdChangeRequestValidatorTest passed
+      23/23. ProtoWearStateRepositoryTest,
+      WearThresholdSettingsControllerTest, WearDisplayStateMapperTest, and
+      ThresholdChangeResultValidatorTest passed 39/39. Both runs had zero
+      failures, errors, or skips, and the scoped whitespace check passed.
+    verified_at: "2026-08-02"
+  - id: "EVD-BN002-025"
+    type: "final_re_review_handoff_integrity"
+    result: "pass"
+    artifact: ".agents/work-items/bn-002-wear-threshold-setting/state.yaml"
+    summary: >-
+      Gradle-distributed SnakeYAML 2.0 parsed status=ready,
+      phase=implementation, role=implementation, review gate=changes_requested,
+      nine findings, twenty-one test-result records, and three total phase
+      returns. The final BN-002 scoped whitespace check also passed.
+    verified_at: "2026-08-02"
+  - id: "EVD-BN002-026"
+    type: "imp016_mobile_targeted_regression"
+    result: "pass"
+    artifact: "BatteryNotifierAndroidMobileApp/app/build/test-results/testDebugUnitTest"
+    summary: >-
+      ProtoMobileStateRepositoryTest, MobileStateSanitizerTest, and
+      MobileSyncCoordinatorTest passed 39/39 after seeding the valid snapshot
+      precondition in one legacy replay fixture. Coverage includes no-snapshot
+      refresh/apply, unavailable refresh deferral, positive result sequences,
+      and sanitizer/domain rejection of non-positive sequences.
+    verified_at: "2026-08-02"
+  - id: "EVD-BN002-027"
+    type: "imp016_wear_targeted_regression"
+    result: "pass"
+    artifact: "BatteryNotifierAndroidWearApp/app/build/test-results/testDebugUnitTest"
+    summary: >-
+      ProtoWearStateRepositoryTest, WearThresholdSettingsControllerTest,
+      WearStateSanitizerMigrationTest, and
+      ThresholdChangeResultValidatorTest passed 35/35. Coverage includes an
+      APPLIED retry whose confirming phone-state arrives before gateway
+      completion and zero/negative result-sequence rejection.
+    verified_at: "2026-08-02"
+  - id: "EVD-BN002-028"
+    type: "imp016_mobile_full_gate"
+    result: "pass"
+    artifact: >-
+      BatteryNotifierAndroidMobileApp/app/build/test-results and
+      BatteryNotifierAndroidMobileApp/app/build/reports/lint-results-debug.xml
+    summary: >-
+      Full Mobile test/lint completed successfully in 6m 20s. Debug and release
+      each passed 94/94 with zero failures/errors/skips; Lint reported zero
+      Errors and 14 Warnings.
+    verified_at: "2026-08-02"
+  - id: "EVD-BN002-029"
+    type: "imp016_wear_full_gate"
+    result: "pass"
+    artifact: >-
+      BatteryNotifierAndroidWearApp/app/build/test-results and
+      BatteryNotifierAndroidWearApp/app/build/reports/lint-results-debug.xml
+    summary: >-
+      Full Wear test/lint completed successfully in 5m 46s. Debug and release
+      each passed 74/74 with zero failures/errors/skips; Lint reported zero
+      Errors and 11 Warnings.
+    verified_at: "2026-08-02"
+  - id: "EVD-BN002-030"
+    type: "imp016_handoff_integrity"
+    result: "pass"
+    artifact: ".agents/work-items/bn-002-wear-threshold-setting/state.yaml"
+    summary: >-
+      The final BN-002 tracked diff check and IMP-016 trailing-whitespace check
+      passed. Gradle-distributed SnakeYAML 2.0 parsed status=in_review,
+      phase=review, role=review, nine findings, twenty-seven test-result records,
+      IMP-016=done, and three total phase returns.
+    verified_at: "2026-08-02"
+  - id: "EVD-BN002-031"
+    type: "independent_final_fix_re_review"
+    result: "changes_requested"
+    artifact: ".agents/work-items/bn-002-wear-threshold-setting/state.yaml#review_findings"
+    summary: >-
+      Independent re-review verified and closed Medium RV-008 and RV-009. It
+      found Medium RV-010 in Wear persisted-state recovery: a stale status local
+      can undo the safe IDLE repair and produce WAITING_RESULT without a pending
+      request, which the domain model rejects. Open totals are 0 Critical, 0
+      High, 1 Medium, and 0 Low; Review -> Test is rejected.
+    verified_at: "2026-08-02"
+  - id: "EVD-BN002-032"
+    type: "independent_final_fix_re_review_checks"
+    result: "pass"
+    artifact: >-
+      BatteryNotifierAndroidMobileApp/app/build/test-results/testDebugUnitTest
+      and BatteryNotifierAndroidWearApp/app/build/test-results/testDebugUnitTest
+    summary: >-
+      Reviewer-selected Mobile targets passed 39/39 and Wear targets passed
+      35/35, followed by WearDisplayStateMapperTest at 8/8; all had zero
+      failures, errors, or skips. The initial sandboxed runs were blocked before
+      test execution by loopback restrictions and were rerun unchanged in the
+      permitted environment.
+    verified_at: "2026-08-02"
+  - id: "EVD-BN002-033"
+    type: "independent_final_fix_re_review_handoff_integrity"
+    result: "pass"
+    artifact: ".agents/work-items/bn-002-wear-threshold-setting/state.yaml"
+    summary: >-
+      Tracked BN-002 diff checks and state-file trailing-whitespace scan passed.
+      Gradle-distributed SnakeYAML 2.0 parsed status=ready,
+      phase=implementation, role=implementation, review gate=changes_requested,
+      ten findings, twenty-eight pre-integrity test-result records, and four
+      total phase returns.
+    verified_at: "2026-08-02"
+  - id: "EVD-BN002-034"
+    type: "implementation_role_hardening"
+    result: "complete"
+    artifact: ".agents/roles/implementation.md"
+    summary: >-
+      The stable implementation role now requires a transition matrix before
+      applicable stateful changes, authoritative-writer and atomic-boundary
+      identification, same-root sibling-path analysis for review fixes,
+      post-mutation state recomputation, sanitizer idempotence and domain
+      compatibility, callback-order/process-recreation tests, and recorded
+      invariant evidence before handoff.
+    verified_at: "2026-08-02"
+  - id: "EVD-BN002-035"
+    type: "implementation_role_hardening_integrity"
+    result: "pass"
+    artifact: >-
+      .agents/roles/implementation.md and
+      .agents/work-items/bn-002-wear-threshold-setting/state.yaml
+    summary: >-
+      Role-file whitespace validation passed and Gradle-distributed SnakeYAML
+      2.0 parsed the ready implementation state with IMP-018 done, IMP-017 still
+      pending, ten findings, thirty pre-integrity test-result records, and four
+      phase returns.
+    verified_at: "2026-08-02"
+  - id: "EVD-BN002-036"
+    type: "imp017_transition_matrix"
+    result: "recorded"
+    artifact: >-
+      .agents/work-items/bn-002-wear-threshold-setting/wear-threshold-state-transition-matrix.md
+    summary: >-
+      Before production-code changes, IMP-017 recorded eight invariants,
+      authority and atomic boundaries, all active-status missing/invalid-pending
+      repairs, APPLIED result combinations, callback/retry/recreation ordering,
+      explicit unsupported-combination disposition, and required regression
+      evidence.
+    verified_at: "2026-08-02"
+  - id: "EVD-BN002-037"
+    type: "imp017_targeted_regression"
+    result: "pass"
+    artifact: >-
+      BatteryNotifierAndroidWearApp/app/build/test-results/testDebugUnitTest/TEST-com.magicitengineer.batterynotifierandroidwearapp.data.datastore.WearStateSanitizerMigrationTest.xml
+    summary: >-
+      WearStateSanitizer now recomputes status after the missing/invalid-pending
+      repair. The table-driven regression covers fourteen active-state field
+      combinations and asserts expected repair, sanitizer idempotence, and
+      successful domain mapping. The class passed 3/3 with zero failures,
+      errors, or skips.
+    verified_at: "2026-08-02"
+  - id: "EVD-BN002-038"
+    type: "imp017_state_machine_regression"
+    result: "pass"
+    artifact: "BatteryNotifierAndroidWearApp/app/build/test-results/testDebugUnitTest"
+    summary: >-
+      Reviewer-relevant Wear repository, controller, sanitizer, result
+      validator, and display mapper tests passed 44/44 with zero failures,
+      errors, or skips. This retains RV-008 callback/retry/recreation evidence
+      while adding RV-010 persisted-repair matrix coverage.
+    verified_at: "2026-08-02"
+  - id: "EVD-BN002-039"
+    type: "imp017_wear_full_gate"
+    result: "pass"
+    artifact: >-
+      BatteryNotifierAndroidWearApp/app/build/test-results and
+      BatteryNotifierAndroidWearApp/app/build/reports/lint-results-debug.xml
+    summary: >-
+      Full Wear test/lint completed BUILD SUCCESSFUL in 2m 10s. Debug and
+      release each passed 75/75 tests with zero failures, errors, or skips;
+      lint reported zero Errors and 11 Warnings.
+    verified_at: "2026-08-02"
+  - id: "EVD-BN002-040"
+    type: "imp017_review_fix"
+    result: "complete"
+    artifact: >-
+      BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateSanitizer.kt,
+      BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateSanitizerMigrationTest.kt,
+      and .agents/work-items/bn-002-wear-threshold-setting/wear-threshold-state-transition-matrix.md
+    summary: >-
+      IMP-017 closes the implementation side of RV-010. Repairs now make each
+      dependent status decision from the current builder, and the transition
+      matrix plus fourteen-case table-driven regression cover the reported
+      missing-pending shape and every same-root active-status sibling.
+    verified_at: "2026-08-02"
+  - id: "EVD-BN002-041"
+    type: "imp017_handoff_integrity"
+    result: "pass"
+    artifact: >-
+      .agents/work-items/bn-002-wear-threshold-setting/state.yaml and
+      .agents/work-items/bn-002-wear-threshold-setting/wear-threshold-state-transition-matrix.md
+    summary: >-
+      Scoped tracked diff and untracked state/matrix whitespace checks passed.
+      Gradle-distributed SnakeYAML 2.0 parsed status=in_review, phase=review,
+      role=review, review gate=pending_independent_re_review, ten findings,
+      thirty-four pre-integrity test-result records, and four phase returns.
+    verified_at: "2026-08-02"
+  - id: "EVD-BN002-042"
+    type: "independent_rv010_re_review"
+    result: "changes_requested"
+    artifact: >-
+      BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateSanitizerMigrationTest.kt
+    summary: >-
+      Production inspection verifies the current-builder status repair, but the
+      required exact APPLIED_WAITING_STATE fixture with both pending and result
+      absent is not present. The test named without pending always supplies a
+      valid result. RV-010 is reopened for missing required regression evidence;
+      Review -> Test is rejected.
+    verified_at: "2026-08-02"
+  - id: "EVD-BN002-043"
+    type: "independent_rv010_re_review_checks"
+    result: "pass"
+    artifact: "BatteryNotifierAndroidWearApp/app/build/test-results/testDebugUnitTest"
+    summary: >-
+      Reviewer-selected Wear repository, controller, sanitizer, validator, and
+      display tests passed 44/44 in 20s with zero failures, errors, or skips.
+      Passing tests do not supply the missing exact fixture.
+    verified_at: "2026-08-02"
+  - id: "EVD-BN002-044"
+    type: "independent_rv010_blocked_handoff_integrity"
+    result: "pass"
+    artifact: ".agents/work-items/bn-002-wear-threshold-setting/state.yaml"
+    summary: >-
+      Scoped whitespace checks passed and Gradle-distributed SnakeYAML 2.0
+      parsed status=blocked, phase=implementation, role=human, review gate=
+      changes_requested_phase_return_limit_reached, thirty-six pre-integrity
+      test-result records, and five phase returns.
+    verified_at: "2026-08-02"
+  - id: "EVD-BN002-045"
+    type: "rv010_exact_fixture_implementation"
+    result: "complete"
+    artifact: >-
+      BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateSanitizerMigrationTest.kt
+    summary: >-
+      Added only thresholdState(APPLIED_WAITING_STATE) with pending and result
+      absent to the existing table-driven repair test. The common assertions
+      verify IDLE repair, cleared pending/result fields, second-sanitize
+      idempotence, and successful WearStateProtoMapper domain mapping. The
+      sanitizer class passed 3/3 and the unchanged state-machine suite passed
+      44/44; production and specification files were not changed.
+    verified_at: "2026-08-08"
+  - id: "EVD-BN002-046"
+    type: "rv010_re_review"
+    result: "pass"
+    artifact: >-
+      BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateSanitizerMigrationTest.kt,
+      BatteryNotifierAndroidWearApp/app/build/test-results/testDebugUnitTest/TEST-com.magicitengineer.batterynotifierandroidwearapp.data.datastore.WearStateSanitizerMigrationTest.xml
+    summary: >-
+      Re-review verified the exact pending-absent/result-absent input and every
+      required assertion directly rather than relying on the case name. A fresh
+      reviewer execution passed 3/3 with zero failures, errors, or skips. The
+      correction is test-only; RV-010 is verified closed and Review -> Test passes.
+    verified_at: "2026-08-08"
+
+test_results:
+  - id: "DOC-BN002-001"
+    kind: "document_consistency"
+    status: "pass"
+    evidence: >-
+      Required state fields and all 12 spec_refs exist; 20 traceability IDs
+      were found in their owning documents; scoped git diff --check passed.
+  - id: "YAML-BN002-001"
+    kind: "yaml_parse"
+    status: "pass"
+    evidence: >-
+      Gradle-distributed SnakeYAML 2.0 parsed the state successfully:
+      YAML_OK=true; STATUS=in_review; ROLE=review; SPEC_REFS=12;
+      TEST_RESULTS=8.
+  - id: "CODE-BN002-001"
+    kind: "mobile_unit_and_lint_gate"
+    status: "pass"
+    command: >-
+      gradle.bat test lint -Pkotlin.compiler.execution.strategy=in-process
+      --no-daemon --offline --max-workers=1 --console=plain
+    project: "BatteryNotifierAndroidMobileApp"
+    evidence: >-
+      BUILD SUCCESSFUL in 7m 25s; debug/release unit tests and Android lint
+      completed after the final Mobile production change.
+  - id: "CODE-BN002-002"
+    kind: "wear_unit_and_lint_gate"
+    status: "pass"
+    command: >-
+      gradle.bat test lint -Pkotlin.compiler.execution.strategy=in-process
+      --no-daemon --offline --max-workers=1 --console=plain
+    project: "BatteryNotifierAndroidWearApp"
+    evidence: >-
+      BUILD SUCCESSFUL in 7m 42s; debug/release unit tests and Android lint
+      completed after the final Wear production change.
+  - id: "TC-U026-029"
+    kind: "targeted_unit_contract"
+    status: "pass"
+    project: "BatteryNotifierAndroidMobileApp"
+    evidence: >-
+      ProtoMobileStateRepositoryTest plus
+      ThresholdChangeRequestValidatorTest: 16 tests, 0 failures. Includes
+      complete-payload validation, unsupported schema diagnostics, atomic
+      apply, conflict preservation, and 10 deliveries of one requestId with a
+      single semantic mutation and replayed result.
+  - id: "TC-U030"
+    kind: "targeted_unit_persistence"
+    status: "pass"
+    project: "BatteryNotifierAndroidWearApp"
+    evidence: >-
+      WearThresholdSettingsControllerTest,
+      ProtoWearStateRepositoryTest, and
+      ThresholdChangeResultValidatorTest: 21 tests, 0 failures. Includes
+      repository/process recreation over the persisted Proto state, no
+      reconnect auto-send, and explicit retry with the same requestId.
+  - id: "TC-E077-083"
+    kind: "instrumented_emulator_real_device"
+    status: "not_run"
+    reason: >-
+      These connected-device, UI, accessibility, locale, restart, and
+      message-loss scenarios belong to the test and human-verification phases.
+      No emulator or real device was used in this implementation session.
+  - id: "DEVICE-BN002-001"
+    kind: "real_device"
+    status: "not_run"
+    reason: >-
+      Pixel 10 Pro Fold and Pixel Watch 4 release gates require the later
+      human-verification phase.
+  - id: "REVIEW-BN002-001"
+    kind: "independent_review_targeted_tests"
+    status: "pass"
+    command: >-
+      Mobile testDebugUnitTest for ProtoMobileStateRepositoryTest,
+      ThresholdChangeRequestValidatorTest, and MobileSyncCoordinatorTest;
+      Wear testDebugUnitTest for ProtoWearStateRepositoryTest,
+      ThresholdChangeResultValidatorTest, and
+      WearThresholdSettingsControllerTest.
+    evidence: >-
+      Mobile BUILD SUCCESSFUL in 22s, 32 tests / 0 failures. Wear BUILD
+      SUCCESSFUL in 19s, 21 tests / 0 failures. Static state-machine review
+      identified RV-001..RV-006 outside current assertions.
+  - id: "IMP-BN002-001"
+    kind: "review_fix_targeted_regression"
+    status: "pass"
+    command: >-
+      Mobile and Wear testDebugUnitTest with review-fix test class filters.
+    evidence: >-
+      Mobile 21 tests / 0 failures; Wear final rerun 34 tests / 0 failures.
+  - id: "CODE-BN002-003"
+    kind: "mobile_review_fix_unit_and_lint_gate"
+    status: "pass"
+    command: >-
+      gradle.bat test lint -Pkotlin.compiler.execution.strategy=in-process
+      --no-daemon --offline --max-workers=1 --console=plain
+    project: "BatteryNotifierAndroidMobileApp"
+    evidence: >-
+      BUILD SUCCESSFUL in 6m 28s; 73 tasks (14 executed, 59 up-to-date);
+      debug/release each 87 tests with zero failures/errors; lint Errors=0.
+  - id: "CODE-BN002-004"
+    kind: "wear_review_fix_unit_and_lint_gate"
+    status: "pass"
+    command: >-
+      gradle.bat test lint -Pkotlin.compiler.execution.strategy=in-process
+      --no-daemon --offline --max-workers=1 --console=plain
+    project: "BatteryNotifierAndroidWearApp"
+    evidence: >-
+      BUILD SUCCESSFUL in 6m 1s; 73 tasks (15 executed, 58 up-to-date);
+      debug/release each 66 tests with zero failures/errors; lint Errors=0.
+  - id: "YAML-BN002-002"
+    kind: "review_fix_handoff_integrity"
+    status: "pass"
+    command: >-
+      git diff --check for BN-002 scope and Gradle-distributed SnakeYAML parse
+      of the active state file.
+    evidence: >-
+      No scoped whitespace errors; YAML_OK=true; STATUS=in_review;
+      PHASE=review; ROLE=review; FINDINGS=6; IMP014=done; TEST_RESULTS=13.
+  - id: "REVIEW-BN002-002"
+    kind: "independent_re_review"
+    status: "fail"
+    command: >-
+      Mobile testDebugUnitTest for MobileSyncCoordinatorTest,
+      ProtoMobileStateRepositoryTest, and
+      ThresholdChangeRequestValidatorTest; Wear testDebugUnitTest for
+      ProtoWearStateRepositoryTest, WearThresholdSettingsControllerTest,
+      WearDisplayStateMapperTest, and ThresholdChangeResultValidatorTest;
+      git diff --check over the 39-file BN-002 scope.
+    evidence: >-
+      Automated checks passed 34/34 on Mobile and 34/34 on Wear, and the
+      scoped diff check passed. The review gate itself failed because static
+      state-machine analysis reopened High RV-002 and found Medium RV-007 and
+      RV-008. TC-E077..083 were not run.
+  - id: "YAML-BN002-003"
+    kind: "independent_re_review_handoff_integrity"
+    status: "pass"
+    command: >-
+      git diff --check for the BN-002 state file and
+      Gradle-distributed SnakeYAML 2.0 parse.
+    evidence: >-
+      State-file whitespace check passed; YAML_OK=true; STATUS=ready;
+      PHASE=implementation; ROLE=implementation; FINDINGS=8;
+      PHASE_RETURNS=2.
+  - id: "IMP-BN002-002"
+    kind: "imp015_mobile_targeted_regression"
+    status: "pass"
+    command: >-
+      gradle.bat testDebugUnitTest for MobileSyncCoordinatorTest and
+      ThresholdChangeRequestValidatorTest with in-process Kotlin compiler,
+      no daemon, offline mode, and one worker.
+    project: "BatteryNotifierAndroidMobileApp"
+    evidence: >-
+      BUILD SUCCESSFUL in 3m 48s; 23 tests, 0 failures, 0 errors, 0 skipped.
+      The first run failed only because DataMap required unavailable JVM
+      libcore classes; injecting the decoded classification at the listener
+      boundary made the same check pass without weakening production decode.
+  - id: "IMP-BN002-003"
+    kind: "imp015_wear_targeted_regression"
+    status: "pass"
+    command: >-
+      gradle.bat testDebugUnitTest for ProtoWearStateRepositoryTest,
+      WearThresholdSettingsControllerTest, and WearDisplayStateMapperTest
+      with in-process Kotlin compiler, no daemon, offline mode, and one worker.
+    project: "BatteryNotifierAndroidWearApp"
+    evidence: >-
+      BUILD SUCCESSFUL in 5m 12s; 35 tests, 0 failures, 0 errors, 0 skipped.
+  - id: "CODE-BN002-005"
+    kind: "mobile_imp015_unit_and_lint_gate"
+    status: "pass"
+    command: >-
+      gradle.bat test lint -Pkotlin.compiler.execution.strategy=in-process
+      --no-daemon --offline --max-workers=1 --console=plain
+    project: "BatteryNotifierAndroidMobileApp"
+    evidence: >-
+      BUILD SUCCESSFUL in 9m 40s; 73 tasks (14 executed, 59 up-to-date);
+      debug/release each 89 tests with zero failures/errors/skips; lint
+      Errors=0 and Warnings=14.
+  - id: "CODE-BN002-006"
+    kind: "wear_imp015_unit_and_lint_gate"
+    status: "pass"
+    command: >-
+      gradle.bat test lint -Pkotlin.compiler.execution.strategy=in-process
+      --no-daemon --offline --max-workers=1 --console=plain
+    project: "BatteryNotifierAndroidWearApp"
+    evidence: >-
+      BUILD SUCCESSFUL in 9m 53s; 73 tasks (14 executed, 59 up-to-date);
+      debug/release each 71 tests with zero failures/errors/skips; lint
+      Errors=0 and Warnings=11.
+  - id: "YAML-BN002-004"
+    kind: "imp015_handoff_integrity"
+    status: "pass"
+    command: >-
+      git diff --check for the BN-002 scope and Gradle-distributed
+      SnakeYAML 2.0 parse of the active state file.
+    evidence: >-
+      No scoped whitespace errors; YAML_OK=true; STATUS=in_review;
+      PHASE=review; ROLE=review; FINDINGS=8; TEST_RESULTS=20; IMP015=done;
+      PHASE_RETURNS=2.
+  - id: "REVIEW-BN002-003"
+    kind: "final_independent_re_review"
+    status: "fail"
+    command: >-
+      Mobile testDebugUnitTest for MobileSyncCoordinatorTest and
+      ThresholdChangeRequestValidatorTest; Wear testDebugUnitTest for
+      ProtoWearStateRepositoryTest, WearThresholdSettingsControllerTest,
+      WearDisplayStateMapperTest, and ThresholdChangeResultValidatorTest;
+      git diff --check for the BN-002 scope.
+    evidence: >-
+      Automated checks passed 23/23 on Mobile and 39/39 on Wear with no
+      failures, errors, or skips, and the scoped diff check passed. The review
+      gate failed because static ordering and contract analysis found open
+      Medium RV-008 and RV-009.
+  - id: "YAML-BN002-005"
+    kind: "final_re_review_handoff_integrity"
+    status: "pass"
+    command: >-
+      git diff --check for the BN-002 scope and Gradle-distributed SnakeYAML
+      2.0 parse of the active state file.
+    evidence: >-
+      No scoped whitespace errors; YAML_OK=true; STATUS=ready;
+      PHASE=implementation; ROLE=implementation;
+      REVIEW_GATE=changes_requested; FINDINGS=9; TEST_RESULTS=21;
+      PHASE_RETURNS=3.
+  - id: "IMP-BN002-004"
+    kind: "imp016_mobile_targeted_regression"
+    status: "pass"
+    command: >-
+      gradle.bat testDebugUnitTest for ProtoMobileStateRepositoryTest,
+      MobileStateSanitizerTest, and MobileSyncCoordinatorTest with in-process
+      Kotlin compiler, no daemon, offline mode, and one worker.
+    project: "BatteryNotifierAndroidMobileApp"
+    evidence: >-
+      The first run passed 38/39 and exposed a legacy replay fixture without
+      the newly required initial snapshot. After seeding that valid
+      precondition and removing a redundant production condition, the
+      identical suite passed 39/39 in 1m 30s with zero failures/errors/skips.
+  - id: "IMP-BN002-005"
+    kind: "imp016_wear_targeted_regression"
+    status: "pass"
+    command: >-
+      gradle.bat testDebugUnitTest for ProtoWearStateRepositoryTest,
+      WearThresholdSettingsControllerTest, WearStateSanitizerMigrationTest,
+      and ThresholdChangeResultValidatorTest with in-process Kotlin compiler,
+      no daemon, offline mode, and one worker.
+    project: "BatteryNotifierAndroidWearApp"
+    evidence: >-
+      BUILD SUCCESSFUL; 35/35 tests passed with zero failures/errors/skips,
+      including the RV-008 reverse callback order and RV-009 non-positive
+      sequence boundaries.
+  - id: "CODE-BN002-007"
+    kind: "mobile_imp016_unit_and_lint_gate"
+    status: "pass"
+    command: >-
+      gradle.bat test lint -Pkotlin.compiler.execution.strategy=in-process
+      --no-daemon --offline --max-workers=1 --console=plain
+    project: "BatteryNotifierAndroidMobileApp"
+    evidence: >-
+      BUILD SUCCESSFUL in 6m 20s; 73 tasks (14 executed, 59 up-to-date);
+      debug/release each 94 tests with zero failures/errors/skips; lint
+      Errors=0 and Warnings=14.
+  - id: "CODE-BN002-008"
+    kind: "wear_imp016_unit_and_lint_gate"
+    status: "pass"
+    command: >-
+      gradle.bat test lint -Pkotlin.compiler.execution.strategy=in-process
+      --no-daemon --offline --max-workers=1 --console=plain
+    project: "BatteryNotifierAndroidWearApp"
+    evidence: >-
+      BUILD SUCCESSFUL in 5m 46s; 73 tasks (14 executed, 59 up-to-date);
+      debug/release each 74 tests with zero failures/errors/skips; lint
+      Errors=0 and Warnings=11.
+  - id: "YAML-BN002-006"
+    kind: "imp016_handoff_integrity"
+    status: "pass"
+    command: >-
+      git diff --check for tracked BN-002 docs/app sources, trailing-whitespace
+      scan for IMP-016 files, and Gradle-distributed SnakeYAML 2.0 parse of the
+      active state file.
+    evidence: >-
+      Scoped checks reported no new whitespace errors; YAML_OK=true;
+      STATUS=in_review; PHASE=review; ROLE=review; FINDINGS=9;
+      TEST_RESULTS=27; IMP016=done; PHASE_RETURNS=3.
+  - id: "REVIEW-BN002-004"
+    kind: "independent_final_fix_re_review"
+    status: "fail"
+    command: >-
+      Mobile testDebugUnitTest for MobileSyncCoordinatorTest,
+      ProtoMobileStateRepositoryTest, and MobileStateSanitizerTest; Wear
+      testDebugUnitTest for WearThresholdSettingsControllerTest,
+      ProtoWearStateRepositoryTest, WearStateSanitizerMigrationTest,
+      ThresholdChangeResultValidatorTest, and WearDisplayStateMapperTest;
+      independent static lifecycle and persistence review.
+    evidence: >-
+      Automated checks passed Mobile 39/39 and Wear 43/43 with no failures,
+      errors, or skips. RV-008 and RV-009 are verified closed, but the review
+      gate failed on Medium RV-010 because WearStateSanitizer can emit a domain-
+      invalid WAITING_RESULT state with no pending request during restoration.
+  - id: "YAML-BN002-007"
+    kind: "independent_final_fix_re_review_handoff_integrity"
+    status: "pass"
+    command: >-
+      git diff --check for tracked BN-002 docs/app sources, state-file
+      trailing-whitespace scan, and Gradle-distributed SnakeYAML 2.0 parse.
+    evidence: >-
+      No scoped whitespace errors; YAML_OK=true; STATUS=ready;
+      PHASE=implementation; ROLE=implementation;
+      REVIEW_GATE=changes_requested; FINDINGS=10; TEST_RESULTS=28 before this
+      integrity record; PHASE_RETURNS=4.
+  - id: "ROLE-BN002-001"
+    kind: "implementation_role_contract_check"
+    status: "pass"
+    command: >-
+      git diff --check -- .agents/roles/implementation.md and targeted rg for
+      transition-matrix, invariant, sibling-path, post-mutation, idempotence,
+      callback-order, and exit-gate requirements.
+    evidence: >-
+      No whitespace errors were reported and every required prevention rule is
+      present in the implementation role. Product code and tests were not
+      changed or executed for this process-only update.
+  - id: "YAML-BN002-008"
+    kind: "implementation_role_hardening_integrity"
+    status: "pass"
+    command: >-
+      git diff --check -- .agents/roles/implementation.md, state-file trailing-
+      whitespace scan, and Gradle-distributed SnakeYAML 2.0 parse.
+    evidence: >-
+      Role and state whitespace checks passed; YAML_OK=true; STATUS=ready;
+      PHASE=implementation; ROLE=implementation; FINDINGS=10; TEST_RESULTS=30
+      before this integrity record; PHASE_RETURNS=4; IMP018=done; IMP017=pending.
+  - id: "IMP-BN002-006"
+    kind: "imp017_wear_sanitizer_targeted_regression"
+    status: "pass"
+    command: >-
+      gradle.bat testDebugUnitTest --tests
+      com.magicitengineer.batterynotifierandroidwearapp.data.datastore.WearStateSanitizerMigrationTest
+      with in-process Kotlin compiler, no daemon, offline mode, and one worker.
+    project: "BatteryNotifierAndroidWearApp"
+    evidence: >-
+      BUILD SUCCESSFUL in 1m 3s; 3/3 tests passed with zero failures, errors, or
+      skips. The fourteen-case table covers all active statuses without or with
+      invalid pending, valid pending/result preservation, and APPLIED waiting
+      with missing/invalid result.
+  - id: "IMP-BN002-007"
+    kind: "imp017_wear_state_machine_regression"
+    status: "pass"
+    command: >-
+      gradle.bat testDebugUnitTest for ProtoWearStateRepositoryTest,
+      WearThresholdSettingsControllerTest, WearStateSanitizerMigrationTest,
+      ThresholdChangeResultValidatorTest, and WearDisplayStateMapperTest with
+      in-process Kotlin compiler, no daemon, offline mode, and one worker.
+    project: "BatteryNotifierAndroidWearApp"
+    evidence: >-
+      BUILD SUCCESSFUL in 42s; 44/44 tests passed with zero failures, errors, or
+      skips. Repository 22, controller 6, sanitizer 3, validator 5, and display
+      mapper 8.
+  - id: "CODE-BN002-009"
+    kind: "wear_imp017_unit_and_lint_gate"
+    status: "pass"
+    command: >-
+      gradle.bat test lint -Pkotlin.compiler.execution.strategy=in-process
+      --no-daemon --offline --max-workers=1 --console=plain
+    project: "BatteryNotifierAndroidWearApp"
+    evidence: >-
+      BUILD SUCCESSFUL in 2m 10s; 73 tasks (14 executed, 59 up-to-date);
+      debug/release each 75 tests with zero failures/errors/skips; lint
+      Errors=0 and Warnings=11.
+  - id: "YAML-BN002-009"
+    kind: "imp017_handoff_integrity"
+    status: "pass"
+    command: >-
+      git diff --check for tracked BN-002 role/docs/app sources, trailing-
+      whitespace scan for the state and transition matrix, and Gradle-
+      distributed SnakeYAML 2.0 parse.
+    evidence: >-
+      No scoped whitespace errors; YAML_OK=true; STATUS=in_review; PHASE=review;
+      ROLE=review; REVIEW_GATE=pending_independent_re_review; FINDINGS=10;
+      TEST_RESULTS=34 before this integrity record; PHASE_RETURNS=4.
+  - id: "REVIEW-BN002-005"
+    kind: "independent_rv010_re_review"
+    status: "fail"
+    command: >-
+      Wear testDebugUnitTest for ProtoWearStateRepositoryTest,
+      WearThresholdSettingsControllerTest, WearStateSanitizerMigrationTest,
+      ThresholdChangeResultValidatorTest, and WearDisplayStateMapperTest plus
+      independent matrix/source/test inspection.
+    evidence: >-
+      Automated tests passed 44/44 in 20s with zero failures/errors/skips and
+      production repair is plausible. Review failed because the exact RV-010
+      APPLIED_WAITING_STATE-without-pending-and-result regression is absent;
+      every without-pending row injects validResult.
+  - id: "YAML-BN002-010"
+    kind: "independent_rv010_blocked_handoff_integrity"
+    status: "pass"
+    command: >-
+      git diff --check for tracked BN-002 scope, state/matrix trailing-whitespace
+      scan, and Gradle-distributed SnakeYAML 2.0 parse.
+    evidence: >-
+      No scoped whitespace errors; YAML_OK=true; STATUS=blocked;
+      PHASE=implementation; ROLE=human;
+      REVIEW_GATE=changes_requested_phase_return_limit_reached; FINDINGS=10;
+      TEST_RESULTS=36 before this integrity record; PHASE_RETURNS=5.
+  - id: "ENV-BN002-001"
+    kind: "rv010_resume_gradle_environment"
+    status: "resolved"
+    command: >-
+      Gradle Wrapper targeted test, then cached Gradle 8.13 targeted test under
+      the default sandbox, followed by the same cached command with loopback
+      permission.
+    evidence: >-
+      Wrapper execution could not download the already available 8.13
+      distribution because network access was denied. The cached distribution
+      then reported sandbox loopback denial. Running that cached distribution
+      with local loopback permission produced the JUnit result. These were
+      environment blocks, not assertion failures and not corrective attempts.
+  - id: "CODE-BN002-010"
+    kind: "rv010_exact_fixture_targeted_regression"
+    status: "pass"
+    command: >-
+      Cached Gradle 8.13 testDebugUnitTest --tests
+      WearStateSanitizerMigrationTest
+      -Pkotlin.compiler.execution.strategy=in-process --offline --max-workers=1
+      --console=plain
+    project: "BatteryNotifierAndroidWearApp"
+    evidence: >-
+      JUnit XML timestamp 2026-08-08T05:19:11.320Z; 3/3 tests passed with zero
+      failures, errors, or skips. The exact fixture executes the shared
+      idempotence and WearStateProtoMapper domain assertions.
+  - id: "CODE-BN002-011"
+    kind: "rv010_resume_state_machine_regression"
+    status: "pass"
+    command: >-
+      Cached Gradle 8.13 testDebugUnitTest for ProtoWearStateRepositoryTest,
+      WearThresholdSettingsControllerTest, WearStateSanitizerMigrationTest,
+      ThresholdChangeResultValidatorTest, and WearDisplayStateMapperTest with
+      -Pkotlin.compiler.execution.strategy=in-process --offline --max-workers=1
+      --console=plain
+    project: "BatteryNotifierAndroidWearApp"
+    evidence: >-
+      BUILD SUCCESSFUL in 1m 11s. JUnit XML totals are 44/44 with zero failures,
+      errors, or skips: repository 22, controller 6, sanitizer 3, validator 5,
+      and display mapper 8. Scoped test-file git diff --check passed.
+  - id: "ENV-BN002-002"
+    kind: "rv010_re_review_forced_suite_rerun"
+    status: "blocked"
+    command: >-
+      Reviewer-selected 44-test Gradle command with --rerun-tasks under a
+      five-minute monitoring limit.
+    evidence: >-
+      The command exceeded the monitoring limit without assertion output and
+      did not produce complete five-class XML, so it is not counted as Pass or
+      Fail. The Gradle daemon was stopped. This environment timeout does not
+      consume a corrective attempt; Review subsequently obtained a fresh 3/3
+      core-class result and retained the completed implementation 44/44 result.
+  - id: "REVIEW-BN002-006"
+    kind: "rv010_bounded_resume_re_review"
+    status: "pass"
+    command: >-
+      Direct fixture/assertion inspection, scoped test-only diff inspection,
+      and reviewer rerun of WearStateSanitizerMigrationTest using cached Gradle
+      8.13 with offline dependencies and local loopback permission.
+    evidence: >-
+      Exact input is APPLIED_WAITING_STATE with pending/result absent. Shared
+      assertions prove IDLE repair, cleared fields, idempotence, and domain-safe
+      mapping. Fresh JUnit XML passed 3/3 with zero failures/errors/skips. No new
+      Critical, High, Medium, or Low finding; RV-010 is verified closed.
+  - id: "YAML-BN002-011"
+    kind: "rv010_re_review_handoff_integrity"
+    status: "pass"
+    command: >-
+      Gradle-distributed SnakeYAML 2.0 parse and scoped test-file git diff
+      whitespace check.
+    evidence: >-
+      YAML_OK=true; STATUS=in_test; PHASE=test; ROLE=test;
+      REVIEW_GATE=approved_for_test; FINDINGS=10; TEST_RESULTS=42 before this
+      record; PHASE_RETURNS=5. Scoped test-file whitespace check passed.
+
+loop_control:
+  same_cause_failure_limit: 3
+  phase_return_limit: 5
+  current_failure_signature: null
+  consecutive_same_cause_failures: 0
+  total_phase_returns: 5
+  attempts:
+    - attempt: 1
+      phase: "implementation"
+      check: >-
+        Wear testDebugUnitTest for ProtoWearStateRepositoryTest,
+        WearThresholdSettingsControllerTest, WearDisplayStateMapperTest, and
+        ThresholdChangeResultValidatorTest
+      failure_signature: >-
+        compileDebugKotlin unresolved reference resolveThresholdChangeAgainst
+        at WearStateRepository.kt:459
+      root_cause_hypothesis: >-
+        One call site retained the pre-refactor helper name after the helper
+        was renamed to reconcileThresholdChangeAgainst.
+      corrective_change: >-
+        Updated the APPLIED result branch to call
+        reconcileThresholdChangeAgainst.
+      result: "passed_on_rerun"
+    - attempt: 2
+      phase: "implementation"
+      check: >-
+        Mobile testDebugUnitTest for MobileSyncCoordinatorTest and
+        ThresholdChangeRequestValidatorTest
+      failure_signature: >-
+        ThresholdChangeRequestValidatorTest.listenerBoundaryCountsEachNonPositiveSchemaExactlyOnceWithoutThrowing
+        failed with NoClassDefFoundError: libcore/io/Memory.
+      root_cause_hypothesis: >-
+        The local JVM unit-test runtime cannot execute Google Play services
+        DataMap byte serialization because Android libcore implementation
+        classes are unavailable.
+      corrective_change: >-
+        Injected the decoded request classification into the listener-boundary
+        dispatcher for JVM testing while retaining the production byte decoder
+        as its default input.
+      result: "passed_on_rerun"
+    - attempt: 3
+      phase: "implementation"
+      check: >-
+        IMP-016 Mobile targeted testDebugUnitTest for
+        ProtoMobileStateRepositoryTest, MobileStateSanitizerTest, and
+        MobileSyncCoordinatorTest
+      failure_signature: >-
+        39 tests completed, 1 failed:
+        ProtoMobileStateRepositoryTest.duplicateThresholdRequestReplaysPersistedResultWithoutASecondMutation
+        failed at its first-result applied assertion.
+      root_cause_hypothesis: >-
+        The legacy idempotency fixture starts from the default no-snapshot
+        state, which IMP-016 intentionally defers. The test must establish a
+        valid phone snapshot before exercising processed-request replay.
+      corrective_change: >-
+        Seeded one valid battery snapshot in the idempotency fixture and
+        removed the redundant lastSnapshot null condition after the repository
+        precondition.
+      result: "passed_on_rerun"
+  termination_reason: null
+  resume_condition: null
+  resumption:
+    authorized_by: "human"
+    authorized_at: "2026-08-08T14:14:01+09:00"
+    prior_termination_reason: >-
+      Phase return 5/5 was reached because IMP-017 omitted the exact required
+      missing-pending-and-result regression fixture.
+    approach: >-
+      Add only thresholdState(APPLIED_WAITING_STATE) with no pending and no
+      result to the existing table-driven migration regression, preserving the
+      production code and specifications.
+    first_check: >-
+      Wear testDebugUnitTest filtered to WearStateSanitizerMigrationTest.
+
+progress_reporting:
+  format_version: 1
+  current:
+    reported_at: "2026-08-08T14:48:38+09:00"
+    work_item: "BN-002"
+    role: "test"
+    phase: "test"
+    actor: "unassigned"
+    status: "in_test"
+    completed:
+      - "IMP-010: Mobile result idempotency and Wear draft/pending Proto state."
+      - "IMP-011: capability-scoped MessageClient request/result exchange."
+      - "IMP-012: localized 5..100 percent Wear editor and status UI."
+      - "IMP-013: TC-U026..030 unit/contract coverage and TC-E077..083 definitions."
+      - "Mobile and Wear full test/lint gates passed."
+      - "Independent review completed with changes requested."
+      - "Reviewer reran 32 Mobile and 21 Wear related tests; all passed."
+      - "IMP-014: RV-001..RV-006 fixes and regression tests implemented."
+      - "Mobile review-fix targets passed 21/21; Wear targets passed 34/34."
+      - "Mobile and Wear review-fix full test/lint gates passed."
+      - >-
+        Independent re-review verified RV-001, RV-003, RV-004, RV-005, and
+        RV-006 production behavior.
+      - >-
+        Independent focused reruns passed 34/34 on Mobile and 34/34 on Wear;
+        the 39-file scoped diff check passed.
+      - >-
+        IMP-015: RV-002 reverse callback reconciliation, RV-007 regression
+        completion, and RV-008 atomic retry admission implemented.
+      - "IMP-015 Mobile targeted regressions passed 23/23."
+      - "IMP-015 Wear targeted regressions passed 35/35."
+      - >-
+        IMP-015 Mobile/Wear full test/lint gates passed with 89/89 and 71/71
+        debug/release tests respectively and zero Lint Errors.
+      - >-
+        Final independent re-review verified and closed RV-002 and RV-007;
+        focused reruns passed Mobile 23/23 and Wear 39/39.
+      - >-
+        RV-008 reopened for an APPLIED_WAITING_STATE retry race and RV-009
+        recorded for no-snapshot/non-positive result-sequence behavior.
+      - >-
+        IMP-016: RV-008 retry/callback-order reconciliation and RV-009
+        no-snapshot/non-positive-sequence fixes implemented.
+      - >-
+        IMP-016 targeted regressions passed Mobile 39/39 and Wear 35/35;
+        full Mobile/Wear test and lint gates passed.
+      - >-
+        IMP-016 scoped whitespace/diff and YAML handoff-integrity checks
+        passed; implementation was handed to independent re-review.
+      - >-
+        Independent final-fix re-review verified and closed RV-008 and RV-009;
+        reviewer-selected Mobile 39/39 and Wear 43/43 tests passed.
+      - >-
+        Independent final-fix re-review found Medium RV-010 in Wear persisted-
+        state sanitization and returned the item to implementation.
+      - >-
+        IMP-018: implementation-role hardening completed with transition-matrix,
+        invariant, same-root sibling-path, and stronger regression requirements.
+      - >-
+        IMP-017 transition matrix recorded before production changes, covering
+        persisted repair combinations and runtime callback/recreation ordering.
+      - >-
+        IMP-017 sanitizer repair and fourteen-combination table-driven
+        regression implemented; targeted class passed 3/3.
+      - >-
+        IMP-017 Wear state-machine regression passed 44/44, retaining callback,
+        retry, process-recreation, validation, and display coverage.
+      - >-
+        IMP-017 Wear full test/lint gate passed; debug/release each 75/75 and
+        lint reported zero Errors.
+      - >-
+        IMP-017 completed: current-builder repair, transition matrix, fourteen-
+        combination regression, and all Wear automated gates are complete.
+      - >-
+        Independent RV-010 re-review verified the production repair and passed
+        44/44 tests, but reopened the finding because the exact required missing-
+        pending-and-result fixture is absent.
+      - >-
+        Automated phase-return limit reached 5/5; the loop is stopped pending
+        human prioritization or scope/approach direction.
+      - >-
+        Human authorized the bounded RV-010 test-only resume; BLK-006 is resolved
+        for that approach without resetting the retained 5/5 phase-return history.
+      - >-
+        Exact missing-pending-and-result fixture added; sanitizer 3/3 and unchanged
+        Wear state-machine suite 44/44 passed with zero failures/errors/skips.
+      - >-
+        RV-010 re-review passed: exact fixture and shared assertions verified,
+        reviewer core rerun passed 3/3, and RV-010 is verified closed.
+      - "Review -> Test gate: approved; no open review findings remain."
+    in_progress: []
+    next_actions:
+      - >-
+        Assign the Test actor and execute TC-E077..083 in the required
+        environments without treating prior unit checks as E2E evidence.
+    checks:
+      - >-
+        Final review handoff integrity: pass; SnakeYAML parsed in_test/test with
+        approved_for_test, ten retained findings, and phase returns 5/5.
+      - >-
+        RV-010 re-review: pass; actual fixture and assertions verified, fresh
+        reviewer JUnit XML passed 3/3, and no new finding was recorded.
+      - >-
+        Reviewer forced 44-test rerun: blocked by five-minute environment timeout
+        and not counted as Pass/Fail; complete implementation rerun remains 44/44.
+      - >-
+        Bounded RV-010 sanitizer regression: pass; 3/3 tests with zero failures,
+        errors, or skips, including the exact missing fixture.
+      - >-
+        Bounded RV-010 state-machine regression: pass; BUILD SUCCESSFUL in 1m
+        11s and 44/44 tests with zero failures, errors, or skips.
+      - >-
+        Test-only scoped diff check: pass; no whitespace errors and no production
+        or specification files were changed by the bounded correction.
+      - >-
+        Independent RV-010 reviewer rerun: pass, BUILD SUCCESSFUL in 20s;
+        repository/controller/sanitizer/validator/display targets passed 44/44
+        with zero failures/errors/skips.
+      - >-
+        Independent required-evidence inspection: fail; test lines 63..70 name
+        a without-pending case but inject validResult, so the exact missing-
+        pending-and-result fixture required by RV-010 and the matrix is absent.
+      - >-
+        Blocked handoff integrity: pass; scoped whitespace checks passed and
+        SnakeYAML parsed blocked/implementation/human with thirty-six pre-
+        integrity test records and phase returns 5/5.
+      - >-
+        IMP-017 targeted Wear sanitizer regression: pass, BUILD SUCCESSFUL in
+        1m 3s; 3/3 tests passed with zero failures/errors/skips and scoped diff
+        check reported no whitespace errors.
+      - >-
+        IMP-017 Wear state-machine regression: pass, BUILD SUCCESSFUL in 42s;
+        44/44 tests passed with zero failures/errors/skips.
+      - >-
+        IMP-017 Wear full gate: pass, BUILD SUCCESSFUL in 2m 10s;
+        debug/release 75/75 each, failures/errors/skips=0, Lint Errors=0 and
+        Warnings=11.
+      - >-
+        IMP-017 handoff integrity: pass; scoped whitespace checks passed and
+        SnakeYAML parsed in_review/review with pending independent re-review,
+        ten findings, thirty-four pre-integrity test records, and four returns.
+      - >-
+        IMP-017 pre-code completeness: pass; eight invariants, authority/atomic
+        boundaries, persisted repair matrix, callback/recreation matrix, and
+        required regression rows are recorded.
+      - >-
+        IMP-018 role contract check: pass; implementation.md diff has no
+        whitespace errors and all required prevention rules are present.
+        Product code/tests were not changed or run for this process-only update.
+      - >-
+        IMP-018 handoff integrity: pass; SnakeYAML parsed ready/implementation
+        with IMP-018 done, IMP-017 pending, ten findings, thirty pre-integrity
+        test records, and four phase returns.
+      - >-
+        Independent IMP-016 handoff verification: pass; all 12 spec refs and
+        affected paths were read, implementation XML reports contain Mobile
+        94/94 and Wear 74/74 in debug/release with zero failures/errors/skips,
+        both lint reports contain zero Errors, and scoped git diff check passed.
+      - >-
+        IMP-016 handoff integrity: pass; tracked BN-002 diff and IMP-016
+        whitespace checks passed, and SnakeYAML parsed the final review state.
+      - >-
+        IMP-016 Mobile full gate: pass, BUILD SUCCESSFUL in 6m 20s;
+        debug/release 94 tests each, failures/errors=0, Lint Errors=0
+        (14 warnings).
+      - >-
+        IMP-016 Wear full gate: pass, BUILD SUCCESSFUL in 5m 46s;
+        debug/release 74 tests each, failures/errors=0, Lint Errors=0
+        (11 warnings).
+      - >-
+        IMP-016 Mobile targeted rerun: pass, BUILD SUCCESSFUL in 1m 30s;
+        39/39 tests passed and the active same-cause count reset to 0.
+      - >-
+        IMP-016 Mobile targeted attempt 1: fail, 38/39 passed; one legacy
+        replay test omitted the now-required initial phone snapshot. Same-cause
+        count 1/3.
+      - >-
+        IMP-016 Wear targeted: pass, including the APPLIED retry/phone-state
+        callback ordering regression and non-positive result rejection.
+      - "Document consistency: pass (12 spec refs, 20 trace IDs, scoped diff check)."
+      - "YAML parse: pass with Gradle-distributed SnakeYAML 2.0."
+      - "Mobile test + lint: pass (BUILD SUCCESSFUL, 73 tasks)."
+      - "Wear test + lint: pass (BUILD SUCCESSFUL, 73 tasks)."
+      - "Mobile targeted TC-U026..029 coverage: pass, 16 tests / 0 failures."
+      - >-
+        IMP-014 Mobile targeted regression: pass, 21 tests / 0 failures
+        (MobileSyncCoordinatorTest 17, validator 4).
+      - >-
+        IMP-014 Wear targeted regression attempt 1: compile failed before
+        tests due to one stale helper-name reference; corrective rename was
+        applied and the same check then passed 34/34.
+      - >-
+        IMP-014 Wear final targeted regression: pass, 34 tests / 0 failures
+        (repository 18, controller 4, display mapper 8, validator 4).
+      - >-
+        Mobile review-fix full gate: pass, BUILD SUCCESSFUL in 6m 28s;
+        debug/release 87 tests each, lint Errors=0.
+      - >-
+        Wear review-fix full gate: pass, BUILD SUCCESSFUL in 6m 1s;
+        debug/release 66 tests each, lint Errors=0.
+      - >-
+        Final handoff integrity: pass; scoped diff check clean and SnakeYAML
+        parsed in_review/review with six findings and IMP-014 done.
+      - "Wear targeted TC-U030-related coverage: pass, 21 tests / 0 failures."
+      - "Independent review rerun: Mobile 32/32 and Wear 21/21 pass."
+      - "Independent re-review focused Mobile tests: pass, 34/34."
+      - "Independent re-review focused Wear tests: pass, 34/34."
+      - "Independent re-review 39-file scoped diff check: pass."
+      - >-
+        Re-review handoff integrity: pass; state-file diff check clean and
+        SnakeYAML parsed ready/implementation with eight retained findings and
+        two total phase returns.
+      - >-
+        IMP-015 Mobile targeted attempt 1: fail, 22/23 passed; listener
+        boundary regression could not construct DataMap on the JVM because
+        libcore/io/Memory was unavailable. Same-cause count 1/3.
+      - >-
+        IMP-015 Mobile targeted rerun: pass, BUILD SUCCESSFUL in 3m 48s;
+        23/23 tests passed and the active same-cause count reset to 0.
+      - >-
+        IMP-015 Wear targeted regression: pass, BUILD SUCCESSFUL in 5m 12s;
+        35/35 tests passed.
+      - >-
+        IMP-015 Mobile full gate: pass, BUILD SUCCESSFUL in 9m 40s;
+        debug/release 89 tests each, lint Errors=0.
+      - >-
+        IMP-015 Wear full gate: pass, BUILD SUCCESSFUL in 9m 53s;
+        debug/release 71 tests each, lint Errors=0.
+      - "Final independent re-review Mobile focused suite: pass, 23/23."
+      - "Final independent re-review Wear focused suite: pass, 39/39."
+      - "Final independent re-review BN-002 scoped diff check: pass."
+      - "RV-002 and RV-007: verified_closed."
+      - "RV-008 and RV-009 Medium: verified_closed."
+      - >-
+        Independent reviewer-selected rerun: Mobile 39/39 and Wear 43/43 pass
+        with zero failures, errors, or skips.
+      - >-
+        RV-010 Medium: reopened_required_regression_missing; production repair
+        verified, but the exact required fixture is absent.
+      - "Review -> Test gate: rejected; phase-return limit reached 5/5."
+      - >-
+        Final handoff integrity: pass; scoped whitespace checks passed and
+        SnakeYAML parsed ready/implementation with ten findings, twenty-eight
+        pre-integrity test records, and four phase returns.
+      - >-
+        IMP-015 handoff integrity: pass; scoped diff check clean and
+        SnakeYAML parsed in_review/review with IMP-015 done and two phase
+        returns.
+      - >-
+        Verified closed: RV-001 through RV-009. RV-010 remains open for required
+        regression evidence despite the verified production repair.
+      - "TC-E077..083: not_run; requires test environments and devices."
+      - >-
+        Repository-wide diff check remains affected by pre-existing trailing
+        whitespace in Mobile .idea/deploymentTargetSelector.xml; BN-002 scoped
+        diff check passes.
+    blockers:
+      - "TC-E077..083 and required real-device gates remain not_run."
+  history:
+    - reported_at: "2026-07-29T10:47:03+09:00"
+      event: "specification_started"
+      role: "specification"
+      actor: "codex"
+      summary: >-
+        Started BN-002 as a new work item without modifying completed BN-001.
+    - reported_at: "2026-07-29T10:56:33+09:00"
+      event: "specification_verification"
+      role: "specification"
+      actor: "codex"
+      summary: >-
+        Required state fields, all 12 spec references, 20 traceability IDs, and
+        the scoped whitespace diff check passed. Gradle-distributed SnakeYAML
+        2.0 also parsed the state successfully.
+    - reported_at: "2026-07-29T10:56:33+09:00"
+      event: "human_decision_handoff"
+      role: "specification"
+      actor: "codex"
+      summary: >-
+        Completed and verified the proposed contract, then handed ADR-015 to
+        the human before implementation.
+    - reported_at: "2026-07-29T16:55:34+09:00"
+      event: "human_approval_and_implementation_handoff"
+      role: "human"
+      actor: "human"
+      summary: >-
+        Approved ADR-015, resolved DEC-005 and BLK-005, and directed Codex to
+        proceed with implementation starting at IMP-010.
+    - reported_at: "2026-07-29T18:59:52+09:00"
+      event: "implementation_completed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Completed IMP-010..013. Mobile remains the sole writer; Wear now
+        persists draft/pending state, uses a reachable compatible capability
+        and MessageClient, explicitly retries without reconnect auto-send, and
+        presents localized edit/result states.
+    - reported_at: "2026-07-29T18:59:52+09:00"
+      event: "implementation_verification_and_review_handoff"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Mobile and Wear full test/lint gates passed. Targeted Mobile tests
+        passed 16/16 and targeted Wear tests passed 21/21. TC-E077..083 remain
+        not_run for the test/human phases. Handed the work to an unassigned
+        independent reviewer.
+    - reported_at: "2026-07-29T19:11:09+09:00"
+      event: "review_started"
+      role: "review"
+      actor: "codex-review"
+      summary: >-
+        Verified the implementation handoff against the scoped worktree,
+        targeted test XML, and lint artifacts. Started an independent
+        specification, persistence, messaging, lifecycle, UI, and test-quality
+        review without changing production code.
+    - reported_at: "2026-07-29T19:20:15+09:00"
+      event: "review_changes_requested"
+      role: "review"
+      actor: "codex-review"
+      summary: >-
+        Completed independent review of the BN-002 worktree. Recorded
+        RV-001..RV-006 (4 High, 2 Medium), rejected the Review -> Test gate,
+        incremented total_phase_returns to 1, and returned the work to
+        implementation. Reviewer-targeted tests still passed 32/32 on Mobile
+        and 21/21 on Wear, confirming the findings are gaps in current
+        behavior and assertions rather than existing test failures.
+    - reported_at: "2026-07-29T21:28:42+09:00"
+      event: "implementation_review_fixes_started"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Accepted the independent review handoff and started IMP-014 for
+        RV-001..RV-006. The first change recovers interrupted Wear SENDING
+        state without automatic transmission, followed by conflict/draft,
+        admission, validation, and replay-convergence fixes.
+    - reported_at: "2026-07-29T22:20:12+09:00"
+      event: "implementation_review_fixes_completed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Completed IMP-014 for RV-001..RV-006. Targeted regressions passed
+        21/21 on Mobile and 34/34 on Wear. Full test/lint gates passed for
+        both projects, with zero unit failures/errors and zero lint Errors.
+    - reported_at: "2026-07-29T22:20:12+09:00"
+      event: "implementation_to_independent_re_review_handoff"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Handed all six fixes and their evidence to an unassigned independent
+        reviewer. The Review -> Test gate remains pending; emulator and
+        real-device cases were not run in implementation.
+    - reported_at: "2026-07-31T08:59:35+09:00"
+      event: "independent_re_review_started"
+      role: "review"
+      actor: "codex-independent-reviewer"
+      summary: >-
+        Accepted the implementation handoff and started an independent
+        verification of RV-001..RV-006 against all spec_refs, production
+        paths, regression tests, lifecycle/concurrency risks, and the scoped
+        worktree without modifying production code.
+    - reported_at: "2026-07-31T09:12:01+09:00"
+      event: "independent_re_review_changes_requested"
+      role: "review"
+      actor: "codex-independent-reviewer"
+      summary: >-
+        Closed RV-001, RV-003, RV-004, RV-005, and RV-006 after production
+        verification. Reopened High RV-002 for reverse callback ordering and
+        added Medium RV-007 for incomplete regression evidence and RV-008 for
+        concurrent retry admission. Focused Mobile and Wear suites each passed
+        34/34 and the scoped diff check passed, but the gate is rejected.
+    - reported_at: "2026-07-31T09:12:01+09:00"
+      event: "review_to_implementation_handoff"
+      role: "review"
+      actor: "codex-independent-reviewer"
+      summary: >-
+        Returned BN-002 to implementation as IMP-015, incremented
+        total_phase_returns to 2, and set the first action to the High RV-002
+        reverse-order reconciliation fix.
+    - reported_at: "2026-07-31T17:45:13+09:00"
+      event: "implementation_re_review_fixes_started"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Accepted the independent re-review handoff, verified the repository
+        against all required specifications and existing dirty-worktree
+        changes, and started IMP-015 with RV-002 first, followed by RV-007 and
+        RV-008.
+    - reported_at: "2026-07-31T18:19:49+09:00"
+      event: "implementation_re_review_fixes_completed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Completed IMP-015. Mobile targeted tests passed 23/23 after one
+        recorded JVM-test-environment correction, Wear targeted tests passed
+        35/35, and both full test/lint gates passed with zero unit failures
+        and zero Lint Errors.
+    - reported_at: "2026-07-31T18:19:49+09:00"
+      event: "implementation_to_independent_re_review_handoff"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Handed RV-002, RV-007, and RV-008 fixes to an unassigned independent
+        reviewer. The Review -> Test gate remains pending; TC-E077..083 and
+        physical-device gates remain not_run.
+    - reported_at: "2026-08-02T06:59:34+09:00"
+      event: "final_independent_re_review_started"
+      role: "review"
+      actor: "codex-independent-reviewer-2"
+      summary: >-
+        Accepted the IMP-015 handoff as an independent reviewer and started
+        fix verification for RV-002, RV-007, and RV-008 plus adjacent
+        lifecycle/concurrency review without modifying production code.
+    - reported_at: "2026-08-02T07:05:23+09:00"
+      event: "final_independent_re_review_changes_requested"
+      role: "review"
+      actor: "codex-independent-reviewer-2"
+      summary: >-
+        Verified and closed RV-002 and RV-007 after static path review and
+        focused Mobile 23/23 and Wear 39/39 passing reruns. Reopened Medium
+        RV-008 for an APPLIED_WAITING_STATE retry race, added Medium RV-009 for
+        no-snapshot/non-positive result sequences, and rejected Review -> Test.
+    - reported_at: "2026-08-02T07:05:23+09:00"
+      event: "review_to_implementation_handoff"
+      role: "review"
+      actor: "codex-independent-reviewer-2"
+      summary: >-
+        Returned BN-002 to implementation as IMP-016, incremented total phase
+        returns to 3, and set IMP-016 to fix the RV-008 ordering defect first,
+        followed by the RV-009 no-snapshot and validation boundaries.
+    - reported_at: "2026-08-02T07:17:09+09:00"
+      event: "implementation_final_review_fixes_started"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Accepted the independent re-review handoff, re-read all specification
+        references and affected Mobile/Wear paths, and started IMP-016 with
+        focused regressions for RV-008 followed by RV-009.
+    - reported_at: "2026-08-02T07:29:40+09:00"
+      event: "implementation_targeted_check_failed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        IMP-016 Wear targeted tests passed. Mobile passed 38/39; the only
+        failure was a legacy replay fixture that lacked a phone snapshot and
+        therefore now correctly deferred. Recorded same-cause attempt 1/3 and
+        will seed the valid precondition before rerunning the identical suite.
+    - reported_at: "2026-08-02T07:33:30+09:00"
+      event: "implementation_targeted_check_passed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Seeded the valid phone-snapshot precondition in the legacy replay
+        fixture, removed the redundant production null condition, and reran
+        the identical Mobile suite successfully at 39/39. The active
+        same-cause count returned to zero; full Mobile/Wear gates are next.
+    - reported_at: "2026-08-02T07:40:53+09:00"
+      event: "implementation_full_gates_passed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Full Mobile and Wear test/lint gates passed. Mobile debug/release each
+        passed 94/94 with zero Lint Errors; Wear debug/release each passed
+        74/74 with zero Lint Errors. Final scoped diff and state-integrity
+        checks remain before the independent re-review handoff.
+    - reported_at: "2026-08-02T07:44:17+09:00"
+      event: "implementation_final_review_fixes_completed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Completed IMP-016 for RV-008 and RV-009. Mobile targeted tests passed
+        39/39 after one recorded fixture correction, Wear targeted tests passed
+        35/35, both full test/lint gates passed, and scoped integrity checks
+        passed.
+    - reported_at: "2026-08-02T07:44:17+09:00"
+      event: "implementation_to_independent_re_review_handoff"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Handed the RV-008 and RV-009 fixes to an unassigned independent
+        reviewer. Review -> Test remains pending; TC-E077..083 and Pixel device
+        gates remain not_run.
+    - reported_at: "2026-08-02T07:46:47+09:00"
+      event: "implementation_handoff_integrity_verified"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Final tracked BN-002 diff and IMP-016 trailing-whitespace checks passed.
+        SnakeYAML parsed the in_review/review handoff with nine findings,
+        twenty-seven test results, IMP-016 done, and three phase returns.
+    - reported_at: "2026-08-02T07:53:06+09:00"
+      event: "independent_final_fix_re_review_started"
+      role: "review"
+      actor: "codex-independent-reviewer-3"
+      summary: >-
+        Accepted and verified the IMP-016 handoff against all 12 specifications,
+        affected production/test paths, implementation XML/lint artifacts, and
+        the scoped worktree. Started independent RV-008/RV-009 fix verification
+        without modifying production code.
+    - reported_at: "2026-08-02T07:59:27+09:00"
+      event: "independent_final_fix_re_review_changes_requested"
+      role: "review"
+      actor: "codex-independent-reviewer-3"
+      summary: >-
+        Verified and closed RV-008 and RV-009 after static lifecycle analysis
+        and passing reviewer-selected Mobile 39/39 and Wear 43/43 tests. Added
+        Medium RV-010 because WearStateSanitizer can use a stale status after a
+        repair and produce a domain-invalid restored state. Review -> Test is
+        rejected.
+    - reported_at: "2026-08-02T07:59:27+09:00"
+      event: "review_to_implementation_handoff"
+      role: "review"
+      actor: "codex-independent-reviewer-3"
+      summary: >-
+        Returned BN-002 to implementation as IMP-017, incremented total phase
+        returns to 4, and set the first action to make sanitizer repair ordering
+        deterministic plus add the missing persisted-state regression.
+    - reported_at: "2026-08-02T08:02:45+09:00"
+      event: "independent_final_fix_re_review_handoff_verified"
+      role: "review"
+      actor: "codex-independent-reviewer-3"
+      summary: >-
+        Scoped whitespace checks passed and SnakeYAML parsed the ready
+        implementation handoff with ten findings, twenty-eight pre-integrity
+        test-result records, and four total phase returns.
+    - reported_at: "2026-08-02T08:44:55+09:00"
+      event: "implementation_role_hardening_started"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        The human directed that future feature work prevent repeated incomplete
+        review fixes. Started IMP-018 to add state-transition completeness,
+        domain/persistence invariants, adjacent-path analysis, and invariant-
+        based regression evidence to the stable implementation role.
+    - reported_at: "2026-08-02T08:45:57+09:00"
+      event: "implementation_role_hardening_completed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Completed IMP-018 in the stable implementation role. Future applicable
+        features and review fixes must record a transition matrix, invariants,
+        authoritative writer and atomic boundary, same-root sibling paths,
+        callback/restart permutations, sanitizer idempotence, and domain-mapping
+        evidence before implementation handoff.
+    - reported_at: "2026-08-02T08:47:29+09:00"
+      event: "implementation_role_hardening_integrity_verified"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Role-file whitespace validation and state YAML parsing passed. The work
+        item remains ready for IMP-017 with the process-only IMP-018 complete.
+    - reported_at: "2026-08-02T08:51:25+09:00"
+      event: "implementation_rv010_fix_started"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Accepted the RV-010 handoff under the hardened implementation role.
+        Started IMP-017 by re-reading the specifications and all affected Wear
+        persistence paths; the transition matrix will be recorded before any
+        production-code change.
+    - reported_at: "2026-08-02T08:52:26+09:00"
+      event: "implementation_rv010_transition_matrix_recorded"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Recorded the IMP-017 state-transition matrix before production changes.
+        It covers every active status with missing/invalid pending state,
+        APPLIED result presence, sanitizer/domain invariants, callback order,
+        retry, reconnect, and process recreation.
+    - reported_at: "2026-08-02T08:55:16+09:00"
+      event: "implementation_rv010_targeted_check_passed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Recomputed threshold status after pending-state repair and added a
+        fourteen-combination table-driven regression. The sanitizer test class
+        passed 3/3 and proves idempotence plus domain compatibility for the
+        reported case and same-root active-state siblings.
+    - reported_at: "2026-08-02T08:57:03+09:00"
+      event: "implementation_rv010_state_machine_check_passed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        The reviewer-relevant Wear state-machine suite passed 44/44, including
+        retry/callback/recreation regressions and the new persisted repair
+        matrix. Full Wear test/lint is next.
+    - reported_at: "2026-08-02T09:00:18+09:00"
+      event: "implementation_rv010_full_gate_passed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Full Wear test/lint passed. Debug and release each passed 75/75 with no
+        failures/errors/skips, lint reported zero Errors and 11 Warnings, and
+        final handoff-integrity checks remain.
+    - reported_at: "2026-08-02T09:01:10+09:00"
+      event: "implementation_rv010_fix_completed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Completed IMP-017 for RV-010. The pre-code transition matrix covers all
+        active statuses and ordering/recovery paths; the code recomputes builder
+        status after repair; table-driven tests prove fourteen combinations,
+        sanitizer idempotence, and domain compatibility.
+    - reported_at: "2026-08-02T09:01:10+09:00"
+      event: "implementation_to_independent_rv010_re_review_handoff"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Handed RV-010 to an unassigned independent reviewer with sanitizer 3/3,
+        state-machine 44/44, full Wear debug/release 75/75, zero Lint Errors,
+        and the transition matrix. TC-E077..083 and physical-device gates remain
+        not_run.
+    - reported_at: "2026-08-02T09:03:13+09:00"
+      event: "implementation_rv010_handoff_integrity_verified"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Scoped whitespace checks passed and SnakeYAML parsed the independent
+        review handoff with thirty-four pre-integrity test-result records and
+        four phase returns. IMP-017 is complete and RV-010 awaits re-review.
+    - reported_at: "2026-08-02T09:12:31+09:00"
+      event: "independent_rv010_re_review_started"
+      role: "review"
+      actor: "codex-independent-reviewer-4"
+      summary: >-
+        Accepted the IMP-017 handoff and started independent verification of
+        the current-builder repair, transition matrix, exact RV-010 fixture,
+        same-root sibling combinations, idempotence, domain mapping, and
+        retained retry/recreation ordering without modifying production code.
+    - reported_at: "2026-08-02T09:14:23+09:00"
+      event: "independent_rv010_re_review_changes_requested"
+      role: "review"
+      actor: "codex-independent-reviewer-4"
+      summary: >-
+        Verified the RV-010 production repair and reran 44/44 related Wear tests
+        successfully, but reopened RV-010 because the required exact
+        APPLIED_WAITING_STATE fixture with both pending and result absent is not
+        present. The case named without pending injects a valid result.
+    - reported_at: "2026-08-02T09:14:23+09:00"
+      event: "phase_return_limit_reached"
+      role: "review"
+      actor: "codex-independent-reviewer-4"
+      summary: >-
+        Counted the failed Review -> Implementation handback as phase return
+        5/5, stopped the automated loop, set BLK-006, and handed prioritization
+        to the human. No production or test code was modified by review.
+    - reported_at: "2026-08-02T09:17:04+09:00"
+      event: "independent_rv010_blocked_handoff_integrity_verified"
+      role: "review"
+      actor: "codex-independent-reviewer-4"
+      summary: >-
+        Scoped whitespace and YAML integrity checks passed for the blocked human
+        handoff with thirty-six pre-integrity test-result records and phase
+        returns 5/5.
+    - reported_at: "2026-08-08T14:14:01+09:00"
+      event: "human_authorized_bounded_rv010_resume"
+      role: "human"
+      actor: "human"
+      summary: >-
+        Authorized one bounded test-only correction for the exact
+        APPLIED_WAITING_STATE fixture with pending and result both absent,
+        followed by unchanged targeted checks and re-review. BLK-006 is resolved
+        for this approach; production and specification scope remain frozen.
+    - reported_at: "2026-08-08T14:14:01+09:00"
+      event: "implementation_rv010_test_only_resume_started"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Accepted the human-authorized resume, verified the transition matrix and
+        existing fixture inputs, and started the exact missing regression case.
+    - reported_at: "2026-08-08T14:32:12+09:00"
+      event: "implementation_rv010_test_only_resume_completed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Added only the exact APPLIED_WAITING_STATE fixture with pending and result
+        absent. The sanitizer class passed 3/3, the unchanged Wear state-machine
+        suite passed 44/44, and the scoped diff check passed. No production or
+        specification file was changed by the bounded correction.
+    - reported_at: "2026-08-08T14:32:12+09:00"
+      event: "implementation_to_rv010_re_review_handoff"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Handed the exact fixture, shared idempotence/domain assertions, JUnit XML,
+        and test-only diff to Review. TC-E077..083 and physical-device gates
+        remain not_run and are outside this bounded correction.
+    - reported_at: "2026-08-08T14:32:12+09:00"
+      event: "rv010_re_review_started"
+      role: "review"
+      actor: "codex-review-5"
+      summary: >-
+        Accepted the implementation handoff and started re-review of the exact
+        fixture input, expected repair, idempotence, domain mapping, test-only
+        scope, and retained state-machine regression evidence.
+    - reported_at: "2026-08-08T14:46:26+09:00"
+      event: "rv010_re_review_passed"
+      role: "review"
+      actor: "codex-review-5"
+      summary: >-
+        Verified the exact pending-absent/result-absent fixture and each shared
+        assertion directly. A fresh reviewer core rerun passed 3/3. The attempted
+        forced 44-test rerun timed out as an environment block and was not counted;
+        implementation's completed unchanged suite remains 44/44. RV-010 is closed.
+    - reported_at: "2026-08-08T14:46:26+09:00"
+      event: "review_to_test_handoff"
+      role: "review"
+      actor: "codex-review-5"
+      summary: >-
+        Approved Review -> Test with zero open review findings. Handed BN-002 to
+        an unassigned Test actor; TC-E077..083 and Pixel real-device gates remain
+        not_run and must be executed in their owning phases.
+    - reported_at: "2026-08-08T14:48:38+09:00"
+      event: "rv010_re_review_handoff_integrity_verified"
+      role: "review"
+      actor: "codex-review-5"
+      summary: >-
+        Scoped test-file whitespace validation and SnakeYAML parsing passed for
+        the in_test/test handoff with approved_for_test and retained phase
+        returns 5/5.
+
+handoff:
+  from_role: "review"
+  to_role: "test"
+  gate_result: "approved_for_test"
+  summary: >-
+    Re-review verified and closed RV-010 using the actual exact fixture,
+    shared invariant assertions, a fresh 3/3 reviewer core rerun, and the
+    completed 44/44 implementation state-machine suite. No review finding remains.
+  unresolved_items:
+    - "TC-E077..083 are not run and must not be treated as passed."
+    - "Pixel Watch 4 and Pixel 10 Pro Fold human release gates remain pending."
+  first_action: >-
+    Assign the Test actor, verify the handoff against repository evidence, and
+    execute TC-E077 first in the documented emulator/device environment.
+
+next_actions:
+  - "Assign a Test actor and execute TC-E077..083 with recorded runtime evidence."
+  - "Keep Pixel Watch 4 and Pixel 10 Pro Fold gates for Human verification."
+
+updated_at: "2026-08-08T14:48:38+09:00"
+updated_by: "codex-review-5"

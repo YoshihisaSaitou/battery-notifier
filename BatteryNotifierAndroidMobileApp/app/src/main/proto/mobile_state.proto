@@ -30,6 +30,8 @@ message MobileStateProto {
 
   int64 invalid_input_count = 50;
   int64 unsupported_schema_count = 51;
+
+  ThresholdChangeResultProto last_threshold_change_result = 60;
 }
 
 enum MobileNotificationDispositionProto {
@@ -61,4 +63,11 @@ message ThresholdReachedEventProto {
   int64 occurred_at_epoch_millis = 4;
   int64 expires_at_epoch_millis = 5;
   int64 sequence = 6;
+}
+
+message ThresholdChangeResultProto {
+  string request_id = 1;
+  string result_code = 2;
+  int32 effective_threshold_percent = 3;
+  int64 phone_state_sequence = 4;
 }

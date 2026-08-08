@@ -3,7 +3,7 @@
 文書ID: UIS-001  
 版: 0.1  
 状態: Draft  
-最終更新: 2026-07-20
+最終更新: 2026-07-29
 
 ## 1. Mobile画面一覧
 
@@ -65,8 +65,9 @@
 | W-002 | 接続ヘルプ | Mobile未検出、両アプリ確認、再試行 |
 | W-003 | 通知権限 | Wear通知の説明と権限要求 |
 | W-004 | 情報 | アプリ版、最終受信、schema、Mobileで設定する案内 |
+| W-005 | しきい値編集 | 5～100%の下書き、保存、送信中、未保存、競合、再試行 |
 
-Wear上ではしきい値編集を行わない。設定の正本をMobileへ一本化し、競合を避ける。
+v1.0ではWear上のしきい値編集を行わない。BN-002のv1.1提案ではW-005からMobileへ変更を要求するが、設定の正本と永続化writerはMobileへ一本化する。
 
 ## 4. 画面遷移図
 
@@ -99,10 +100,21 @@ flowchart TD
     Status --> NeedPermission{"通知権限の案内が必要?"}
     NeedPermission -->|Yes| Permission["W-003 通知権限"]
     Status --> About["W-004 情報"]
+    Status --> Threshold["W-005 しきい値編集"]
     Help -->|再試行| Status
     Permission --> Status
     About --> Status
+    Threshold -->|適用結果・戻る| Status
 ```
+
+### W-005 しきい値編集（BN-002提案）
+
+- W-001の現在しきい値から遷移し、最後の正常なMobile値を初期下書きにする。
+- 5～100%を1%単位で増減し、保存は明示ボタンで行う。
+- 保存中は二重操作を無効化するが、画面を閉じても下書きと未確定`requestId`をWear Proto DataStoreへ保持する。
+- Message送信成功だけを「保存済み」と表示しない。Mobile結果とphone-stateの収束を別状態で示す。
+- 切断/送信失敗では未保存、結果喪失では結果不明、競合ではMobile有効値を示し、それぞれ復旧操作を併記する。
+- No Dataまたは対応Mobile capabilityなしでは保存を無効にし、W-002へ案内する。
 
 ## 5. Fold対応
 
@@ -119,4 +131,3 @@ flowchart TD
 - エラーは復旧操作と組にし、内部例外文をそのまま表示しない。
 - 相対時刻は日英の複数形を含めリソース化する。
 - 画面文言の正本は[localization-specification.md](localization-specification.md)とする。
-

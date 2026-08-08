@@ -1,6 +1,9 @@
 package com.magicitengineer.batterynotifierandroidwearapp.domain.presentation
 
 import com.magicitengineer.batterynotifierandroidwearapp.domain.state.WearPersistentState
+import com.magicitengineer.batterynotifierandroidwearapp.domain.settings.ThresholdChangeResult
+import com.magicitengineer.batterynotifierandroidwearapp.domain.settings.ThresholdChangeResultCode
+import com.magicitengineer.batterynotifierandroidwearapp.domain.settings.ThresholdChangeStatus
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.NotificationDisposition
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.ReceivedPhoneState
 import org.junit.Assert.assertEquals
@@ -99,6 +102,25 @@ class WearDisplayStateMapperTest {
         assertTrue(exhausted.notificationRetryExhausted)
     }
 
+    @Test
+    fun conflictDisplaysThePhoneConfirmedEffectiveThresholdBeforeStateCatchesUp() {
+        val conflicted = state(receivedAt = 1_000_000L).copy(
+            thresholdChangeStatus = ThresholdChangeStatus.CONFLICT,
+            thresholdChangeResult = ThresholdChangeResult(
+                requestId = REQUEST_ID,
+                resultCode = ThresholdChangeResultCode.CONFLICT,
+                effectiveThresholdPercent = 25,
+                phoneStateSequence = 2L,
+            ),
+        )
+
+        assertEquals(
+            25,
+            WearThresholdDisplayPolicy.effectiveThresholdPercent(conflicted),
+        )
+        assertEquals(20, conflicted.lastPhoneState?.thresholdPercent)
+    }
+
     private fun state(receivedAt: Long) = WearPersistentState(
         lastPhoneState = ReceivedPhoneState(
             schemaVersion = 1,
@@ -115,4 +137,8 @@ class WearDisplayStateMapperTest {
 
     private fun map(state: WearPersistentState, now: Long) =
         WearDisplayStateMapper.map(state, now)
+
+    private companion object {
+        const val REQUEST_ID = "550e8400-e29b-41d4-a716-446655440022"
+    }
 }

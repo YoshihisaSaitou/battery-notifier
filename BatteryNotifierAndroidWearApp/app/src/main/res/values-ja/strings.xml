@@ -46,4 +46,19 @@
     <string name="notification_permission_settings_required">通知は許可されていません。システム設定から変更してください</string>
     <string name="notification_permission_request_action">通知を許可</string>
     <string name="notification_permission_settings_action">設定を開く</string>
+    <string name="change_threshold">しきい値を変更</string>
+    <string name="threshold_draft_value">新しい通知しきい値%1$d%%</string>
+    <string name="decrease_threshold">1%下げる</string>
+    <string name="increase_threshold">1%上げる</string>
+    <string name="save_threshold">しきい値を保存</string>
+    <string name="cancel_threshold_change">変更を取り消す</string>
+    <string name="retry_threshold_change">しきい値変更を再試行</string>
+    <string name="threshold_checking_phone">スマートフォンへ確認中…</string>
+    <string name="threshold_waiting_result">スマートフォンの結果を待っています</string>
+    <string name="threshold_not_saved">まだ保存されていません。接続を確認してください。</string>
+    <string name="threshold_saved_confirming_sync">保存しました。同期確認中…</string>
+    <string name="threshold_saved">しきい値を保存しました</string>
+    <string name="threshold_conflict">スマートフォンで設定が変更されました。現在値を確認してください。</string>
+    <string name="threshold_rejected">スマートフォンがしきい値変更を拒否しました</string>
+    <string name="threshold_writer_unavailable">スマートフォンアプリを起動または更新し、再接続してください</string>
 </resources>

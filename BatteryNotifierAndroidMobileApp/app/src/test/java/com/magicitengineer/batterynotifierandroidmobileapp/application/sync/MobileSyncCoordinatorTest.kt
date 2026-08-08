@@ -1,5 +1,6 @@
 package com.magicitengineer.batterynotifierandroidmobileapp.application.sync
 
+import androidx.datastore.core.DataStore
 import com.magicitengineer.batterynotifierandroidmobileapp.application.battery.BatteryRefreshResult
 import com.magicitengineer.batterynotifierandroidmobileapp.application.battery.BatteryReadResultProcessor
 import com.magicitengineer.batterynotifierandroidmobileapp.application.battery.BatteryStateRefresher
@@ -12,17 +13,41 @@ import com.magicitengineer.batterynotifierandroidmobileapp.application.notificat
 import com.magicitengineer.batterynotifierandroidmobileapp.application.settings.ThresholdSaveRejectionReason
 import com.magicitengineer.batterynotifierandroidmobileapp.application.settings.ThresholdSaveResult
 import com.magicitengineer.batterynotifierandroidmobileapp.application.settings.ThresholdSettingUpdater
+import com.magicitengineer.batterynotifierandroidmobileapp.application.settings.RepositoryWearThresholdChangeProcessor
+import com.magicitengineer.batterynotifierandroidmobileapp.application.settings.WearThresholdChangeProcessor
 import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.BatteryProcessingResult
+import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.MobileStateSanitizer
+import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.ProtoMobileStateRepository
+import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.MobileStateProto
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.AlertRule
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.ThresholdReachedEvent
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.battery.BatteryReadResult
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.battery.BatteryReading
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.battery.BatterySnapshot
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.settings.ThresholdChangeProcessingResult
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.settings.ThresholdChangeProcessingOutcome
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.settings.ThresholdChangeRequest
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.settings.ThresholdChangeResult
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.settings.ThresholdChangeResultCode
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.state.MobilePersistentState
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.sync.DataLayerPutResult
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.sync.EpochMillisClock
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.sync.MobileSyncGateway
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.sync.PhoneStateSync
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.sync.SyncDeliveryUpdate
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.sync.SyncFailureClassification
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -423,6 +448,213 @@ class MobileSyncCoordinatorTest {
         assertEquals(1, maximumActive.get())
     }
 
+    @Test
+    fun replayedAppliedResultRetriesAPendingStateOutboxWithoutChangingSequence() =
+        runBlocking {
+            var sendCalls = 0
+            val persisted = MobilePersistentState(
+                alertRule = AlertRule(thresholdPercent = 15),
+                lastSnapshot = BatterySnapshot(67, false, 1_000L, 12L),
+                sequence = 12L,
+                pendingStateSequence = 12L,
+            )
+            val result = ThresholdChangeResult(
+                requestId = THRESHOLD_REQUEST_ID,
+                resultCode = ThresholdChangeResultCode.APPLIED,
+                effectiveThresholdPercent = 15,
+                phoneStateSequence = 12L,
+            )
+            val coordinator = MobileSyncCoordinator(
+                refresher = BatteryStateRefresher { error("must not refresh") },
+                sender = PendingSyncSender {
+                    sendCalls += 1
+                    emptyBatch()
+                },
+                wearThresholdChangeProcessor = WearThresholdChangeProcessor {
+                    ThresholdChangeProcessingResult(
+                        state = persisted,
+                        result = result,
+                        replayed = true,
+                        settingChanged = false,
+                    )
+                },
+            )
+            val request = ThresholdChangeRequest(
+                schemaVersion = 1,
+                requestId = THRESHOLD_REQUEST_ID,
+                thresholdPercent = 15,
+                expectedThresholdPercent = 20,
+            )
+
+            val coordination = coordinator.applyWearThresholdChange(request)
+
+            assertEquals(1, sendCalls)
+            assertEquals(12L, coordination.processingResult.state.sequence)
+            assertEquals(12L, coordination.processingResult.state.pendingStateSequence)
+            assertTrue(coordination.syncResult is MobileSyncCoordinationResult.Sent)
+        }
+
+    @Test
+    fun resultSuccessAfterStateFailureRetriesTheSameRequestWithoutNewSequenceOrEvent() =
+        runBlocking {
+            val store = InMemoryDataStore(MobileStateSanitizer.defaultValue())
+            val repository = ProtoMobileStateRepository(store)
+            repository.processBatteryReading(
+                BatteryReading(55, isCharging = false, capturedAtEpochMillis = 1_000L),
+                THRESHOLD_REQUEST_ID,
+            )
+            repository.applySyncDelivery(
+                SyncDeliveryUpdate(
+                    confirmedStateSequence = 1L,
+                    completedAtEpochMillis = 1_100L,
+                )
+            )
+            val syncGateway = SequencedSyncGateway(
+                DataLayerPutResult.Rejected(SyncFailureClassification.TASK_FAILURE),
+                DataLayerPutResult.Accepted,
+            )
+            var now = 2_000L
+            val coordinator = MobileSyncCoordinator(
+                refresher = BatteryStateRefresher { error("must not refresh") },
+                sender = MobileDataLayerSender(
+                    repository = repository,
+                    gateway = syncGateway,
+                    clock = EpochMillisClock { now++ },
+                ),
+                wearThresholdChangeProcessor =
+                    RepositoryWearThresholdChangeProcessor(repository),
+            )
+            val sentResults = mutableListOf<ThresholdChangeResult>()
+            val handler = WearThresholdChangeHandler(
+                runner = coordinator,
+                resultGateway = ThresholdChangeResultGateway { _, result ->
+                    sentResults += result
+                    ThresholdChangeResultSendOutcome.SENT
+                },
+            )
+            val request = ThresholdChangeRequest(
+                schemaVersion = 1,
+                requestId = THRESHOLD_REQUEST_ID,
+                thresholdPercent = 15,
+                expectedThresholdPercent = 20,
+            )
+
+            val first = handler.handle("wear-node", request)
+            val afterFailure = repository.state.first()
+            val second = handler.handle("wear-node", request)
+            val afterRetry = repository.state.first()
+
+            assertTrue(first.coordinationResult.processingResult.settingChanged)
+            assertTrue(
+                (first.coordinationResult.syncResult as MobileSyncCoordinationResult.Sent)
+                    .batchResult.stateOutcome is SyncItemOutcome.Rejected
+            )
+            assertEquals(2L, afterFailure.sequence)
+            assertEquals(2L, afterFailure.pendingStateSequence)
+            assertNull(afterFailure.pendingEvent)
+            assertTrue(second.coordinationResult.processingResult.replayed)
+            assertFalse(second.coordinationResult.processingResult.settingChanged)
+            assertTrue(
+                (second.coordinationResult.syncResult as MobileSyncCoordinationResult.Sent)
+                    .batchResult.stateOutcome is SyncItemOutcome.Accepted
+            )
+            assertEquals(2L, afterRetry.sequence)
+            assertEquals(0L, afterRetry.pendingStateSequence)
+            assertNull(afterRetry.pendingEvent)
+            assertEquals(2, sentResults.size)
+            assertEquals(sentResults[0], sentResults[1])
+            assertEquals(2, syncGateway.phoneStates.size)
+            assertEquals(0, syncGateway.eventCalls)
+        }
+
+    @Test
+    fun noSnapshotRequestRefreshesBeforeApplyingAndReturnsAPositiveSequence() = runBlocking {
+        val repository = ProtoMobileStateRepository(
+            InMemoryDataStore(MobileStateSanitizer.defaultValue())
+        )
+        var refreshCalls = 0
+        var syncCalls = 0
+        val coordinator = MobileSyncCoordinator(
+            refresher = BatteryStateRefresher {
+                refreshCalls += 1
+                BatteryRefreshResult.Refreshed(
+                    repository.processBatteryReading(
+                        BatteryReading(55, isCharging = false, capturedAtEpochMillis = 1_000L),
+                        THRESHOLD_REQUEST_ID,
+                    )
+                )
+            },
+            sender = PendingSyncSender {
+                syncCalls += 1
+                emptyBatch()
+            },
+            wearThresholdChangeProcessor = RepositoryWearThresholdChangeProcessor(repository),
+        )
+
+        val coordination = coordinator.applyWearThresholdChange(
+            ThresholdChangeRequest(
+                schemaVersion = 1,
+                requestId = THRESHOLD_REQUEST_ID,
+                thresholdPercent = 15,
+                expectedThresholdPercent = 20,
+            )
+        )
+
+        assertEquals(1, refreshCalls)
+        assertEquals(1, syncCalls)
+        assertEquals(ThresholdChangeProcessingOutcome.PROCESSED, coordination.processingResult.outcome)
+        assertTrue(coordination.processingResult.settingChanged)
+        assertEquals(2L, coordination.processingResult.result?.phoneStateSequence)
+        assertEquals(2L, coordination.processingResult.state.sequence)
+        assertEquals(2L, coordination.processingResult.state.pendingStateSequence)
+        assertEquals(15, coordination.processingResult.state.alertRule.thresholdPercent)
+        assertNull(coordination.processingResult.state.pendingEvent)
+    }
+
+    @Test
+    fun unavailableInitialBatteryDefersRequestWithoutApplyingOrSendingAResult() = runBlocking {
+        val repository = ProtoMobileStateRepository(
+            InMemoryDataStore(MobileStateSanitizer.defaultValue())
+        )
+        var resultSendCalls = 0
+        val coordinator = MobileSyncCoordinator(
+            refresher = BatteryStateRefresher { BatteryRefreshResult.Unavailable },
+            sender = PendingSyncSender { error("must not sync without a phone state") },
+            wearThresholdChangeProcessor = RepositoryWearThresholdChangeProcessor(repository),
+        )
+        val handler = WearThresholdChangeHandler(
+            runner = coordinator,
+            resultGateway = ThresholdChangeResultGateway { _, _ ->
+                resultSendCalls += 1
+                ThresholdChangeResultSendOutcome.SENT
+            },
+        )
+
+        val handled = handler.handle(
+            sourceNodeId = "wear-node",
+            request = ThresholdChangeRequest(
+                schemaVersion = 1,
+                requestId = THRESHOLD_REQUEST_ID,
+                thresholdPercent = 15,
+                expectedThresholdPercent = 20,
+            ),
+        )
+
+        assertEquals(
+            ThresholdChangeProcessingOutcome.PHONE_STATE_UNAVAILABLE,
+            handled.coordinationResult.processingResult.outcome,
+        )
+        assertEquals(
+            ThresholdChangeResultSendOutcome.NOT_SENT_PHONE_STATE_UNAVAILABLE,
+            handled.sendOutcome,
+        )
+        assertEquals(0, resultSendCalls)
+        assertNull(handled.coordinationResult.processingResult.result)
+        assertFalse(handled.coordinationResult.processingResult.settingChanged)
+        assertEquals(20, handled.coordinationResult.processingResult.state.alertRule.thresholdPercent)
+        assertEquals(0L, handled.coordinationResult.processingResult.state.sequence)
+    }
+
     private fun refreshedResult(): BatteryRefreshResult.Refreshed {
         val snapshot = BatterySnapshot(67, false, 1_000L, 1L)
         val state = MobilePersistentState(
@@ -485,4 +717,40 @@ class MobileSyncCoordinatorTest {
             }
         },
     )
+
+    private class SequencedSyncGateway(
+        vararg phoneStateResults: DataLayerPutResult,
+    ) : MobileSyncGateway {
+        private val results = ArrayDeque(phoneStateResults.toList())
+        val phoneStates = mutableListOf<PhoneStateSync>()
+        var eventCalls = 0
+
+        override suspend fun putPhoneState(state: PhoneStateSync): DataLayerPutResult {
+            phoneStates += state
+            return results.removeFirst()
+        }
+
+        override suspend fun putThresholdEvent(
+            event: ThresholdReachedEvent,
+        ): DataLayerPutResult {
+            eventCalls += 1
+            return DataLayerPutResult.Accepted
+        }
+    }
+
+    private class InMemoryDataStore<T>(initial: T) : DataStore<T> {
+        private val values = MutableStateFlow(initial)
+        private val mutex = Mutex()
+
+        override val data: Flow<T> = values
+
+        override suspend fun updateData(transform: suspend (t: T) -> T): T =
+            mutex.withLock {
+                transform(values.value).also { values.value = it }
+            }
+    }
+
+    private companion object {
+        const val THRESHOLD_REQUEST_ID = "550e8400-e29b-41d4-a716-446655440002"
+    }
 }

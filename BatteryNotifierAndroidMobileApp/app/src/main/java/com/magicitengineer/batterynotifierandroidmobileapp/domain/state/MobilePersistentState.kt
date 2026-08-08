@@ -5,6 +5,7 @@ import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.AlertSta
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.ThresholdReachedEvent
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.battery.BatterySnapshot
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.notification.MobileNotificationDisposition
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.settings.ThresholdChangeResult
 
 data class MobilePersistentState(
     val storageSchemaVersion: Int = CURRENT_STORAGE_SCHEMA_VERSION,
@@ -26,6 +27,7 @@ data class MobilePersistentState(
     val lastSyncErrorClassification: String? = null,
     val invalidInputCount: Long = 0,
     val unsupportedSchemaCount: Long = 0,
+    val lastThresholdChangeResult: ThresholdChangeResult? = null,
 ) {
     init {
         require(storageSchemaVersion == CURRENT_STORAGE_SCHEMA_VERSION)

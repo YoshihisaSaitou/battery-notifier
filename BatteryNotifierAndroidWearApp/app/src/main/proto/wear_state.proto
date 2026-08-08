@@ -24,6 +24,12 @@ message WearStateProto {
   int32 last_unsupported_schema_version = 36;
   bool notification_permission_requested = 37;
   int32 notification_post_attempt_count = 38;
+
+  bool has_threshold_draft_percent = 40;
+  int32 threshold_draft_percent = 41;
+  ThresholdChangeRequestProto pending_threshold_change_request = 42;
+  string threshold_change_status = 43;
+  ThresholdChangeResultProto threshold_change_result = 44;
 }
 
 message PhoneStateProto {
@@ -45,4 +51,18 @@ message ThresholdEventProto {
   int32 threshold_percent = 5;
   int64 occurred_at_epoch_millis = 6;
   int64 expires_at_epoch_millis = 7;
+}
+
+message ThresholdChangeRequestProto {
+  int32 schema_version = 1;
+  string request_id = 2;
+  int32 threshold_percent = 3;
+  int32 expected_threshold_percent = 4;
+}
+
+message ThresholdChangeResultProto {
+  string request_id = 1;
+  string result_code = 2;
+  int32 effective_threshold_percent = 3;
+  int64 phone_state_sequence = 4;
 }

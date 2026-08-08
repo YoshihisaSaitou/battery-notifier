@@ -3,6 +3,12 @@ package com.magicitengineer.batterynotifierandroidwearapp.data.datastore
 import com.magicitengineer.batterynotifierandroidwearapp.data.datastore.proto.PhoneStateProto
 import com.magicitengineer.batterynotifierandroidwearapp.data.datastore.proto.ThresholdEventProto
 import com.magicitengineer.batterynotifierandroidwearapp.data.datastore.proto.WearStateProto
+import com.magicitengineer.batterynotifierandroidwearapp.data.datastore.proto.ThresholdChangeRequestProto
+import com.magicitengineer.batterynotifierandroidwearapp.data.datastore.proto.ThresholdChangeResultProto
+import com.magicitengineer.batterynotifierandroidwearapp.domain.settings.ThresholdChangeRequest
+import com.magicitengineer.batterynotifierandroidwearapp.domain.settings.ThresholdChangeResult
+import com.magicitengineer.batterynotifierandroidwearapp.domain.settings.ThresholdChangeResultCode
+import com.magicitengineer.batterynotifierandroidwearapp.domain.settings.ThresholdChangeStatus
 import com.magicitengineer.batterynotifierandroidwearapp.domain.state.WearPersistentState
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.NotificationDisposition
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.ReceivedPhoneState
@@ -32,6 +38,22 @@ object WearStateProtoMapper {
                 safe.hasLastUnsupportedSchemaVersion
             },
             notificationPermissionRequested = safe.notificationPermissionRequested,
+            thresholdDraftPercent = safe.thresholdDraftPercent.takeIf {
+                safe.hasThresholdDraftPercent
+            },
+            pendingThresholdChangeRequest = if (safe.hasPendingThresholdChangeRequest()) {
+                safe.pendingThresholdChangeRequest.toDomain()
+            } else {
+                null
+            },
+            thresholdChangeStatus = ThresholdChangeStatus.entries.first {
+                it.persistedValue == safe.thresholdChangeStatus
+            },
+            thresholdChangeResult = if (safe.hasThresholdChangeResult()) {
+                safe.thresholdChangeResult.toDomain()
+            } else {
+                null
+            },
         )
     }
 
@@ -52,8 +74,17 @@ object WearStateProtoMapper {
             .setHasLastUnsupportedSchemaVersion(state.lastUnsupportedSchemaVersion != null)
             .setLastUnsupportedSchemaVersion(state.lastUnsupportedSchemaVersion ?: 0)
             .setNotificationPermissionRequested(state.notificationPermissionRequested)
+            .setHasThresholdDraftPercent(state.thresholdDraftPercent != null)
+            .setThresholdDraftPercent(state.thresholdDraftPercent ?: 0)
+            .setThresholdChangeStatus(state.thresholdChangeStatus.persistedValue)
         state.lastPhoneState?.let { builder.setLastPhoneState(it.toProto()) }
         state.lastEvent?.let { builder.setLastEvent(it.toProto()) }
+        state.pendingThresholdChangeRequest?.let {
+            builder.setPendingThresholdChangeRequest(it.toProto())
+        }
+        state.thresholdChangeResult?.let {
+            builder.setThresholdChangeResult(it.toProto())
+        }
         return builder.build()
     }
 
@@ -97,6 +128,36 @@ object WearStateProtoMapper {
         .setThresholdPercent(thresholdPercent)
         .setOccurredAtEpochMillis(occurredAtEpochMillis)
         .setExpiresAtEpochMillis(expiresAtEpochMillis)
+        .build()
+
+    private fun ThresholdChangeRequestProto.toDomain() = ThresholdChangeRequest(
+        schemaVersion = schemaVersion,
+        requestId = requestId,
+        thresholdPercent = thresholdPercent,
+        expectedThresholdPercent = expectedThresholdPercent,
+    )
+
+    private fun ThresholdChangeRequest.toProto() = ThresholdChangeRequestProto.newBuilder()
+        .setSchemaVersion(schemaVersion)
+        .setRequestId(requestId)
+        .setThresholdPercent(thresholdPercent)
+        .setExpectedThresholdPercent(expectedThresholdPercent)
+        .build()
+
+    private fun ThresholdChangeResultProto.toDomain() = ThresholdChangeResult(
+        requestId = requestId,
+        resultCode = ThresholdChangeResultCode.entries.first {
+            it.persistedValue == resultCode
+        },
+        effectiveThresholdPercent = effectiveThresholdPercent,
+        phoneStateSequence = phoneStateSequence,
+    )
+
+    private fun ThresholdChangeResult.toProto() = ThresholdChangeResultProto.newBuilder()
+        .setRequestId(requestId)
+        .setResultCode(resultCode.persistedValue)
+        .setEffectiveThresholdPercent(effectiveThresholdPercent)
+        .setPhoneStateSequence(phoneStateSequence)
         .build()
 
     private fun String.nullIfBlank(): String? = takeIf { it.isNotBlank() }

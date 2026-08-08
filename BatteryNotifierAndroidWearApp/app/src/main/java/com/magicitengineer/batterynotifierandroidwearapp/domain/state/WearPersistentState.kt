@@ -4,6 +4,9 @@ import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.Notificatio
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.MAX_WEAR_NOTIFICATION_POST_ATTEMPTS
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.ReceivedPhoneState
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.ReceivedThresholdEvent
+import com.magicitengineer.batterynotifierandroidwearapp.domain.settings.ThresholdChangeRequest
+import com.magicitengineer.batterynotifierandroidwearapp.domain.settings.ThresholdChangeResult
+import com.magicitengineer.batterynotifierandroidwearapp.domain.settings.ThresholdChangeStatus
 
 data class WearPersistentState(
     val storageSchemaVersion: Int = CURRENT_STORAGE_SCHEMA_VERSION,
@@ -22,6 +25,10 @@ data class WearPersistentState(
     val lastReceiveError: String? = null,
     val lastUnsupportedSchemaVersion: Int? = null,
     val notificationPermissionRequested: Boolean = false,
+    val thresholdDraftPercent: Int? = null,
+    val pendingThresholdChangeRequest: ThresholdChangeRequest? = null,
+    val thresholdChangeStatus: ThresholdChangeStatus = ThresholdChangeStatus.IDLE,
+    val thresholdChangeResult: ThresholdChangeResult? = null,
 ) {
     init {
         require(storageSchemaVersion == CURRENT_STORAGE_SCHEMA_VERSION)
@@ -37,6 +44,19 @@ data class WearPersistentState(
         require(unsupportedSchemaCount >= 0)
         require(duplicateCount >= 0)
         require(outOfOrderCount >= 0)
+        require(thresholdDraftPercent == null || thresholdDraftPercent in 5..100)
+        require(
+            thresholdChangeStatus in setOf(
+                ThresholdChangeStatus.IDLE,
+                ThresholdChangeStatus.APPLIED,
+                ThresholdChangeStatus.CONFLICT,
+                ThresholdChangeStatus.REJECTED,
+            ) || pendingThresholdChangeRequest != null
+        )
+        require(
+            thresholdChangeStatus != ThresholdChangeStatus.APPLIED_WAITING_STATE ||
+                thresholdChangeResult != null
+        )
     }
 
     companion object {

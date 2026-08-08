@@ -3,6 +3,7 @@ package com.magicitengineer.batterynotifierandroidmobileapp.data.datastore
 import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.BatterySnapshotProto
 import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.MobileStateProto
 import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.ThresholdReachedEventProto
+import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.ThresholdChangeResultProto
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -71,5 +72,31 @@ class MobileStateSanitizerTest {
 
         assertFalse(result.monitoringEnabled)
         assertTrue(result.resumeRequired)
+    }
+
+    @Test
+    fun nonPositiveThresholdResultSequenceIsDiscarded() {
+        val invalid = MobileStateSanitizer.defaultValue().toBuilder()
+            .setSequence(1L)
+            .setLastSnapshot(
+                BatterySnapshotProto.newBuilder()
+                    .setLevelPercent(68)
+                    .setCapturedAtEpochMillis(1_000L)
+                    .setSequence(1L)
+                    .build()
+            )
+            .setLastThresholdChangeResult(
+                ThresholdChangeResultProto.newBuilder()
+                    .setRequestId("550e8400-e29b-41d4-a716-446655440002")
+                    .setResultCode("APPLIED")
+                    .setEffectiveThresholdPercent(30)
+                    .setPhoneStateSequence(0L)
+                    .build()
+            )
+            .build()
+
+        val result = MobileStateSanitizer.sanitize(invalid)
+
+        assertFalse(result.hasLastThresholdChangeResult())
     }
 }

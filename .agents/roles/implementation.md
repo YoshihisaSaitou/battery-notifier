@@ -36,12 +36,52 @@ Implement the approved specification with minimal scope, deterministic domain be
 - Atomically store sequence, threshold/alert state, outbox, received state, and notification deduplication markers where specified.
 - Never access DataStore directly from composables.
 
+### State-machine and review-fix completeness
+
+These requirements apply whenever a feature or fix changes persisted state,
+sanitization/migration, asynchronous delivery, callback ordering, retry,
+reconnection, process recreation, or lifecycle recovery.
+
+- Before changing production code, record a transition matrix in the work item
+  or a repository artifact. It must identify the states and invariants, each
+  input/action, relevant callback arrival orders, retry/cancel behavior,
+  disconnect/reconnect behavior, process recreation, and the presence or absence
+  of related persisted fields.
+- Identify the authoritative writer and atomic persistence boundary for every
+  transition. Do not infer correctness from UI serialization or the expected
+  callback order.
+- Treat a review finding as evidence of a violated invariant or incomplete
+  transition family, not only as one failing example. Before marking the fix
+  complete, inspect every call site and sibling path with the same cause,
+  including reverse callback order and restart/retry paths, and record the
+  inspected scope in `state.yaml`.
+- When code mutates a builder or intermediate state and then makes another
+  dependent decision, recompute derived status from the current post-mutation
+  state. Do not reuse a snapshot captured before the mutation unless immutability
+  makes that dependency explicit and a test proves it.
+- A sanitizer or migration must be idempotent and domain-compatible: sanitizing
+  an already sanitized value must not change it, and every sanitized output must
+  map to a valid domain object without an unintended exception.
+- If the transition matrix exposes an unimplemented, untested, or intentionally
+  unsupported combination, record its disposition before implementation
+  handoff. Do not silently treat an omitted combination as covered.
+
 ### Unit tests
 
 - Test threshold crossing, first observation below threshold, charging, hysteresis, re-arming, sequence ordering, duplication, expiry, freshness boundaries, malformed payloads, and future schema.
 - Test sender/receiver mappers against shared contract fixtures.
 - Use fake clock, battery source, Data Layer gateway, notifier, and repository boundaries instead of sleeps or real network dependency.
 - Add a regression test for every bug fixed during review or testing.
+- For stateful asynchronous behavior, use parameterized or table-driven tests
+  for applicable callback-order permutations, competing actions, and process
+  recreation. One reproduction path is not sufficient evidence for a transition
+  family.
+- For persisted-state repair, test the valid and defined malformed combinations
+  from the transition matrix. Assert sanitizer idempotence, successful domain
+  mapping, and preservation of the last valid state where required.
+- For every review fix, test both the reported scenario and the same-root sibling
+  scenarios identified during impact analysis. Record the covered matrix rows or
+  test IDs in `state.yaml`.
 
 ## Working rules
 
@@ -65,6 +105,9 @@ Implement the approved specification with minimal scope, deterministic domain be
 - At each material milestone, report the `IMP-*` task, behavior and files completed, checks run with exact outcomes, remaining work, and known limitations.
 - For failures, report the failure signature, same-cause attempt count, corrective change, result, and next safe action before continuing or stopping the loop.
 - Do not report an implementation task as complete while runtime wiring, required tests, documentation alignment, or another stated part remains pending.
+- Do not report a state-machine or review-fix task as complete until the
+  transition-matrix impact analysis and invariant-based regression evidence are
+  recorded. Passing existing tests alone is not completion evidence.
 - Before handoff, report the implementation gate result, exact review scope/evidence, unresolved risks, and the review role's first action.
 - Keep the user-facing report and `progress_reporting.current` in `state.yaml` consistent with implementation evidence and next actions.
 
@@ -74,6 +117,8 @@ Hand off to review only when:
 
 - all implementation tasks in state are complete or explicitly excluded;
 - relevant unit and contract tests pass;
+- applicable transition matrices, invariant checks, and same-root sibling-path
+  regressions are complete and referenced from the work item;
 - affected project lint/check tasks pass or failures are documented as blockers;
 - the code and documents agree;
 - the handoff names review focus areas and exact evidence.

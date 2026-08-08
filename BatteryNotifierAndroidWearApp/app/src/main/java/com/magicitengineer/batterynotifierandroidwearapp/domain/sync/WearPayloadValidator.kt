@@ -6,6 +6,10 @@ object WearDataLayerContract {
     const val PHONE_STATE_PATH = "/battery-notifier/v1/phone-state"
     const val THRESHOLD_EVENT_PATH = "/battery-notifier/v1/threshold-event"
     const val REQUEST_STATE_PATH = "/battery-notifier/v1/request-state"
+    const val CHANGE_THRESHOLD_PATH = "/battery-notifier/v1/change-threshold"
+    const val CHANGE_THRESHOLD_RESULT_PATH =
+        "/battery-notifier/v1/change-threshold-result"
+    const val MOBILE_THRESHOLD_WRITER_CAPABILITY = "battery_notifier_threshold_writer"
     const val PATH_PREFIX = "/battery-notifier/v1/"
 
     const val KEY_SCHEMA_VERSION = "schemaVersion"
@@ -19,6 +23,11 @@ object WearDataLayerContract {
     const val KEY_EVENT_ID = "eventId"
     const val KEY_OCCURRED_AT = "occurredAtEpochMillis"
     const val KEY_EXPIRES_AT = "expiresAtEpochMillis"
+    const val KEY_REQUEST_ID = "requestId"
+    const val KEY_EXPECTED_THRESHOLD_PERCENT = "expectedThresholdPercent"
+    const val KEY_RESULT_CODE = "resultCode"
+    const val KEY_EFFECTIVE_THRESHOLD_PERCENT = "effectiveThresholdPercent"
+    const val KEY_PHONE_STATE_SEQUENCE = "phoneStateSequence"
 }
 
 sealed interface PayloadValidationResult {

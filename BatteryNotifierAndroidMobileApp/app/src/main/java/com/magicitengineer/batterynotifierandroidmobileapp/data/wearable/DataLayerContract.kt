@@ -9,7 +9,11 @@ object BatteryDataLayerContractV1 {
     const val PHONE_STATE_PATH = "/battery-notifier/v1/phone-state"
     const val THRESHOLD_EVENT_PATH = "/battery-notifier/v1/threshold-event"
     const val REQUEST_STATE_PATH = "/battery-notifier/v1/request-state"
+    const val CHANGE_THRESHOLD_PATH = "/battery-notifier/v1/change-threshold"
+    const val CHANGE_THRESHOLD_RESULT_PATH =
+        "/battery-notifier/v1/change-threshold-result"
     const val WEAR_STATE_RECEIVER_CAPABILITY = "battery_notifier_state_receiver"
+    const val MOBILE_THRESHOLD_WRITER_CAPABILITY = "battery_notifier_threshold_writer"
 
     object Keys {
         const val SCHEMA_VERSION = "schemaVersion"
@@ -23,6 +27,11 @@ object BatteryDataLayerContractV1 {
         const val EVENT_ID = "eventId"
         const val OCCURRED_AT_EPOCH_MILLIS = "occurredAtEpochMillis"
         const val EXPIRES_AT_EPOCH_MILLIS = "expiresAtEpochMillis"
+        const val REQUEST_ID = "requestId"
+        const val EXPECTED_THRESHOLD_PERCENT = "expectedThresholdPercent"
+        const val RESULT_CODE = "resultCode"
+        const val EFFECTIVE_THRESHOLD_PERCENT = "effectiveThresholdPercent"
+        const val PHONE_STATE_SEQUENCE = "phoneStateSequence"
     }
 }
 

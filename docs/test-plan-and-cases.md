@@ -3,7 +3,7 @@
 文書ID: TPC-001  
 版: 0.1  
 状態: Draft  
-最終更新: 2026-07-20
+最終更新: 2026-07-29
 
 ## 1. 目的
 
@@ -100,6 +100,11 @@
 | TC-U023 | 100%しきい値境界 | threshold=100、初回100→99→98→100→99 | 初回100はarmedでeventなし、最初の99で1件、98で重複なし、100で再arm、次の99で新event1件 |
 | TC-U024 | 100%しきい値初回低値 | threshold=100、初回99 | eventなし、disarm |
 | TC-U025 | backup exclusion | Mobile/Wearのbackup/data-extraction rules | 両Proto DataStoreファイルがcloud backupとdevice transferの双方から除外される |
+| TC-U026 | Wearしきい値要求validator | 正常、範囲4/101、UUID不正、key欠落、型違い、未来schema | 正常だけを型付き要求へ変換し、異常payloadは全体拒否 |
+| TC-U027 | Wearしきい値要求適用 | Mobile=20、request desired=15 / expected=20 | Mobileが15を保存し、設定変更だけではeventを生成せず、結果と新しいstate sequenceを原子的に確定 |
+| TC-U028 | Wearしきい値競合 | Mobile=25、request desired=15 / expected=20 | `CONFLICT`、有効値25、設定・alert state・sequenceを変更しない |
+| TC-U029 | Wearしきい値要求冪等性 | 同じ`requestId`を10回、最初の結果送信を失敗 | 設定適用とstate sequence割当は1回、保存済み同一結果を再送 |
+| TC-U030 | Wear未確定要求復元 | 下書きと未確定`requestId`を保存してprocess再生成 | 下書きと状態を復元するが自動送信せず、明示再試行だけが同じ要求を送る |
 
 ## 7. 統合・E2Eテストケース
 
@@ -190,6 +195,13 @@
 | TC-E074 | Mobile=ja、Wear=en | 各端末のLocaleで表示/通知 |
 | TC-E075 | TalkBack + 最大フォント | 意味順に読み上げ、色のみ依存なし、操作可能 |
 | TC-E076 | 対応/非対応watch face | 対応slotで選択可、非対応faceは正常に対象外 |
+| TC-E077 | Wearで20→15を保存 | Mobileが15を永続化・再評価し、phone-state受信後にWearが適用済み15を表示。設定変更だけの通知なし |
+| TC-E078 | Wear編集中にMobileで20→25、その後Wearがexpected=20で15を保存 | Mobileは25を維持し、Wearへ競合と有効値25を表示 |
+| TC-E079 | Wear切断中に15を保存操作 | Mobileは変更されず、Wearは下書きと未保存表示を保持。再接続だけでは送信しない |
+| TC-E080 | TC-E079後に再接続して明示的に再試行 | 同じ`requestId`を送信し、Mobile適用後にWearが15へ収束 |
+| TC-E081 | Mobile適用後にresult messageだけを破棄し、Wearで再試行 | Mobileの設定・sequence・通知eventは重複せず、保存済み結果が返る |
+| TC-E082 | Wearを要求送信中に再起動 | 下書きと未確定状態を復元し、自動送信しない。再試行または破棄が可能 |
+| TC-E083 | Pixel Watch 4 41/45mm、最大フォント、日英、TalkBackで5/100境界を編集 | 値、増減、保存、未保存/競合状態が欠けず、意味順に読み上げられ、範囲外へ進まない |
 
 ## 8. 非機能テスト
 

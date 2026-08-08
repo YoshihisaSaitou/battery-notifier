@@ -9,6 +9,10 @@ import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.Notificatio
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.ReceiveErrorClassification
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.ReceivedPhoneState
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.ReceivedThresholdEvent
+import com.magicitengineer.batterynotifierandroidwearapp.domain.settings.ThresholdChangeRequest
+import com.magicitengineer.batterynotifierandroidwearapp.domain.settings.ThresholdChangeResult
+import com.magicitengineer.batterynotifierandroidwearapp.domain.settings.ThresholdChangeResultCode
+import com.magicitengineer.batterynotifierandroidwearapp.domain.settings.ThresholdChangeStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -59,6 +63,30 @@ data class WearNotificationRecoveryResult(
     val state: WearPersistentState,
 )
 
+data class ThresholdChangePreparationResult(
+    val outcome: ThresholdChangePreparationOutcome,
+    val request: ThresholdChangeRequest?,
+    val state: WearPersistentState,
+)
+
+enum class ThresholdChangePreparationOutcome {
+    PREPARED,
+    NO_PHONE_STATE,
+    ALREADY_PENDING,
+}
+
+data class ThresholdChangeRetryReservationResult(
+    val outcome: ThresholdChangeRetryReservationOutcome,
+    val request: ThresholdChangeRequest?,
+    val state: WearPersistentState,
+)
+
+enum class ThresholdChangeRetryReservationOutcome {
+    RESERVED,
+    NO_PENDING_REQUEST,
+    NOT_RETRYABLE,
+}
+
 interface WearStateRepository {
     val state: Flow<WearPersistentState>
 
@@ -93,6 +121,27 @@ interface WearStateRepository {
     ): WearNotificationRecoveryResult
 
     suspend fun markNotificationPermissionRequested(): WearPersistentState
+
+    suspend fun updateThresholdDraft(thresholdPercent: Int): WearPersistentState
+
+    suspend fun recoverInterruptedThresholdChange(): WearPersistentState
+
+    suspend fun prepareThresholdChange(
+        requestId: String,
+    ): ThresholdChangePreparationResult
+
+    suspend fun reserveThresholdChangeRetry(): ThresholdChangeRetryReservationResult
+
+    suspend fun markThresholdChangeSendResult(
+        requestId: String,
+        sent: Boolean,
+    ): WearPersistentState
+
+    suspend fun applyThresholdChangeResult(
+        result: ThresholdChangeResult,
+    ): WearPersistentState
+
+    suspend fun clearThresholdChange(): WearPersistentState
 }
 
 class ProtoWearStateRepository(
@@ -124,7 +173,7 @@ class ProtoWearStateRepository(
                     lastPhoneState = phoneState,
                     phoneStateReceivedAtEpochMillis = receivedAtEpochMillis,
                     lastReceiveError = null,
-                )
+                ).reconcileThresholdChangeAgainst(phoneState)
             }
         }
         return WearStateApplyResult(outcome, updated)
@@ -331,6 +380,165 @@ class ProtoWearStateRepository(
             current.copy(notificationPermissionRequested = true)
         }
 
+    override suspend fun updateThresholdDraft(
+        thresholdPercent: Int,
+    ): WearPersistentState {
+        require(thresholdPercent in 5..100)
+        return update { current ->
+            if (
+                current.thresholdChangeStatus in setOf(
+                    ThresholdChangeStatus.SENDING,
+                    ThresholdChangeStatus.WAITING_RESULT,
+                    ThresholdChangeStatus.SEND_FAILED,
+                    ThresholdChangeStatus.APPLIED_WAITING_STATE,
+                )
+            ) {
+                current
+            } else {
+                current.copy(
+                    thresholdDraftPercent = thresholdPercent,
+                    thresholdChangeStatus = ThresholdChangeStatus.IDLE,
+                )
+            }
+        }
+    }
+
+    override suspend fun recoverInterruptedThresholdChange(): WearPersistentState =
+        update { current ->
+            if (current.thresholdChangeStatus == ThresholdChangeStatus.SENDING) {
+                current.copy(
+                    thresholdChangeStatus = if (
+                        current.thresholdChangeResult?.resultCode ==
+                        ThresholdChangeResultCode.APPLIED
+                    ) {
+                        ThresholdChangeStatus.APPLIED_WAITING_STATE
+                    } else {
+                        ThresholdChangeStatus.SEND_FAILED
+                    }
+                )
+            } else {
+                current
+            }
+        }
+
+    override suspend fun prepareThresholdChange(
+        requestId: String,
+    ): ThresholdChangePreparationResult {
+        var outcome = ThresholdChangePreparationOutcome.NO_PHONE_STATE
+        var request: ThresholdChangeRequest? = null
+        val updated = update { current ->
+            if (current.pendingThresholdChangeRequest != null) {
+                outcome = ThresholdChangePreparationOutcome.ALREADY_PENDING
+                return@update current
+            }
+            val phoneState = current.lastPhoneState ?: return@update current
+            val confirmedThreshold = current.thresholdChangeResult
+                ?.effectiveThresholdPercent
+                ?: phoneState.thresholdPercent
+            val desired = current.thresholdDraftPercent ?: confirmedThreshold
+            request = ThresholdChangeRequest(
+                requestId = requestId,
+                thresholdPercent = desired,
+                expectedThresholdPercent = confirmedThreshold,
+            )
+            outcome = ThresholdChangePreparationOutcome.PREPARED
+            current.copy(
+                thresholdDraftPercent = desired,
+                pendingThresholdChangeRequest = request,
+                thresholdChangeStatus = ThresholdChangeStatus.SENDING,
+                thresholdChangeResult = null,
+            )
+        }
+        return ThresholdChangePreparationResult(outcome, request, updated)
+    }
+
+    override suspend fun reserveThresholdChangeRetry(): ThresholdChangeRetryReservationResult {
+        var outcome = ThresholdChangeRetryReservationOutcome.NO_PENDING_REQUEST
+        var request: ThresholdChangeRequest? = null
+        val updated = update { current ->
+            val pending = current.pendingThresholdChangeRequest ?: return@update current
+            if (
+                current.thresholdChangeStatus !in setOf(
+                    ThresholdChangeStatus.SEND_FAILED,
+                    ThresholdChangeStatus.WAITING_RESULT,
+                    ThresholdChangeStatus.APPLIED_WAITING_STATE,
+                )
+            ) {
+                outcome = ThresholdChangeRetryReservationOutcome.NOT_RETRYABLE
+                return@update current
+            }
+            outcome = ThresholdChangeRetryReservationOutcome.RESERVED
+            request = pending
+            current.copy(thresholdChangeStatus = ThresholdChangeStatus.SENDING)
+        }
+        return ThresholdChangeRetryReservationResult(outcome, request, updated)
+    }
+
+    override suspend fun markThresholdChangeSendResult(
+        requestId: String,
+        sent: Boolean,
+    ): WearPersistentState = update { current ->
+        if (
+            current.pendingThresholdChangeRequest?.requestId != requestId ||
+            current.thresholdChangeStatus != ThresholdChangeStatus.SENDING
+        ) {
+            current
+        } else {
+            current.copy(
+                thresholdChangeStatus = when {
+                    current.thresholdChangeResult?.resultCode ==
+                        ThresholdChangeResultCode.APPLIED ->
+                        ThresholdChangeStatus.APPLIED_WAITING_STATE
+                    sent -> ThresholdChangeStatus.WAITING_RESULT
+                    else -> ThresholdChangeStatus.SEND_FAILED
+                }
+            )
+        }
+    }
+
+    override suspend fun applyThresholdChangeResult(
+        result: ThresholdChangeResult,
+    ): WearPersistentState = update { current ->
+        if (current.pendingThresholdChangeRequest?.requestId != result.requestId) {
+            current
+        } else {
+            when (result.resultCode) {
+                ThresholdChangeResultCode.APPLIED -> current.copy(
+                    thresholdChangeStatus = ThresholdChangeStatus.APPLIED_WAITING_STATE,
+                    thresholdChangeResult = result,
+                ).reconcileThresholdChangeAgainst(current.lastPhoneState)
+
+                ThresholdChangeResultCode.CONFLICT -> current.copy(
+                    thresholdDraftPercent = null,
+                    pendingThresholdChangeRequest = null,
+                    thresholdChangeStatus = ThresholdChangeStatus.CONFLICT,
+                    thresholdChangeResult = result,
+                ).reconcileThresholdChangeAgainst(current.lastPhoneState)
+
+                ThresholdChangeResultCode.REJECTED -> current.copy(
+                    thresholdDraftPercent = null,
+                    pendingThresholdChangeRequest = null,
+                    thresholdChangeStatus = ThresholdChangeStatus.REJECTED,
+                    thresholdChangeResult = result,
+                ).reconcileThresholdChangeAgainst(current.lastPhoneState)
+            }
+        }
+    }
+
+    override suspend fun clearThresholdChange(): WearPersistentState =
+        update { current ->
+            if (current.thresholdChangeStatus == ThresholdChangeStatus.SENDING) {
+                current
+            } else {
+                current.copy(
+                    thresholdDraftPercent = null,
+                    pendingThresholdChangeRequest = null,
+                    thresholdChangeStatus = ThresholdChangeStatus.IDLE,
+                    thresholdChangeResult = null,
+                )
+            }
+        }
+
     private suspend fun update(
         transform: (WearPersistentState) -> WearPersistentState,
     ): WearPersistentState {
@@ -353,4 +561,30 @@ class ProtoWearStateRepository(
 
     private fun Long.saturatingIncrement(): Long =
         if (this == Long.MAX_VALUE) Long.MAX_VALUE else this + 1
+
+    private fun WearPersistentState.reconcileThresholdChangeAgainst(
+        phoneState: ReceivedPhoneState?,
+    ): WearPersistentState {
+        val result = thresholdChangeResult ?: return this
+        val state = phoneState ?: return this
+        if (state.sequence < result.phoneStateSequence) return this
+        if (result.resultCode != ThresholdChangeResultCode.APPLIED) {
+            return copy(thresholdChangeResult = null)
+        }
+        return if (state.thresholdPercent == result.effectiveThresholdPercent) {
+            copy(
+                thresholdDraftPercent = null,
+                pendingThresholdChangeRequest = null,
+                thresholdChangeStatus = ThresholdChangeStatus.APPLIED,
+                thresholdChangeResult = null,
+            )
+        } else {
+            copy(
+                thresholdDraftPercent = null,
+                pendingThresholdChangeRequest = null,
+                thresholdChangeStatus = ThresholdChangeStatus.CONFLICT,
+                thresholdChangeResult = null,
+            )
+        }
+    }
 }

@@ -8,6 +8,8 @@ import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.MAX_EVENT_I
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.MAX_WEAR_NOTIFICATION_POST_ATTEMPTS
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.NotificationDisposition
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.SUPPORTED_SCHEMA_VERSION
+import com.magicitengineer.batterynotifierandroidwearapp.domain.settings.ThresholdChangeResultCode
+import com.magicitengineer.batterynotifierandroidwearapp.domain.settings.ThresholdChangeStatus
 import java.util.UUID
 
 object WearStateSanitizer {
@@ -36,6 +38,11 @@ object WearStateSanitizer {
                 NotificationDisposition.entries.firstOrNull {
                     it.persistedValue == input.notificationDisposition
                 }?.persistedValue ?: NotificationDisposition.NONE.persistedValue
+            )
+            .setThresholdChangeStatus(
+                ThresholdChangeStatus.entries.firstOrNull {
+                    it.persistedValue == input.thresholdChangeStatus
+                }?.persistedValue ?: ThresholdChangeStatus.IDLE.persistedValue
             )
 
         if (!input.hasLastUnsupportedSchemaVersion) {
@@ -82,6 +89,51 @@ object WearStateSanitizer {
             NotificationDisposition.CLOCK_SKEW -> 0
         }
         builder.setNotificationPostAttemptCount(attemptCount)
+        if (
+            !input.hasThresholdDraftPercent ||
+            input.thresholdDraftPercent !in 5..100
+        ) {
+            builder
+                .setHasThresholdDraftPercent(false)
+                .setThresholdDraftPercent(0)
+        }
+        if (
+            input.hasPendingThresholdChangeRequest() &&
+            !input.pendingThresholdChangeRequest.isValid()
+        ) {
+            builder.clearPendingThresholdChangeRequest()
+        }
+        if (
+            input.hasThresholdChangeResult() &&
+            !input.thresholdChangeResult.isValid()
+        ) {
+            builder.clearThresholdChangeResult()
+        }
+        val statusWithValidatedFields = ThresholdChangeStatus.entries.first {
+            it.persistedValue == builder.thresholdChangeStatus
+        }
+        if (
+            statusWithValidatedFields in setOf(
+                ThresholdChangeStatus.SENDING,
+                ThresholdChangeStatus.WAITING_RESULT,
+                ThresholdChangeStatus.SEND_FAILED,
+                ThresholdChangeStatus.APPLIED_WAITING_STATE,
+            ) &&
+            !builder.hasPendingThresholdChangeRequest()
+        ) {
+            builder
+                .setThresholdChangeStatus(ThresholdChangeStatus.IDLE.persistedValue)
+                .clearThresholdChangeResult()
+        }
+        val statusAfterPendingRepair = ThresholdChangeStatus.entries.first {
+            it.persistedValue == builder.thresholdChangeStatus
+        }
+        if (
+            statusAfterPendingRepair == ThresholdChangeStatus.APPLIED_WAITING_STATE &&
+            !builder.hasThresholdChangeResult()
+        ) {
+            builder.setThresholdChangeStatus(ThresholdChangeStatus.WAITING_RESULT.persistedValue)
+        }
         return builder.build()
     }
 
@@ -104,4 +156,18 @@ object WearStateSanitizer {
             occurredAtEpochMillis > 0 &&
             expiresAtEpochMillis > occurredAtEpochMillis &&
             expiresAtEpochMillis - occurredAtEpochMillis <= MAX_EVENT_EXPIRY_MILLIS
+
+    private fun com.magicitengineer.batterynotifierandroidwearapp.data.datastore.proto.ThresholdChangeRequestProto.isValid(): Boolean =
+        schemaVersion == SUPPORTED_SCHEMA_VERSION &&
+            requestId.length <= 64 &&
+            runCatching { UUID.fromString(requestId) }.isSuccess &&
+            thresholdPercent in 5..100 &&
+            expectedThresholdPercent in 5..100
+
+    private fun com.magicitengineer.batterynotifierandroidwearapp.data.datastore.proto.ThresholdChangeResultProto.isValid(): Boolean =
+        requestId.length <= 64 &&
+            runCatching { UUID.fromString(requestId) }.isSuccess &&
+            ThresholdChangeResultCode.entries.any { it.persistedValue == resultCode } &&
+            effectiveThresholdPercent in 5..100 &&
+            phoneStateSequence >= 1
 }

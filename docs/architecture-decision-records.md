@@ -2,7 +2,7 @@
 
 文書ID: ADR-INDEX  
 版: 0.1  
-最終更新: 2026-07-22
+最終更新: 2026-07-29
 
 ## 運用
 
@@ -145,6 +145,19 @@ handoff_notes: ""
 - **決定**: v1.0では両アプリのProto DataStoreファイルをAndroid cloud backupとdevice-to-device transferの双方から除外する。設定のみの部分復元も行わない。
 - **理由**: v1.0は再セットアップを許容しており、復元利便性より通知・outboxのexactly-once境界とユーザー起点の監視開始を優先するため。
 - **結果**: 移行/再インストール後は既定状態から開始し、WearはMobileの新しいstate同期を待つ。backup rulesの静的契約テストをリリースgateに含める。
+
+## ADR-015 WearはMobileへしきい値変更を要求し、Mobileを単一writerに保つ
+
+- **状態**: Accepted（2026-07-29、人間承認）
+- **文脈**: Wearからしきい値を設定したい一方、Wearを第二の設定writerにすると、切断中編集、同時編集、順序、再起動、DataStore復元に双方向競合解決が必要になる。ADR-009の単一writerによる安全性を維持したい。
+- **決定**: Wearは接続中にMessageClientで型付き変更要求をMobileへ送る。Mobileだけが完全検証、期待値による競合判定、しきい値domain処理、Proto DataStore永続化、state sequence割当、phone-state送信を行う。Wearは結果とphone-stateを表示し、自身のProtoには下書きと未確定要求だけを保存する。
+- **切断時**: command DataItemを作成せず自動遅延適用しない。Wearは下書きを保持し、再接続後の明示的な再試行を待つ。
+- **冪等性**: Mobileは直近`requestId`と結果を設定変更と同じtransactionで保存する。結果応答喪失後の同一要求再試行には結果を再送し、設定とstate sequenceを再適用しない。
+- **競合**: 要求の`expectedThresholdPercent`がMobile現在値と異なる場合は、要求値がすでに現在値と同じでない限り`CONFLICT`を返す。
+- **理由**: 手首からの操作を提供しつつ、既存のMobile単一writer、しきい値再評価、outbox、通知重複防止の境界を再利用できる。MessageClientは公式にRPC/remote-control向けであり、接続必須という性質をUIで明示できる。
+- **代替**: Wearを第二writerにしてlast-write-winsまたは論理時計を導入する案、固定DataItem commandを切断中にqueueする案。前者は競合・migration負荷、後者は古い要求の遅延適用リスクが高いため初期案では採用しない。
+- **ADR-009との関係**: 承認時にADR-009の「Wear UIは読み取り専用」という結果だけを置換する。設定の正本をMobileに置く決定は維持する。
+- **結果**: Mobile/Wear Proto拡張、双方向message contract、capability、日英Wear UI、単体/contract/E2E/実機試験が必要。新しいAndroid権限、外部サービス、独自socketは追加しない。
 
 ## 参考
 

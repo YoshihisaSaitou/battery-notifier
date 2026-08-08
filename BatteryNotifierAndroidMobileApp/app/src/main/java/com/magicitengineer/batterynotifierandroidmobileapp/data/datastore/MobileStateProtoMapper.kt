@@ -5,12 +5,15 @@ import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.
 import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.MobileStateProto
 import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.MobileNotificationDispositionProto
 import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.ThresholdReachedEventProto
+import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.ThresholdChangeResultProto
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.AlertRule
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.AlertState
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.ThresholdReachedEvent
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.battery.BatterySnapshot
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.notification.MobileNotificationDisposition
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.state.MobilePersistentState
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.settings.ThresholdChangeResult
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.settings.ThresholdChangeResultCode
 
 object MobileStateProtoMapper {
     fun toDomain(proto: MobileStateProto): MobilePersistentState {
@@ -43,6 +46,11 @@ object MobileStateProtoMapper {
             lastSyncErrorClassification = safe.lastSyncErrorClassification.nullIfBlank(),
             invalidInputCount = safe.invalidInputCount,
             unsupportedSchemaCount = safe.unsupportedSchemaCount,
+            lastThresholdChangeResult = if (safe.hasLastThresholdChangeResult()) {
+                safe.lastThresholdChangeResult.toDomain()
+            } else {
+                null
+            },
         )
     }
 
@@ -70,6 +78,9 @@ object MobileStateProtoMapper {
         state.lastSnapshot?.let { builder.setLastSnapshot(it.toProto()) }
         state.pendingEvent?.let { builder.setPendingEvent(it.toProto()) }
         state.pendingMobileNotification?.let { builder.setPendingMobileNotification(it.toProto()) }
+        state.lastThresholdChangeResult?.let {
+            builder.setLastThresholdChangeResult(it.toProto())
+        }
         return builder.build()
     }
 
@@ -118,6 +129,22 @@ object MobileStateProtoMapper {
         .setOccurredAtEpochMillis(occurredAtEpochMillis)
         .setExpiresAtEpochMillis(expiresAtEpochMillis)
         .setSequence(sequence)
+        .build()
+
+    private fun ThresholdChangeResultProto.toDomain() = ThresholdChangeResult(
+        requestId = requestId,
+        resultCode = ThresholdChangeResultCode.entries.first {
+            it.persistedValue == resultCode
+        },
+        effectiveThresholdPercent = effectiveThresholdPercent,
+        phoneStateSequence = phoneStateSequence,
+    )
+
+    private fun ThresholdChangeResult.toProto() = ThresholdChangeResultProto.newBuilder()
+        .setRequestId(requestId)
+        .setResultCode(resultCode.persistedValue)
+        .setEffectiveThresholdPercent(effectiveThresholdPercent)
+        .setPhoneStateSequence(phoneStateSequence)
         .build()
 
     private fun MobileNotificationDispositionProto.toDomain(): MobileNotificationDisposition =

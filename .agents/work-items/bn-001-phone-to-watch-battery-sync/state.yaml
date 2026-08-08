@@ -9,24 +9,22 @@ work_item:
     persistence, Wear reception, threshold notification event bridge, and the
     automated evidence required before independent review.
 
-status: "in_test"
-current_phase: "test"
-current_role: "test"
+status: "done"
+current_phase: "human_verification"
+current_role: "human"
 current_actor:
-  type: "unassigned"
-  id: null
+  type: "human"
+  id: "human"
 
 last_transition:
-  from_phase: "review"
-  to_phase: "test"
+  from_phase: "test"
+  to_phase: "human_verification"
   reason: >-
-    Independent actor /root/independent_tst003_review verified the narrow
-    TST-003/IMP-009 candidate with Critical 0, High 0, Medium 0, and Low 0 open
-    findings. English and Japanese No Data resources return one percent with
-    formatted=false, existing formatted percentage resources are unchanged,
-    reviewer-owned API 36 instrumentation passed 2/2, and the runtime hierarchy
-    contains visible/accessibility --% with no --%%. Review-to-Test passes;
-    Test must now independently repeat TC-E033.
+    On 2026-07-28 the human explicitly stated that the complete emulator
+    test-item document had been checked on physical devices with no problems
+    and directed that the work item be completed. This human attestation
+    supersedes the remaining emulator environment blockers for the final
+    acceptance decision without rewriting their historical evidence.
 
 spec_refs:
   - "docs/product-requirements.md"
@@ -629,12 +627,13 @@ phases:
           refs from the required-reading list and verified PPS-001 is present.
 
   test:
-    status: "partial_pass_tst003_complication_runtime_blocked"
-    owner: "unassigned"
+    status: "completed_by_human_real_device_confirmation"
+    owner: "human"
+    test_item_document: ".agents/work-items/bn-001-phone-to-watch-battery-sync/emulator-test-items.md"
     scenarios:
       - id: "TEST-001"
         title: "Normal synchronization"
-        status: "not_run"
+        status: "pass_human_verified_real_device"
         test_refs:
           - "TC-E001"
           - "TC-E002"
@@ -642,31 +641,31 @@ phases:
           - "TC-E004"
       - id: "TEST-002"
         title: "Updates while disconnected"
-        status: "not_run"
+        status: "pass_human_verified_real_device"
         test_refs:
           - "TC-E010"
           - "TC-E012"
           - "TC-E013"
       - id: "TEST-003"
         title: "Reconnection and latest-state convergence"
-        status: "not_run"
+        status: "pass_human_verified_real_device"
         test_refs:
           - "TC-E011"
           - "TC-E014"
       - id: "TEST-004"
         title: "Smartphone restart and monitoring recovery"
-        status: "partial_blocked"
+        status: "pass_human_verified_real_device"
         test_refs:
           - "TC-E020"
           - "TC-E021"
       - id: "TEST-005"
         title: "Watch restart and surface recovery"
-        status: "not_run"
+        status: "pass_human_verified_real_device"
         test_refs:
           - "TC-E022"
       - id: "TEST-006"
         title: "Fresh, Delayed, Stale, and No Data display"
-        status: "partial_pass_blocked"
+        status: "pass_human_verified_real_device"
         test_refs:
           - "TC-E030"
           - "TC-E031"
@@ -675,14 +674,14 @@ phases:
           - "TC-E034"
       - id: "TEST-007"
         title: "Consecutive updates, duplicate callbacks, and reverse ordering"
-        status: "not_run"
+        status: "pass_human_verified_real_device"
         test_refs:
           - "TC-E040"
           - "TC-E041"
           - "TC-E043"
       - id: "TEST-008"
         title: "Invalid DataItem reception"
-        status: "not_run"
+        status: "pass_human_verified_real_device"
         test_refs:
           - "TC-E050"
           - "TC-E051"
@@ -692,6 +691,35 @@ phases:
           - "TC-E055"
           - "TC-E056"
     results:
+      - id: "HUMAN-REAL-DEVICE-ACCEPTANCE-001"
+        title: "Human confirmation of all BN-001 emulator-test-item scenarios on physical devices"
+        status: "pass_human_attested"
+        test_refs: "All 48 TC-E IDs enumerated in BN-001-ETI-001"
+        requirement_refs:
+          - "PR-001 through PR-010 as traced by BN-001"
+          - "AC-001 through AC-014 as applicable"
+        test_item_document: ".agents/work-items/bn-001-phone-to-watch-battery-sync/emulator-test-items.md"
+        build: >-
+          Current accepted candidate HEAD
+          10ae4699e072c7a2d76d40e1ab221371b84050b9; application ID
+          com.magicitengineer.batterynotifier; Mobile versionCode 2/versionName
+          1.0 and Wear versionCode 3/versionName 1.0. Current uncommitted
+          changes outside state/test documentation are IDE metadata only and
+          do not change the application binaries.
+        environment: >-
+          Physical Mobile and Wear devices. The human did not provide exact
+          model, size, or OS-build identifiers; none are inferred.
+        actual: >-
+          The human stated that the complete emulator test-item document was
+          verified on physical devices and no problem was found, and explicitly
+          directed completion of the work item.
+        evidence: >-
+          Human instruction in the Codex task on 2026-07-28 JST. This is an
+          approval attestation rather than agent-observed logs or screenshots.
+        caveats: >-
+          Separate numeric battery-consumption and notification-latency
+          measurements were not supplied. Completion records the human's
+          explicit acceptance and does not invent device details or metrics.
       - id: "TC-E033-RETEST-001"
         title: "No Data display and complication retest after TST-003"
         status: "partial_pass_blocked"
@@ -970,24 +998,40 @@ phases:
           product failure.
 
   human_verification:
-    status: "pending"
+    status: "completed_approved"
     owner: "human"
     tasks:
       - id: "HUM-001"
         title: "Verify the release candidate on Google Pixel 10 Pro Fold and Google Pixel Watch 4"
-        status: "not_run"
+        status: "approved_by_human_real_device_attestation"
       - id: "HUM-002"
         title: "Measure and judge battery consumption and notification latency"
-        status: "not_run"
+        status: "accepted_by_human_without_separate_numeric_record"
       - id: "HUM-003"
         title: "Record final approval or required changes"
-        status: "not_run"
+        status: "approved"
     approval:
-      decision: null
-      approver: null
-      build_identity: null
-      decided_at: null
-      rationale: null
+      decision: "approved"
+      approver: "human"
+      build_identity: >-
+        HEAD 10ae4699e072c7a2d76d40e1ab221371b84050b9; Mobile
+        com.magicitengineer.batterynotifier versionCode 2/versionName 1.0;
+        Wear com.magicitengineer.batterynotifier versionCode 3/versionName 1.0.
+      devices: >-
+        Physical Mobile and Wear devices; exact models, sizes, and OS builds
+        were not provided and are not inferred.
+      battery_impact: >-
+        Human accepted completion with no problem reported. No separate numeric
+        24-hour comparison was provided or claimed.
+      notification_latency: >-
+        Human accepted completion with no problem reported. No separate sample
+        series or percentile was provided or claimed.
+      decided_at: "2026-07-28T13:40:25+09:00"
+      rationale: >-
+        The human explicitly confirmed that every item in BN-001-ETI-001 was
+        checked on physical devices without a problem and directed that BN-001
+        be marked complete despite emulator execution time caused by the
+        computer environment.
 
 decisions_needed:
   - id: "DEC-005"
@@ -1267,13 +1311,17 @@ loop_control:
 progress_reporting:
   format_version: 1
   current:
-    reported_at: "2026-07-26T21:02:49+09:00"
+    reported_at: "2026-07-28T13:43:13+09:00"
     work_item_id: "BN-001"
-    role: "test"
-    phase: "test"
-    actor: "unassigned"
-    status: "in_test"
+    role: "human"
+    phase: "human_verification"
+    actor: "human"
+    status: "done"
     completed:
+      - "Human explicitly confirmed all 48 TC-E items in BN-001-ETI-001 on physical devices with no problem and approved completion."
+      - "Test-to-Human handoff and Human final approval were recorded for HEAD 10ae4699e072c7a2d76d40e1ab221371b84050b9, Mobile v2/1.0 and Wear v3/1.0."
+      - "Historical emulator blockers remain preserved as history but are superseded for final acceptance by the human real-device attestation."
+      - "Created BN-001-ETI-001, an executable emulator test-item document covering TC-E001 through TC-E076, with TC-E033 split into app No Data and system Complication request gates."
       - "Test independently rebuilt and installed the frozen candidate on Wear_OS_6_1_API_36; assembleDebug plus assembleDebugAndroidTest passed in 1m 13s."
       - "Test-owned NoDataStringInstrumentedTest passed English/Japanese 2/2 in 0.098s."
       - "TC-E033 app surface passed: visible --%, Phone battery --% accessibility, both connection-help strings, no --%%, top-resumed MainActivity, and no FATAL/ANR signature."
@@ -1386,13 +1434,19 @@ progress_reporting:
       - "IMP-005/IMP-007 Mobile and Wear POST_NOTIFICATIONS declaration, Proto-backed one-shot request history, user-initiated request, denial/dismiss settings routing, localization, and API 32/33 boundary behavior."
       - "Role-aware progress reporting rules added to the operating documentation."
     in_progress:
-      - "No active Test actor; TC-E033 is partial_pass_blocked only on the system-rendered complication request."
+      - "None; BN-001 is complete."
     next:
-      - "Complete TC-E033 by manually assigning Battery Notifier to a compatible watch-face slot, or approve and independently review an instrumentation harness for MainComplicationService.onComplicationRequest."
-      - "Record Wear DataStore, Stale complication rendering/TalkBack, paired sync, and Pixel Watch cases as not_run unless a Wear target becomes available."
-      - "Repeat full reboot recovery on a healthy AVD or device; the current Pixel_9a AVD failed to finish boot."
-      - "Prepare the Play Console FGS declaration, explanation, demo video, and policy confirmation before publication."
+      - "No remaining BN-001 development or test action."
     checks:
+      - "Final state YAML validation: PASS; status=done, phase=human_verification, role/actor=human, approval=approved, next_actions=0."
+      - "Final scoped whitespace validation: PASS for state.yaml and emulator-test-items.md."
+      - "Repository-wide git diff --check still reports user-owned BatteryNotifierAndroidMobileApp/.idea/deploymentTargetSelector.xml trailing whitespace; it was not modified or treated as a BN-001 completion blocker."
+      - "Human final approval: APPROVED on 2026-07-28 JST for all BN-001-ETI-001 items verified on physical devices with no problem reported."
+      - "Human-approved candidate identity: HEAD 10ae4699e072c7a2d76d40e1ab221371b84050b9, Mobile v2/1.0, Wear v3/1.0."
+      - "Device models/OS builds and numeric battery/latency measurements were not supplied; no inferred values are claimed."
+      - "BN-001-ETI-001 coverage validation: PASS; all 48 TC-E IDs from docs/test-plan-and-cases.md are present with no missing or extra TC-E IDs."
+      - "Post-document state YAML validation: PASS; YAML_OK=true, status=in_test, phase=test, role=test."
+      - "Post-document git diff --check: PASS."
       - "Test build: PASS; assembleDebug plus assembleDebugAndroidTest BUILD SUCCESSFUL in 1m 13s."
       - "Test direct API 36 instrumentation: PASS 2/2, time 0.098s."
       - "Test TC-E033 app/UI/accessibility: PASS; --%, Phone battery --%, connection help, no --%%, MainActivity top-resumed."
@@ -1519,10 +1573,57 @@ progress_reporting:
       - "Environment preflight passes with 10 passes, 4 expected warnings, and 0 failures; the application-ID check passes."
       - "Final git diff --check passes."
     blockers:
-      - "TC-E033 system-rendered complication remains blocked until Battery Notifier is assigned to a compatible active watch-face slot or an independently reviewed service-request harness is available."
-      - "Required Pixel 10 Pro Fold / Pixel Watch 4 hardware is not attached; emulator evidence cannot replace those release gates."
-      - "The Pixel_9a AVD did not complete the final reboot, so BOOT_COMPLETED recovery remains blocked rather than failed."
+      []
   history:
+    - reported_at: "2026-07-28T13:40:25+09:00"
+      role: "human"
+      phase: "human_verification"
+      actor: "human"
+      event: "human_final_approval_done"
+      summary: >-
+        Human approved BN-001 and directed completion after confirming that all
+        items in BN-001-ETI-001 were checked on physical devices with no
+        problem. Approval is recorded against HEAD
+        10ae4699e072c7a2d76d40e1ab221371b84050b9, Mobile v2/1.0 and Wear
+        v3/1.0. Exact physical-device models/OS builds and separate numeric
+        battery/latency measurements were not supplied, so no such values are
+        inferred. Status is done and no blocker remains.
+    - reported_at: "2026-07-28T13:40:25+09:00"
+      role: "test"
+      phase: "test"
+      actor: "codex"
+      event: "test_handoff_to_human_by_explicit_real_device_confirmation"
+      summary: >-
+        Test handed BN-001 to Human verification based on the human's explicit
+        real-device confirmation of every item in BN-001-ETI-001. Existing
+        automated, review, API 36 instrumented, and prior emulator evidence is
+        retained. The remaining emulator-only blockers are preserved
+        historically and superseded by the human acceptance decision rather
+        than relabeled as agent-executed emulator passes.
+    - reported_at: "2026-07-27T21:33:44+09:00"
+      role: "test"
+      phase: "test"
+      actor: "codex"
+      event: "emulator_test_item_document_verified"
+      summary: >-
+        Verified BN-001-ETI-001 against docs/test-plan-and-cases.md: all 48
+        TC-E IDs are present with no missing or extra TC-E IDs. The updated
+        state parses as valid YAML with status in_test, phase test, and role
+        test; git diff --check passes. This verification covers document
+        structure and traceability only and does not change any test result.
+    - reported_at: "2026-07-27T21:25:38+09:00"
+      role: "test"
+      phase: "test"
+      actor: "codex"
+      event: "emulator_test_item_document_created"
+      summary: >-
+        Created BN-001-ETI-001 at
+        .agents/work-items/bn-001-phone-to-watch-battery-sync/emulator-test-items.md.
+        It converts TC-E001 through TC-E076 into executable Mobile-only,
+        Wear-only, paired-emulator, and independently reviewed harness cases,
+        keeps emulator evidence separate from mandatory real-device gates, and
+        defines TC-E033 app No Data and system Complication request as separate
+        pass conditions. No test was executed and no existing result changed.
     - reported_at: "2026-07-26T21:02:49+09:00"
       role: "test"
       phase: "test"
@@ -3577,29 +3678,20 @@ evidence:
         target.
 
 handoff:
-  from_role: "test"
-  to_role: "test"
+  from_role: "human"
+  to_role: "none"
   summary: >-
-    Test independently rebuilt and installed the frozen TST-003 candidate on
-    Wear_OS_6_1_API_36. English/Japanese instrumentation passed 2/2 and the app
-    No Data surface passed visible --%, accessibility, connection help,
-    no-double-percent, resumed-Activity, and no-crash checks. TST-003 and
-    WEAR-NO-DATA-RUNTIME-001 are fixed_verified_by_test. TC-E033 remains
-    partial_pass_blocked only because no system watch-face request to
-    MainComplicationService was captured. No product failure or phase return
-    occurred; historical phase returns remain 5.
-  first_action: >-
-    Complete the system complication portion by manually assigning Battery
-    Notifier to a compatible active watch-face slot, or obtain approval for an
-    instrumentation harness and pass it through independent Review before
-    Test invokes MainComplicationService.onComplicationRequest.
+    Human final approval completed BN-001 after the human confirmed that every
+    item in BN-001-ETI-001 was verified on physical devices with no problem.
+    The approved candidate is HEAD
+    10ae4699e072c7a2d76d40e1ab221371b84050b9, Mobile versionCode 2/versionName
+    1.0 and Wear versionCode 3/versionName 1.0. Historical emulator blockers
+    and their evidence remain in the record; they are superseded for final
+    acceptance by the human decision and are not rewritten as agent-observed
+    passes.
+  first_action: "None; the work item is complete."
 
-next_actions:
-  - "Complete TC-E033 system complication runtime evidence through a compatible active slot or an independently reviewed service-request harness."
-  - "Verify Stale SHORT_TEXT and RANGED_VALUE system rendering and TalkBack at representative 6-, 10-, and 60-minute ages in English and Japanese."
-  - "Run Wear notification permission, channel-disabled, and four permission-combination cases on attached targets."
-  - "Repeat Mobile BOOT_COMPLETED recovery on a healthy emulator/device; Pixel_9a failed to complete the final reboot."
-  - "Before Google Play publication, complete and approve the Play Console FGS declaration, explanation, demo video, and current policy confirmation."
+next_actions: []
 
-updated_at: "2026-07-26T21:02:49+09:00"
+updated_at: "2026-07-28T13:43:13+09:00"
 updated_by: "codex"

@@ -3,6 +3,7 @@ package com.magicitengineer.batterynotifierandroidwearapp.data.wearable
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.WearableListenerService
+import com.google.android.gms.wearable.MessageEvent
 import com.magicitengineer.batterynotifierandroidwearapp.data.datastore.WearAppContainer
 import com.magicitengineer.batterynotifierandroidwearapp.data.datastore.WearStateApplyOutcome
 import com.magicitengineer.batterynotifierandroidwearapp.application.sync.WearDataItemProcessingResult
@@ -76,6 +77,33 @@ class WearDataLayerListenerService : WearableListenerService() {
                             notificationDelivery.deliver(result.result.state)
                         }
                     }
+                }
+            }
+        }
+    }
+
+    override fun onMessageReceived(messageEvent: MessageEvent) {
+        if (messageEvent.path != WearDataLayerContract.CHANGE_THRESHOLD_RESULT_PATH) {
+            return
+        }
+        val repository = WearAppContainer.repository(this)
+        serviceScope.launch {
+            when (
+                val decoded =
+                    WearThresholdChangeMessageCodec.decodeResult(messageEvent.data)
+            ) {
+                is ThresholdChangeResultDecodeResult.Valid -> {
+                    repository.applyThresholdChangeResult(decoded.result)
+                }
+
+                is ThresholdChangeResultDecodeResult.UnsupportedSchema -> {
+                    repository.recordUnsupportedSchema(decoded.schemaVersion)
+                }
+
+                ThresholdChangeResultDecodeResult.Invalid -> {
+                    repository.recordInvalidPayload(
+                        ReceiveErrorClassification.DATA_MAP_ERROR
+                    )
                 }
             }
         }

@@ -51,4 +51,19 @@
     <string name="notification_permission_settings_required">Notifications are not allowed; use system settings</string>
     <string name="notification_permission_request_action">Allow notifications</string>
     <string name="notification_permission_settings_action">Open settings</string>
+    <string name="change_threshold">Change threshold</string>
+    <string name="threshold_draft_value">New threshold %1$d%%</string>
+    <string name="decrease_threshold">Decrease</string>
+    <string name="increase_threshold">Increase</string>
+    <string name="save_threshold">Save threshold</string>
+    <string name="cancel_threshold_change">Cancel change</string>
+    <string name="retry_threshold_change">Retry threshold change</string>
+    <string name="threshold_checking_phone">Checking with phone…</string>
+    <string name="threshold_waiting_result">Waiting for the phone result</string>
+    <string name="threshold_not_saved">Not saved yet. Check the phone connection.</string>
+    <string name="threshold_saved_confirming_sync">Saved. Confirming sync…</string>
+    <string name="threshold_saved">Threshold saved</string>
+    <string name="threshold_conflict">Setting changed on phone. Review the current value.</string>
+    <string name="threshold_rejected">The phone rejected this threshold change</string>
+    <string name="threshold_writer_unavailable">Open or update the phone app, then reconnect</string>
 </resources>

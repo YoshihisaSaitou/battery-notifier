@@ -2,6 +2,9 @@ package com.magicitengineer.batterynotifierandroidwearapp.data.datastore
 
 import androidx.datastore.core.DataStore
 import com.magicitengineer.batterynotifierandroidwearapp.data.datastore.proto.WearStateProto
+import com.magicitengineer.batterynotifierandroidwearapp.domain.settings.ThresholdChangeResult
+import com.magicitengineer.batterynotifierandroidwearapp.domain.settings.ThresholdChangeResultCode
+import com.magicitengineer.batterynotifierandroidwearapp.domain.settings.ThresholdChangeStatus
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.NotificationDisposition
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.ReceiveErrorClassification
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.ReceivedPhoneState
@@ -226,6 +229,240 @@ class ProtoWearStateRepositoryTest {
         assertNull(state.lastProcessedEventId)
     }
 
+    @Test
+    fun thresholdDraftAndPendingRequestArePersistedBeforeSending() = runBlocking {
+        val repository = repository()
+        repository.applyPhoneState(phoneState(10), 1_000L)
+        repository.updateThresholdDraft(30)
+
+        val prepared = repository.prepareThresholdChange(THRESHOLD_REQUEST_ID)
+
+        assertEquals(ThresholdChangePreparationOutcome.PREPARED, prepared.outcome)
+        assertEquals(30, prepared.request?.thresholdPercent)
+        assertEquals(20, prepared.request?.expectedThresholdPercent)
+        assertEquals(THRESHOLD_REQUEST_ID, prepared.state.pendingThresholdChangeRequest?.requestId)
+        assertEquals(ThresholdChangeStatus.SENDING, prepared.state.thresholdChangeStatus)
+    }
+
+    @Test
+    fun appliedResultWaitsForMatchingPhoneStateBeforeClearingPendingRequest() = runBlocking {
+        val repository = repository()
+        repository.applyPhoneState(phoneState(10), 1_000L)
+        repository.updateThresholdDraft(30)
+        repository.prepareThresholdChange(THRESHOLD_REQUEST_ID)
+        repository.markThresholdChangeSendResult(THRESHOLD_REQUEST_ID, sent = true)
+
+        val waiting = repository.applyThresholdChangeResult(
+            ThresholdChangeResult(
+                requestId = THRESHOLD_REQUEST_ID,
+                resultCode = ThresholdChangeResultCode.APPLIED,
+                effectiveThresholdPercent = 30,
+                phoneStateSequence = 11,
+            )
+        )
+        val applied = repository.applyPhoneState(
+            phoneState(11).copy(thresholdPercent = 30),
+            1_100L,
+        )
+
+        assertEquals(ThresholdChangeStatus.APPLIED_WAITING_STATE, waiting.thresholdChangeStatus)
+        assertEquals(THRESHOLD_REQUEST_ID, waiting.pendingThresholdChangeRequest?.requestId)
+        assertEquals(ThresholdChangeStatus.APPLIED, applied.state.thresholdChangeStatus)
+        assertNull(applied.state.pendingThresholdChangeRequest)
+        assertNull(applied.state.thresholdDraftPercent)
+    }
+
+    @Test
+    fun conflictResultClearsPendingRequestAndUsesPhoneEffectiveThreshold() = runBlocking {
+        val repository = repository()
+        repository.applyPhoneState(phoneState(10), 1_000L)
+        repository.updateThresholdDraft(30)
+        repository.prepareThresholdChange(THRESHOLD_REQUEST_ID)
+
+        val conflicted = repository.applyThresholdChangeResult(
+            ThresholdChangeResult(
+                requestId = THRESHOLD_REQUEST_ID,
+                resultCode = ThresholdChangeResultCode.CONFLICT,
+                effectiveThresholdPercent = 25,
+                phoneStateSequence = 12,
+            )
+        )
+
+        assertEquals(ThresholdChangeStatus.CONFLICT, conflicted.thresholdChangeStatus)
+        assertNull(conflicted.pendingThresholdChangeRequest)
+        assertNull(conflicted.thresholdDraftPercent)
+        assertEquals(25, conflicted.thresholdChangeResult?.effectiveThresholdPercent)
+    }
+
+    @Test
+    fun conflictAndRejectedResultsYieldToAnAlreadyNewerPhoneState() = runBlocking {
+        listOf(
+            ThresholdChangeResultCode.CONFLICT,
+            ThresholdChangeResultCode.REJECTED,
+        ).forEach { resultCode ->
+            val repository = repository()
+            repository.applyPhoneState(phoneState(10), 1_000L)
+            repository.updateThresholdDraft(15)
+            repository.prepareThresholdChange(THRESHOLD_REQUEST_ID)
+            repository.applyPhoneState(
+                phoneState(12).copy(thresholdPercent = 30),
+                1_200L,
+            )
+
+            val reconciled = repository.applyThresholdChangeResult(
+                ThresholdChangeResult(
+                    requestId = THRESHOLD_REQUEST_ID,
+                    resultCode = resultCode,
+                    effectiveThresholdPercent = 25,
+                    phoneStateSequence = 11,
+                )
+            )
+
+            assertEquals(30, reconciled.lastPhoneState?.thresholdPercent)
+            assertEquals(12L, reconciled.lastPhoneState?.sequence)
+            assertNull(reconciled.thresholdChangeResult)
+            assertNull(reconciled.pendingThresholdChangeRequest)
+        }
+    }
+
+    @Test
+    fun conflictAndRejectedResultsRemainUntilPhoneStateCatchesUp() = runBlocking {
+        listOf(
+            ThresholdChangeResultCode.CONFLICT,
+            ThresholdChangeResultCode.REJECTED,
+        ).forEach { resultCode ->
+            val repository = repository()
+            repository.applyPhoneState(phoneState(10), 1_000L)
+            repository.updateThresholdDraft(15)
+            repository.prepareThresholdChange(THRESHOLD_REQUEST_ID)
+
+            val resultFirst = repository.applyThresholdChangeResult(
+                ThresholdChangeResult(
+                    requestId = THRESHOLD_REQUEST_ID,
+                    resultCode = resultCode,
+                    effectiveThresholdPercent = 25,
+                    phoneStateSequence = 12,
+                )
+            )
+            val stateSecond = repository.applyPhoneState(
+                phoneState(12).copy(thresholdPercent = 25),
+                1_200L,
+            )
+
+            assertEquals(25, resultFirst.thresholdChangeResult?.effectiveThresholdPercent)
+            assertNull(stateSecond.state.thresholdChangeResult)
+            assertEquals(25, stateSecond.state.lastPhoneState?.thresholdPercent)
+        }
+    }
+
+    @Test
+    fun newerPhoneStateRebasesInactiveDraftBeforeTheNextRequest() = runBlocking {
+        val repository = repository()
+        repository.applyPhoneState(phoneState(10), 1_000L)
+        repository.updateThresholdDraft(30)
+        repository.prepareThresholdChange(THRESHOLD_REQUEST_ID)
+        repository.applyThresholdChangeResult(
+            ThresholdChangeResult(
+                requestId = THRESHOLD_REQUEST_ID,
+                resultCode = ThresholdChangeResultCode.APPLIED,
+                effectiveThresholdPercent = 30,
+                phoneStateSequence = 11,
+            )
+        )
+        repository.applyPhoneState(
+            phoneState(11).copy(thresholdPercent = 30),
+            1_100L,
+        )
+
+        val updated = repository.applyPhoneState(
+            phoneState(12).copy(thresholdPercent = 25),
+            1_200L,
+        )
+        val next = repository.prepareThresholdChange(SECOND_THRESHOLD_REQUEST_ID)
+
+        assertNull(updated.state.thresholdDraftPercent)
+        assertEquals(25, updated.state.lastPhoneState?.thresholdPercent)
+        assertEquals(25, next.request?.thresholdPercent)
+        assertEquals(25, next.request?.expectedThresholdPercent)
+    }
+
+    @Test
+    fun conflictAndRejectedTerminalsRebaseTheNextDraftFromNewerPhoneState() = runBlocking {
+        listOf(
+            ThresholdChangeResultCode.CONFLICT,
+            ThresholdChangeResultCode.REJECTED,
+        ).forEach { resultCode ->
+            val repository = repository()
+            repository.applyPhoneState(phoneState(10), 1_000L)
+            repository.updateThresholdDraft(30)
+            repository.prepareThresholdChange(THRESHOLD_REQUEST_ID)
+            repository.applyThresholdChangeResult(
+                ThresholdChangeResult(
+                    requestId = THRESHOLD_REQUEST_ID,
+                    resultCode = resultCode,
+                    effectiveThresholdPercent = 25,
+                    phoneStateSequence = 11,
+                )
+            )
+            repository.applyPhoneState(
+                phoneState(11).copy(thresholdPercent = 25),
+                1_100L,
+            )
+            repository.applyPhoneState(
+                phoneState(12).copy(thresholdPercent = 35),
+                1_200L,
+            )
+
+            val next = repository.prepareThresholdChange(SECOND_THRESHOLD_REQUEST_ID)
+
+            assertEquals(35, next.request?.thresholdPercent)
+            assertEquals(35, next.request?.expectedThresholdPercent)
+        }
+    }
+
+    @Test
+    fun newerPhoneStatePreservesAGenuinelyActiveDraft() = runBlocking {
+        val repository = repository()
+        repository.applyPhoneState(phoneState(10), 1_000L)
+        repository.updateThresholdDraft(30)
+
+        val updated = repository.applyPhoneState(
+            phoneState(11).copy(thresholdPercent = 25),
+            1_100L,
+        )
+        val prepared = repository.prepareThresholdChange(THRESHOLD_REQUEST_ID)
+
+        assertEquals(30, updated.state.thresholdDraftPercent)
+        assertEquals(30, prepared.request?.thresholdPercent)
+        assertEquals(25, prepared.request?.expectedThresholdPercent)
+    }
+
+    @Test
+    fun aSecondPreparationIsAtomicallyRefusedWhileTheFirstIsPending() = runBlocking {
+        val repository = repository()
+        repository.applyPhoneState(phoneState(10), 1_000L)
+        repository.updateThresholdDraft(30)
+
+        val results = listOf(
+            async { repository.prepareThresholdChange(THRESHOLD_REQUEST_ID) },
+            async { repository.prepareThresholdChange(SECOND_THRESHOLD_REQUEST_ID) },
+        ).awaitAll()
+
+        assertEquals(
+            1,
+            results.count { it.outcome == ThresholdChangePreparationOutcome.PREPARED },
+        )
+        assertEquals(
+            1,
+            results.count { it.outcome == ThresholdChangePreparationOutcome.ALREADY_PENDING },
+        )
+        assertEquals(
+            results.single { it.outcome == ThresholdChangePreparationOutcome.PREPARED }
+                .request?.requestId,
+            repository.state.first().pendingThresholdChangeRequest?.requestId,
+        )
+    }
+
     private fun repository() = ProtoWearStateRepository(
         InMemoryDataStore(WearStateSanitizer.defaultValue())
     )
@@ -266,5 +503,7 @@ class ProtoWearStateRepositoryTest {
 
     private companion object {
         const val EVENT_ID = "550e8400-e29b-41d4-a716-446655440020"
+        const val THRESHOLD_REQUEST_ID = "550e8400-e29b-41d4-a716-446655440022"
+        const val SECOND_THRESHOLD_REQUEST_ID = "550e8400-e29b-41d4-a716-446655440023"
     }
 }

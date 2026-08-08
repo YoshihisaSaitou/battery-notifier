@@ -11,6 +11,11 @@ import com.magicitengineer.batterynotifierandroidmobileapp.domain.battery.Batter
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.notification.MobileNotificationDisposition
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.state.MobilePersistentState
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.sync.SyncDeliveryUpdate
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.settings.ThresholdChangeProcessingResult
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.settings.ThresholdChangeProcessingOutcome
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.settings.ThresholdChangeRequest
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.settings.ThresholdChangeResult
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.settings.ThresholdChangeResultCode
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -60,8 +65,16 @@ interface MobileStateRepository {
 
     suspend fun recordInvalidInput(): MobilePersistentState
 
+    suspend fun recordUnsupportedSchema(receivedVersion: Int): MobilePersistentState =
+        error("Unsupported schema tracking is not configured")
+
     suspend fun markNotificationPermissionRequested(): MobilePersistentState =
         error("Notification permission request tracking is not configured")
+
+    suspend fun applyThresholdChangeRequest(
+        request: ThresholdChangeRequest,
+    ): ThresholdChangeProcessingResult =
+        error("Wear threshold changes are not configured")
 }
 
 class ProtoMobileStateRepository(
@@ -267,10 +280,100 @@ class ProtoMobileStateRepository(
             current.copy(invalidInputCount = current.invalidInputCount.saturatingIncrement())
         }
 
+    override suspend fun recordUnsupportedSchema(
+        receivedVersion: Int,
+    ): MobilePersistentState =
+        update { current ->
+            current.copy(
+                unsupportedSchemaCount =
+                    current.unsupportedSchemaCount.saturatingIncrement(),
+            )
+        }
+
     override suspend fun markNotificationPermissionRequested(): MobilePersistentState =
         update { current ->
             current.copy(notificationPermissionRequested = true)
         }
+
+    override suspend fun applyThresholdChangeRequest(
+        request: ThresholdChangeRequest,
+    ): ThresholdChangeProcessingResult {
+        var replayed = false
+        var settingChanged = false
+        var result: ThresholdChangeResult? = null
+        var outcome = ThresholdChangeProcessingOutcome.PHONE_STATE_UNAVAILABLE
+        val updated = update { current ->
+            if (current.lastSnapshot == null) {
+                return@update current
+            }
+            outcome = ThresholdChangeProcessingOutcome.PROCESSED
+            val previous = current.lastThresholdChangeResult
+            if (previous?.requestId == request.requestId) {
+                replayed = true
+                result = previous
+                current
+            } else {
+                val currentThreshold = current.alertRule.thresholdPercent
+                val code = when {
+                    request.thresholdPercent == currentThreshold ->
+                        ThresholdChangeResultCode.APPLIED
+                    request.expectedThresholdPercent != currentThreshold ->
+                        ThresholdChangeResultCode.CONFLICT
+                    else -> ThresholdChangeResultCode.APPLIED
+                }
+                val shouldChange = code == ThresholdChangeResultCode.APPLIED &&
+                    request.thresholdPercent != currentThreshold
+                val nextSequence = if (shouldChange) {
+                    current.sequence.nextSequence()
+                } else {
+                    current.sequence
+                }
+                val nextRule = if (shouldChange) {
+                    current.alertRule.copy(thresholdPercent = request.thresholdPercent)
+                } else {
+                    current.alertRule
+                }
+                result = ThresholdChangeResult(
+                    requestId = request.requestId,
+                    resultCode = code,
+                    effectiveThresholdPercent = nextRule.thresholdPercent,
+                    phoneStateSequence = nextSequence,
+                )
+                settingChanged = shouldChange
+                current.copy(
+                    alertRule = nextRule,
+                    lastSnapshot = if (shouldChange) {
+                        current.lastSnapshot?.copy(sequence = nextSequence)
+                    } else {
+                        current.lastSnapshot
+                    },
+                    sequence = nextSequence,
+                    alertState = if (shouldChange) {
+                        AlertRuleChangeEvaluator.reevaluateWithoutEvent(
+                            rule = nextRule,
+                            state = current.alertState,
+                            snapshot = current.lastSnapshot,
+                        )
+                    } else {
+                        current.alertState
+                    },
+                    pendingStateSequence = if (shouldChange) {
+                        nextSequence
+                    } else {
+                        current.pendingStateSequence
+                    },
+                    lastThresholdChangeResult = result,
+                )
+            }
+        }
+        return ThresholdChangeProcessingResult(
+            state = updated,
+            result = result,
+            replayed = replayed,
+            settingChanged = settingChanged,
+            outcome = outcome,
+        )
+    }
 
     private suspend fun update(
         transform: (MobilePersistentState) -> MobilePersistentState,

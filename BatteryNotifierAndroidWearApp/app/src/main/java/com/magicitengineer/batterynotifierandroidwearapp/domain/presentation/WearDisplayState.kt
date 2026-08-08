@@ -1,6 +1,7 @@
 package com.magicitengineer.batterynotifierandroidwearapp.domain.presentation
 
 import com.magicitengineer.batterynotifierandroidwearapp.domain.state.WearPersistentState
+import com.magicitengineer.batterynotifierandroidwearapp.domain.settings.ThresholdChangeResultCode
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.NotificationDisposition
 
 enum class Freshness {
@@ -25,6 +26,17 @@ data class WearDisplayState(
     val notificationRetryAvailable: Boolean = false,
     val notificationRetryExhausted: Boolean = false,
 )
+
+object WearThresholdDisplayPolicy {
+    fun effectiveThresholdPercent(state: WearPersistentState): Int? {
+        val confirmedResult = state.thresholdChangeResult?.takeIf {
+            it.resultCode == ThresholdChangeResultCode.CONFLICT ||
+                it.resultCode == ThresholdChangeResultCode.REJECTED
+        }
+        return confirmedResult?.effectiveThresholdPercent
+            ?: state.lastPhoneState?.thresholdPercent
+    }
+}
 
 object WearDisplayStateMapper {
     const val FRESH_MAX_AGE_MILLIS = 2 * 60 * 1_000L

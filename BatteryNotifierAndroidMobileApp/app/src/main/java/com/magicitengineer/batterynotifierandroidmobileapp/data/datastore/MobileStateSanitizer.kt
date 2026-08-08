@@ -5,6 +5,7 @@ import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.AlertRule
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.ThresholdReachedEvent
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.state.MobilePersistentState
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.settings.ThresholdChangeResultCode
 import java.util.UUID
 
 object MobileStateSanitizer {
@@ -71,6 +72,23 @@ object MobileStateSanitizer {
         }
         if (!input.lastMobileNotificationEventId.isNullOrValidUuid()) {
             builder.clearLastMobileNotificationEventId()
+        }
+        if (
+            input.hasLastThresholdChangeResult() &&
+            (
+                !input.lastThresholdChangeResult.requestId.isNullOrValidUuid() ||
+                    input.lastThresholdChangeResult.requestId.isBlank() ||
+                    ThresholdChangeResultCode.entries.none {
+                        it.persistedValue == input.lastThresholdChangeResult.resultCode
+                    } ||
+                    input.lastThresholdChangeResult.effectiveThresholdPercent !in
+                    AlertRule.MIN_THRESHOLD_PERCENT..AlertRule.MAX_THRESHOLD_PERCENT ||
+                    input.lastThresholdChangeResult.phoneStateSequence < 1 ||
+                    input.lastThresholdChangeResult.phoneStateSequence > input.sequence ||
+                    !input.hasLastSnapshot()
+                )
+        ) {
+            builder.clearLastThresholdChangeResult()
         }
         return builder.build()
     }

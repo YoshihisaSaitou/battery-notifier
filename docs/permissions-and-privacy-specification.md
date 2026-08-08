@@ -3,7 +3,7 @@
 文書ID: PPS-001  
 版: 0.1  
 状態: Draft  
-最終更新: 2026-07-22
+最終更新: 2026-07-29
 
 ## 1. 基本方針
 
@@ -94,3 +94,12 @@ Data LayerはBluetooth、Wi-Fi、またはGoogle管理のクラウド中継を�
 - [Notification runtime permission](https://developer.android.com/develop/ui/compose/notifications/notification-permission)
 - [Foreground service types](https://developer.android.com/develop/background-work/services/fgs/service-types)
 - [Wear Data Layer security](https://developer.android.com/training/wearables/data/overview)
+
+## 11. Wearしきい値変更（BN-002提案）
+
+- 既存のWear Data Layer MessageClientを使い、新しい権限、Bluetooth scan/connect、外部サービス、独自socketを追加しない。
+- 要求payloadは`requestId`、要求しきい値、期待しきい値、schema versionだけとし、端末名、node ID、アカウント、位置、時刻、言語文字列を永続payloadへ含めない。
+- node IDは結果を要求元へ返す実行時routingだけに使用し、Proto、ログ、分析へ保存しない。
+- `requestId`はランダムUUIDであり、端末識別子として再利用しない。
+- Mobileは直近要求結果、Wearは下書きと未確定要求を各Proto DataStoreへ保存する。両Protoは引き続きcloud backupとdevice transferから除外する。
+- 不正payloadをログへ出力せず、エラー分類と診断件数だけを記録する。

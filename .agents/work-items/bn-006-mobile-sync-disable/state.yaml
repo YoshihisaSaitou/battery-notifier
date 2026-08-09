@@ -1,0 +1,155 @@
+schema_version: 1
+
+work_item:
+  id: "BN-006"
+  slug: "bn-006-mobile-sync-disable"
+  title: "Allow Mobile users to disable Wear battery synchronization"
+  scope: >-
+    Define and implement the user-visible state and behavior behind changing
+    the Mobile manual-sync action to Sync off after a confirmed synchronization.
+
+status: "cancelled"
+current_phase: "specification"
+current_role: "human"
+current_actor:
+  type: "human"
+  id: "user"
+
+last_transition:
+  from_phase: "specification"
+  to_phase: "specification"
+  reason: >-
+    Human withdrew the synchronized-to-Sync-off request after confirming that
+    Sync now is a manual fallback and refresh action. The work item was
+    cancelled before implementation.
+
+spec_refs:
+  - "docs/product-requirements.md"
+  - "docs/functional-requirements.md"
+  - "docs/data-design.md"
+  - "docs/wear-os-integration-specification.md"
+  - "docs/screen-specification-and-navigation.md"
+  - "docs/localization-specification.md"
+  - "docs/test-plan-and-cases.md"
+  - "docs/system-architecture-design.md"
+
+affected_components:
+  - "BatteryNotifierAndroidMobileApp"
+  - "BatteryNotifierAndroidWearApp"
+  - "docs"
+
+phase_tasks:
+  specification:
+    status: "cancelled"
+    tasks:
+      - id: "SPEC-006-01"
+        title: "Define durable enabled/disabled synchronization semantics"
+        status: "cancelled"
+  implementation:
+    status: "cancelled_not_started"
+  review:
+    status: "cancelled_not_started"
+  test:
+    status: "cancelled_not_started"
+  human_verification:
+    status: "cancelled_not_started"
+
+decisions_needed: []
+
+decisions:
+  - id: "DEC-006-01"
+    status: "resolved_cancelled"
+    decision: >-
+      Keep Sync now as a manual fallback and refresh action; do not add a Sync
+      off action.
+    rationale: >-
+      Automatic synchronization is event-driven rather than a persistent sync
+      session, and the human explicitly withdrew the requested behavior.
+    decided_by: "user"
+    decided_at: "2026-08-09T19:08:55+09:00"
+
+blockers: []
+
+risks:
+  - id: "RISK-006-01"
+    description: >-
+      Deleting only the current DataItem would not be a durable disable action;
+      battery, setting, reconnect, process-restored, and Wear-request triggers
+      could publish it again.
+    mitigation: >-
+      Scope cancelled; no label-only toggle or synchronization-disable behavior
+      was implemented.
+    disposition: "closed_scope_cancelled"
+
+evidence:
+  - id: "EVID-006-01"
+    type: "inspection"
+    result: "observed"
+    summary: >-
+      The current SUCCESS state is screen-local presentation. Existing Mobile
+      sync triggers continue automatically, and no deleteDataItems or Wear
+      TYPE_DELETED handling exists in the inspected source.
+  - id: "EVID-006-02"
+    type: "human_decision"
+    result: "cancelled"
+    summary: >-
+      Human withdrew the synchronized-to-Sync-off button request. No
+      implementation is required.
+    recorded_at: "2026-08-09T19:08:55+09:00"
+    recorded_by: "codex"
+
+test_results: []
+
+loop_control:
+  same_cause_failure_limit: 3
+  phase_return_limit: 5
+  current_failure_signature: null
+  consecutive_same_cause_failures: 0
+  total_phase_returns: 0
+  attempts: []
+  termination_reason: null
+  resume_condition: null
+
+handoff:
+  summary: >-
+    Work item cancelled by the human before specification approval or
+    implementation. Sync now remains a manual fallback and refresh action.
+  next_role: null
+  first_action: null
+  gate_result: "cancelled"
+
+next_actions: []
+
+progress_reporting:
+  format_version: 1
+  current:
+    timestamp: "2026-08-09T19:08:55+09:00"
+    work_item: "BN-006"
+    role: "human"
+    phase: "specification"
+    actor: "user"
+    status: "cancelled"
+    completed:
+      - "Human explicitly withdrew the synchronized-to-Sync-off button request."
+      - "Confirmed no production code or normative specification was changed for BN-006."
+    in_progress: []
+    next: []
+    checks:
+      - "No automated check rerun required because BN-006 made no production-code change."
+    blockers: []
+  history:
+    - timestamp: "2026-08-09T18:50:00+09:00"
+      event: "specification_decision_requested"
+      role: "specification"
+      summary: >-
+        Created BN-006 and paused before implementation because Sync off has no
+        existing durable or deletion semantics.
+    - timestamp: "2026-08-09T19:08:55+09:00"
+      event: "scope_cancelled_by_human"
+      role: "human"
+      summary: >-
+        Human withdrew the Sync off request after confirming the purpose of
+        Sync now. No implementation was performed.
+
+updated_at: "2026-08-09T19:08:55+09:00"
+updated_by: "codex"

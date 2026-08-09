@@ -1,0 +1,432 @@
+schema_version: 1
+
+work_item:
+  id: "BN-005"
+  slug: "bn-005-mobile-sync-progress-feedback"
+  title: "Make Mobile manual-sync progress unambiguous"
+  scope: >-
+    Ensure the Mobile Phone battery sync section visibly enters and retains a
+    localized in-progress presentation while a user-initiated sync is running,
+    including a disabled action and non-text visual progress cue.
+
+status: "awaiting_human"
+current_phase: "human_verification"
+current_role: "human"
+current_actor:
+  type: "human"
+  id: "human"
+
+last_transition:
+  from_phase: "test"
+  to_phase: "human_verification"
+  reason: >-
+    Targeted regression, Mobile unit tests, lint, diff validation, review, and
+    assembleDebug passed for the updated usage guidance. TC-E090 remains Not Run
+    because installing and visually testing the new APK on the required device
+    was not performed without human direction.
+
+spec_refs:
+  - "docs/product-requirements.md"
+  - "docs/functional-requirements.md"
+  - "docs/screen-specification-and-navigation.md"
+  - "docs/localization-specification.md"
+  - "docs/test-plan-and-cases.md"
+
+affected_components:
+  - "BatteryNotifierAndroidMobileApp"
+  - "docs"
+
+traceability:
+  product_requirements:
+    - "PR-003"
+    - "PR-006"
+  functional_requirements:
+    - "FR-067"
+    - "FR-068"
+    - "FR-070"
+    - "FR-071"
+    - "FR-073"
+  acceptance_criteria:
+    - "AC-023"
+    - "AC-024"
+  test_cases:
+    - "TC-U036"
+    - "TC-E090"
+
+phase_tasks:
+  specification:
+    status: "completed"
+    tasks:
+      - id: "SPEC-005-01"
+        title: "Define the manual-sync in-progress presentation and acceptance criteria"
+        status: "completed"
+      - id: "SPEC-005-02"
+        title: "Define the user-facing purpose of the manual Sync now action"
+        status: "completed"
+  implementation:
+    status: "completed"
+    tasks:
+      - id: "IMP-005-01"
+        title: "Render and retain an unambiguous in-progress state"
+        status: "completed"
+      - id: "IMP-005-02"
+        title: "Add presentation regression tests and localized resources"
+        status: "completed"
+      - id: "IMP-005-03"
+        title: "Add localized manual-sync usage guidance"
+        status: "completed"
+  review:
+    status: "completed"
+  test:
+    status: "completed_with_human_case_pending"
+  human_verification:
+    status: "not_started"
+
+decisions_needed: []
+blockers: []
+review_findings:
+  - id: "RV-005-01"
+    severity: "Medium"
+    status: "closed_verified"
+    location: >-
+      BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/
+      batterynotifierandroidmobileapp/MainActivity.kt manual-sync coroutine
+    requirement: "FR-067 / AC-023"
+    scenario: >-
+      If battery refresh, DataStore, or Data Layer coordination throws a
+      non-cancellation exception, retainUntilResult exits before returning a UI
+      state and the Compose state remains SYNCING with its action disabled.
+    required_outcome: >-
+      Preserve structured cancellation, but map unexpected operational
+      exceptions to FAILED after the same minimum progress interval and cover
+      the exception branch with a deterministic regression test.
+    verification: >-
+      ManualSyncProgressRetainer rethrows CancellationException, maps other
+      Exception values to FAILED, applies the remaining minimum interval, and
+      deterministic tests cover both branches. Post-fix test/lint passed.
+risks:
+  - id: "RISK-005-01"
+    description: >-
+      A fast or synchronously completing manual-sync path can replace SYNCING
+      before Compose draws the intermediate state unless the UI thread is
+      released and a bounded minimum presentation interval is enforced.
+    mitigation: >-
+      Run the coordination work away from the UI dispatcher and retain the
+      in-progress state for a short specified minimum interval.
+
+evidence:
+  - id: "EVID-005-15"
+    type: "build"
+    result: "pass"
+    summary: >-
+      assembleDebug passed for application ID
+      com.magicitengineer.batterynotifier, versionCode 2, versionName 1.0,
+      debug signing, HEAD 342159fa0fe8872058abae648361cb8bc3f730ae plus the
+      recorded BN-005 worktree changes. Updated APK SHA-256 is
+      4F955430BED336424172297C91BEF0141A21E471AD2A2ABBC858A4A3C1AC109E.
+    recorded_at: "2026-08-09T20:09:19+09:00"
+    recorded_by: "codex"
+  - id: "EVID-005-14"
+    type: "review"
+    result: "pass"
+    summary: >-
+      Reviewed the IMP-005-03 increment against FR-068 and AC-024, both
+      localized resources, MainActivity placement, scrollable layout, and
+      synchronization behavior. Findings: Critical 0, High 0, Medium 0, Low 0.
+    recorded_at: "2026-08-09T20:06:41+09:00"
+    recorded_by: "codex"
+  - id: "EVID-005-13"
+    type: "implementation_gate"
+    result: "pass"
+    summary: >-
+      IMP-005-03 updated both localized mobile_sync_description resources.
+      TC-U036, Mobile test, Mobile lint, and git diff --check passed. No
+      synchronization behavior or persisted state changed.
+    recorded_at: "2026-08-09T20:05:33+09:00"
+    recorded_by: "codex"
+  - id: "EVID-005-12"
+    type: "automated_gate"
+    result: "pass"
+    summary: >-
+      Mobile debug and release unit-test gate completed BUILD SUCCESSFUL after
+      the localized usage-guidance update.
+    recorded_at: "2026-08-09T19:57:37+09:00"
+    recorded_by: "codex"
+  - id: "EVID-005-11"
+    type: "targeted_regression"
+    result: "pass"
+    summary: >-
+      ManualSyncUiStateTest passed after the localized usage-guidance change.
+      The first invocation was environment-blocked while Gradle attempted a
+      network download, then the approved rerun completed BUILD SUCCESSFUL.
+    recorded_at: "2026-08-09T19:56:12+09:00"
+    recorded_by: "codex"
+  - id: "EVID-005-10"
+    type: "specification"
+    result: "complete"
+    summary: >-
+      FR-068 and AC-024 define persistent Japanese and English guidance that
+      automatic synchronization is normal and Sync now is a manual fallback or
+      refresh. M-005, localization, and TC-E090 are consistent.
+    recorded_at: "2026-08-09T19:54:24+09:00"
+    recorded_by: "codex"
+  - id: "EVID-005-09"
+    type: "human_feedback"
+    result: "change_requested"
+    summary: >-
+      Human reported that the role of Sync now is unclear and requested an
+      explanatory sentence describing when to use it.
+    recorded_at: "2026-08-09T19:53:06+09:00"
+    recorded_by: "codex"
+  - id: "EVID-005-01"
+    type: "inspection"
+    result: "observed"
+    summary: >-
+      MainActivity sets SYNCING and immediately launches manual coordination
+      from the Compose UI scope; the same UI state may be replaced before a
+      frame displays it. Existing labels already contain in-progress wording.
+  - id: "EVID-005-02"
+    type: "automated_test"
+    result: "pass"
+    summary: >-
+      TC-U036 presentation mapping and minimum-duration regressions passed via
+      the targeted ManualSyncUiStateTest Gradle invocation.
+  - id: "EVID-005-03"
+    type: "automated_gate"
+    result: "pass"
+    summary: >-
+      Mobile debug/release unit-test gate and Mobile lint gate completed with
+      BUILD SUCCESSFUL; git diff --check also passed.
+  - id: "EVID-005-04"
+    type: "impact_analysis"
+    result: "complete"
+    summary: >-
+      The transition matrix covers fast/slow completion, duplicate taps,
+      classified results, Activity recreation, retry, disconnect, and sibling
+      background/settings/monitoring paths. No persisted field or transport
+      behavior changed.
+  - id: "EVID-005-05"
+    type: "review_fix_regression"
+    result: "pass"
+    summary: >-
+      RV-005-01 targeted regressions prove operational exceptions map to FAILED
+      after the remaining minimum interval while CancellationException
+      propagates without waiting.
+  - id: "EVID-005-06"
+    type: "review"
+    result: "pass"
+    summary: >-
+      Reviewed the complete BN-005 worktree diff, runtime click-to-result path,
+      transition matrix, exception/cancellation fix, duplicate-tap behavior,
+      Activity recreation, progress accessibility cue, localized resources,
+      and post-fix automated gates. Findings: Critical 0, High 0, Medium 0 open,
+      Low 0. Review-to-Test gate passed.
+  - id: "EVID-005-07"
+    type: "test_environment"
+    result: "human_case_pending"
+    summary: >-
+      A Pixel 10 Pro Fold and Pixel Watch 4 were detected without recording
+      identifiers. The installed Mobile APK did not match the worktree debug
+      APK, so TC-E090 was not run against the wrong build and no unapproved
+      overwrite installation was performed.
+  - id: "EVID-005-08"
+    type: "build"
+    result: "pass"
+    summary: >-
+      assembleDebug passed for application ID
+      com.magicitengineer.batterynotifier, versionCode 2, versionName 1.0,
+      debug signing, HEAD 342159fa0fe8872058abae648361cb8bc3f730ae plus the
+      recorded BN-005 worktree changes. APK SHA-256 is
+      0445B4ED11A4CEA50D21822751FD47EB0CADA6387FE6DA77A90A74FB8E228339.
+
+test_results:
+  - id: "TC-U036"
+    status: "pass"
+    evidence: >-
+      2026-08-09 19:56 JST: .\gradlew.bat testDebugUnitTest --tests
+      "com.magicitengineer.batterynotifierandroidmobileapp.presentation.ManualSyncUiStateTest"
+      '-Pkotlin.compiler.execution.strategy=in-process' -> BUILD SUCCESSFUL.
+  - id: "TC-E090"
+    status: "not_run"
+    evidence: >-
+      The updated worktree debug APK was assembled but not installed or visually
+      tested on Pixel 10 Pro Fold. Installing over the user's app was not
+      performed without human direction. Required next: install the identified
+      APK, then observe the Japanese and English automatic-sync/fallback usage
+      guidance, maximum-font readability, disabled button, progress indicator,
+      syncing action/status text, 500ms minimum display, and result transition.
+  - id: "MOBILE-UNIT-GATE"
+    status: "pass"
+    evidence: >-
+      2026-08-09 19:57 JST: .\gradlew.bat --no-daemon test
+      '-Pkotlin.compiler.execution.strategy=in-process' -> BUILD SUCCESSFUL.
+  - id: "MOBILE-LINT-GATE"
+    status: "pass"
+    evidence: >-
+      2026-08-09 20:04 JST: .\gradlew.bat lint
+      '-Pkotlin.compiler.execution.strategy=in-process' -> BUILD SUCCESSFUL.
+  - id: "MOBILE-ASSEMBLE-DEBUG"
+    status: "pass"
+    evidence: >-
+      2026-08-09 20:08 JST: .\gradlew.bat assembleDebug
+      '-Pkotlin.compiler.execution.strategy=in-process' -> BUILD SUCCESSFUL;
+      APK SHA-256
+      4F955430BED336424172297C91BEF0141A21E471AD2A2ABBC858A4A3C1AC109E.
+
+loop_control:
+  same_cause_failure_limit: 3
+  phase_return_limit: 5
+  current_failure_signature: null
+  consecutive_same_cause_failures: 0
+  total_phase_returns: 2
+  attempts: []
+  termination_reason: null
+  resume_condition: null
+
+handoff:
+  summary: >-
+    Automated/Test totals: Pass 4 (TC-U036, Mobile unit gate, Mobile lint,
+    assembleDebug), Fail 0, Blocked 0, Not Run 1 (TC-E090). The updated debug
+    APK is identified. Human verification must check Japanese and English usage
+    guidance plus the existing progress presentation on Pixel 10 Pro Fold.
+  next_role: "human"
+  first_action: >-
+    Install BatteryNotifierAndroidMobileApp/app/build/outputs/apk/debug/app-debug.apk
+    on Pixel 10 Pro Fold and execute TC-E090 in Japanese, English, and maximum
+    font, preserving or replacing existing app data only with human approval.
+
+next_actions:
+  - "Human installs the identified worktree APK and executes TC-E090 in Japanese and English."
+  - "Human confirms the longer guidance remains readable at maximum font and records approval or exact observations."
+
+progress_reporting:
+  format_version: 1
+  current:
+    timestamp: "2026-08-09T20:09:19+09:00"
+    work_item: "BN-005"
+    role: "human"
+    phase: "human_verification"
+    actor: "human"
+    status: "awaiting_human"
+    completed:
+      - "Completed IMP-005-03 Japanese and English usage guidance."
+      - "TC-U036, Mobile test, Mobile lint, and git diff --check passed."
+      - "Review gate passed with no findings."
+      - "assembleDebug passed and the updated APK was identified."
+    in_progress: []
+    next:
+      - "Install the identified APK and execute TC-E090 in Japanese, English, and maximum font."
+    checks:
+      - "Source and specification inspection: observed"
+      - "Specification gate: pass; decisions 0, blockers 0"
+      - "TC-U036 targeted ManualSyncUiStateTest: pass"
+      - "Mobile test: pass"
+      - "Mobile lint: pass"
+      - "git diff --check: pass"
+      - "Review gate: pass; open findings 0"
+      - "assembleDebug: pass"
+      - "TC-E090: not_run; updated APK was not installed for visual verification"
+    blockers: []
+  history:
+    - timestamp: "2026-08-09T18:06:42+09:00"
+      event: "specification_started"
+      role: "specification"
+      summary: "Created BN-005 from the human-reported Mobile sync progress feedback defect."
+    - timestamp: "2026-08-09T18:15:00+09:00"
+      event: "specification_to_implementation_handoff"
+      role: "specification"
+      summary: >-
+        Specification gate passed with FR-067, AC-023, TC-U036, and TC-E090;
+        implementation begins with no open decision or blocker.
+    - timestamp: "2026-08-09T18:24:00+09:00"
+      event: "targeted_test_passed"
+      role: "implementation"
+      summary: >-
+        TC-U036 passed for disabled/progress/syncing resources and both fast
+        and slow result timing branches. Initial Gradle distribution download
+        was environment-blocked, then succeeded through the approved path.
+    - timestamp: "2026-08-09T18:26:00+09:00"
+      event: "implementation_to_review_handoff"
+      role: "implementation"
+      summary: >-
+        IMP-005-01/02 completed. Targeted regression, Mobile test, Mobile lint,
+        and diff validation passed; TC-E090 remains not_run for test/human evidence.
+    - timestamp: "2026-08-09T18:28:00+09:00"
+      event: "review_finding_returned_to_implementation"
+      role: "review"
+      summary: >-
+        RV-005-01 Medium: an unexpected non-cancellation exception can leave
+        SYNCING permanently active. Review returned the item to implementation;
+        total_phase_returns is now 1/5.
+    - timestamp: "2026-08-09T18:31:00+09:00"
+      event: "review_fix_targeted_test_passed"
+      role: "implementation"
+      summary: >-
+        RV-005-01 fix maps operational exceptions to FAILED and preserves
+        structured cancellation. The targeted exception/cancellation tests passed.
+    - timestamp: "2026-08-09T18:34:00+09:00"
+      event: "review_fix_returned_for_verification"
+      role: "implementation"
+      summary: >-
+        RV-005-01 targeted regression and post-fix Mobile test/lint gates passed;
+        the finding is returned to review for closure.
+    - timestamp: "2026-08-09T18:36:00+09:00"
+      event: "review_to_test_handoff"
+      role: "review"
+      summary: >-
+        RV-005-01 closed verified. Complete diff and runtime lifecycle/timing
+        paths reviewed with no open finding; Review-to-Test gate passed.
+    - timestamp: "2026-08-09T18:44:37+09:00"
+      event: "test_to_human_handoff"
+      role: "test"
+      summary: >-
+        Pass 4, Fail 0, Blocked 0, Not Run 1. The worktree APK differs from the
+        installed Pixel 10 Pro Fold APK; no unapproved install was performed.
+        TC-E090 is handed to human verification with exact build identity.
+    - timestamp: "2026-08-09T19:53:06+09:00"
+      event: "human_feedback_returned_to_specification"
+      role: "specification"
+      summary: >-
+        Human requested an explanation of when to use Sync now. The item returns
+        to specification and total_phase_returns is now 2/5.
+    - timestamp: "2026-08-09T19:54:24+09:00"
+      event: "specification_to_implementation_handoff"
+      role: "specification"
+      summary: >-
+        FR-068, AC-024, M-005, localization wording, and TC-E090 are consistent;
+        implementation begins with no open decision or blocker.
+    - timestamp: "2026-08-09T19:56:12+09:00"
+      event: "targeted_regression_passed"
+      role: "implementation"
+      summary: >-
+        TC-U036 passed after the localized usage-guidance update. An initial
+        Gradle distribution download was environment-blocked, then the approved
+        rerun completed successfully.
+    - timestamp: "2026-08-09T19:57:37+09:00"
+      event: "mobile_unit_gate_passed"
+      role: "implementation"
+      summary: >-
+        Mobile debug and release unit tests completed BUILD SUCCESSFUL after the
+        localized usage-guidance update.
+    - timestamp: "2026-08-09T20:05:33+09:00"
+      event: "implementation_to_review_handoff"
+      role: "implementation"
+      summary: >-
+        IMP-005-03 completed with targeted test, Mobile test, Mobile lint, and
+        diff validation passing. Review begins with no open blocker.
+    - timestamp: "2026-08-09T20:06:41+09:00"
+      event: "review_to_test_handoff"
+      role: "review"
+      summary: >-
+        IMP-005-03 wording, placement, layout risk, and behavior isolation were
+        reviewed with no findings. Test begins with the updated debug build.
+    - timestamp: "2026-08-09T20:09:19+09:00"
+      event: "test_to_human_handoff"
+      role: "test"
+      summary: >-
+        Pass 4, Fail 0, Blocked 0, Not Run 1. Updated APK build and hash were
+        recorded; TC-E090 usage-guidance and progress UI checks require human
+        verification on Pixel 10 Pro Fold.
+
+updated_at: "2026-08-09T20:09:19+09:00"
+updated_by: "codex"

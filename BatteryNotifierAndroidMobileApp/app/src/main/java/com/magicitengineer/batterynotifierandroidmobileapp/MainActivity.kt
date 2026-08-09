@@ -12,11 +12,15 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -28,6 +32,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -42,6 +47,7 @@ import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.Mobile
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.AlertRule
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.notification.MobileNotificationDisposition
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.ManualSyncUiState
+import com.magicitengineer.batterynotifierandroidmobileapp.presentation.ManualSyncProgressRetainer
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.MonitoringCommandUiState
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.NotificationPermissionUiState
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.ThresholdSaveUiState
@@ -49,11 +55,14 @@ import com.magicitengineer.batterynotifierandroidmobileapp.presentation.notifica
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.batteryAlertNotificationsEnabled
 import com.magicitengineer.batterynotifierandroidmobileapp.platform.notification.AndroidMobileAlertNotificationFactory
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.toManualSyncUiState
+import com.magicitengineer.batterynotifierandroidmobileapp.presentation.toPresentation
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.toMonitoringCommandUiState
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.toUiResult
 import com.magicitengineer.batterynotifierandroidmobileapp.ui.theme.BatteryNotifierAndroidMobileAppTheme
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
@@ -65,6 +74,7 @@ class MainActivity : ComponentActivity() {
     private val monitoringController by lazy {
         MobileAppContainer.monitoringController(this)
     }
+    private val manualSyncProgressRetainer = ManualSyncProgressRetainer()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -87,7 +97,7 @@ class MainActivity : ComponentActivity() {
                         mutableStateOf(ThresholdSaveUiState.IDLE)
                     }
                     var currentAtOrBelowThreshold by rememberSaveable { mutableStateOf(false) }
-                    var syncState by rememberSaveable {
+                    var syncState by remember {
                         mutableStateOf(ManualSyncUiState.IDLE)
                     }
                     var monitoringCommandState by rememberSaveable {
@@ -124,10 +134,14 @@ class MainActivity : ComponentActivity() {
                         onSync = {
                             syncState = ManualSyncUiState.SYNCING
                             scope.launch {
-                                syncState = MobileAppContainer
-                                    .runtimeTriggerHandler(this@MainActivity)
-                                    .onManualSync()
-                                    .toManualSyncUiState()
+                                syncState = withContext(Dispatchers.IO) {
+                                    manualSyncProgressRetainer.retainUntilResult {
+                                        MobileAppContainer
+                                            .runtimeTriggerHandler(this@MainActivity)
+                                            .onManualSync()
+                                            .toManualSyncUiState()
+                                    }
+                                }
                             }
                         },
                         onMonitoringToggle = {
@@ -427,19 +441,22 @@ private fun SettingsAndSyncScreen(
                 style = MaterialTheme.typography.headlineMedium,
             )
             Text(text = stringResource(R.string.mobile_sync_description))
+            val syncPresentation = syncState.toPresentation()
             Button(
-                enabled = syncState != ManualSyncUiState.SYNCING,
+                enabled = syncPresentation.actionEnabled,
                 onClick = onSync,
             ) {
-                Text(
-                    text = if (syncState == ManualSyncUiState.SYNCING) {
-                        stringResource(R.string.mobile_sync_in_progress)
-                    } else {
-                        stringResource(R.string.mobile_sync_action)
-                    },
-                )
+                if (syncPresentation.showProgress) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp,
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Text(text = stringResource(syncPresentation.actionLabelResource))
             }
-            Text(text = stringResource(syncState.messageResource()))
+            Text(text = stringResource(syncPresentation.statusMessageResource))
         }
     }
 }
@@ -451,15 +468,6 @@ private fun ThresholdSaveUiState.messageResource(): Int = when (this) {
     ThresholdSaveUiState.SAVED_SYNC_PENDING -> R.string.threshold_saved_sync_pending
     ThresholdSaveUiState.SAVED_SYNC_FAILED -> R.string.threshold_saved_sync_failed
     ThresholdSaveUiState.INVALID_THRESHOLD -> R.string.threshold_invalid
-}
-
-private fun ManualSyncUiState.messageResource(): Int = when (this) {
-    ManualSyncUiState.IDLE -> R.string.mobile_sync_idle
-    ManualSyncUiState.SYNCING -> R.string.mobile_sync_in_progress
-    ManualSyncUiState.SUCCESS -> R.string.mobile_sync_success
-    ManualSyncUiState.FAILED -> R.string.mobile_sync_failed
-    ManualSyncUiState.BATTERY_UNAVAILABLE -> R.string.mobile_sync_battery_unavailable
-    ManualSyncUiState.INVALID_BATTERY_INPUT -> R.string.mobile_sync_invalid_battery
 }
 
 private fun MonitoringCommandUiState.messageResource(): Int = when (this) {

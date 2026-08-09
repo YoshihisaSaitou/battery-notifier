@@ -48,10 +48,11 @@
     <string name="mobile_notification_permission_denied">通知が許可されていないため、スマートフォンの電池通知を表示できません。システム設定で通知を許可してください。</string>
     <string name="mobile_notification_failed">直近のスマートフォン電池通知を表示できませんでした。電池状態の保存とウォッチ同期は継続します。</string>
     <string name="mobile_sync_title">スマートフォンの電池同期</string>
-    <string name="mobile_sync_description">スマートフォンの現在の電池状態をペア設定済みのウォッチへ送信します。</string>
+    <string name="mobile_sync_description">電池状態は通常、ペア設定済みのウォッチへ自動で同期されます。「今すぐ同期」は、自動同期されない場合や最新の状態に更新したい場合に使用します。</string>
     <string name="mobile_sync_action">今すぐ同期</string>
     <string name="mobile_sync_idle">同期できます。</string>
     <string name="mobile_sync_in_progress">同期しています…</string>
+    <string name="mobile_sync_in_progress_status">スマートフォンの電池状態を同期しています。</string>
     <string name="mobile_sync_success">現在の電池状態をウォッチ同期用に保存しました。</string>
     <string name="mobile_sync_failed">現在の電池状態を送信できませんでした。ウォッチの接続後に再試行してください。</string>
     <string name="mobile_sync_battery_unavailable">現在の電池状態を取得できません。</string>

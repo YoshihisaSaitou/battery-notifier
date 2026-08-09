@@ -49,6 +49,7 @@ data_delayed
 data_stale
 last_updated_minutes_ago
 sync_now
+syncing_phone_battery
 allow_notifications
 change_threshold
 save_threshold
@@ -80,6 +81,8 @@ retry_full_charge_setting_change
 | Stale | 古いデータの可能性 | Data may be outdated |
 | Monitoring | 監視 | Monitoring |
 | Sync | 同期 | Sync |
+| 手動同期の用途 | 電池状態は通常、自動でウォッチへ同期されます。「今すぐ同期」は、自動同期されない場合や最新の状態に更新したい場合に使用します。 | Battery state normally syncs to the watch automatically. Use Sync now if automatic sync does not occur or you want to refresh the latest state. |
+| 手動同期中 | スマートフォンの電池状態を同期しています。 | Syncing the phone battery state. |
 | 未確定 | まだ保存されていません | Not saved yet |
 | 競合 | スマートフォンで設定が変更されました | Setting changed on phone |
 | 満充電通知 | 満充電になったら通知 | Notify when fully charged |

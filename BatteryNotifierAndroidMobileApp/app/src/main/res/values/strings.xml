@@ -49,10 +49,11 @@
     <string name="mobile_notification_permission_denied">Phone battery alerts are unavailable because notifications are not allowed. Enable notifications in system settings.</string>
     <string name="mobile_notification_failed">The last phone battery alert could not be posted. Battery state and watch synchronization continue.</string>
     <string name="mobile_sync_title">Phone battery sync</string>
-    <string name="mobile_sync_description">Send the phone’s current battery state to the paired watch.</string>
+    <string name="mobile_sync_description">Battery state normally syncs to the paired watch automatically. Use Sync now if automatic sync does not occur or you want to refresh the latest state.</string>
     <string name="mobile_sync_action">Sync now</string>
     <string name="mobile_sync_idle">Ready to sync.</string>
     <string name="mobile_sync_in_progress">Syncing…</string>
+    <string name="mobile_sync_in_progress_status">Syncing the phone battery state.</string>
     <string name="mobile_sync_success">The current battery state is ready to sync with the watch.</string>
     <string name="mobile_sync_failed">Could not send the current battery state. Try again when the watch is connected.</string>
     <string name="mobile_sync_battery_unavailable">The current battery state is unavailable.</string>

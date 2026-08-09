@@ -9,6 +9,7 @@ data class ReceivedPhoneState(
     val thresholdPercent: Int,
     val monitoringEnabled: Boolean,
     val sentAtEpochMillis: Long,
+    val fullChargeNotificationEnabled: Boolean = false,
 ) {
     init {
         require(schemaVersion == SUPPORTED_SCHEMA_VERSION)
@@ -20,6 +21,11 @@ data class ReceivedPhoneState(
     }
 }
 
+enum class AlertEventKind(val persistedValue: String) {
+    LOW_BATTERY("low_battery"),
+    FULL_CHARGE("full_charge"),
+}
+
 data class ReceivedThresholdEvent(
     val schemaVersion: Int,
     val eventId: String,
@@ -28,6 +34,7 @@ data class ReceivedThresholdEvent(
     val thresholdPercent: Int,
     val occurredAtEpochMillis: Long,
     val expiresAtEpochMillis: Long,
+    val kind: AlertEventKind = AlertEventKind.LOW_BATTERY,
 ) {
     init {
         require(schemaVersion == SUPPORTED_SCHEMA_VERSION)

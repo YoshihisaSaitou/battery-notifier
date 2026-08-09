@@ -6,6 +6,8 @@ import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.
 import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.MobileNotificationDispositionProto
 import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.ThresholdReachedEventProto
 import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.ThresholdChangeResultProto
+import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.AlertEventKindProto
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.AlertEventKind
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.AlertRule
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.AlertState
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.ThresholdReachedEvent
@@ -25,6 +27,7 @@ object MobileStateProtoMapper {
                 monitoringEnabled = safe.monitoringEnabled,
                 notifyIfAlreadyBelowOnStart = safe.notifyIfAlreadyBelowOnStart,
                 rearmHysteresisPercent = safe.rearmHysteresisPercent,
+                fullChargeNotificationEnabled = safe.fullChargeNotificationEnabled,
             ),
             onboardingCompleted = safe.onboardingCompleted,
             resumeRequired = safe.resumeRequired,
@@ -51,6 +54,7 @@ object MobileStateProtoMapper {
             } else {
                 null
             },
+            fullChargeArmed = safe.fullChargeArmed,
         )
     }
 
@@ -64,6 +68,8 @@ object MobileStateProtoMapper {
             .setNotificationPermissionRequested(state.notificationPermissionRequested)
             .setNotifyIfAlreadyBelowOnStart(state.alertRule.notifyIfAlreadyBelowOnStart)
             .setRearmHysteresisPercent(state.alertRule.rearmHysteresisPercent)
+            .setFullChargeNotificationEnabled(state.alertRule.fullChargeNotificationEnabled)
+            .setFullChargeArmed(state.fullChargeArmed)
             .setSequence(state.sequence)
             .setAlertState(state.alertState.toProto())
             .setLastMobileNotifiedEventId(state.lastMobileNotifiedEventId.orEmpty())
@@ -120,6 +126,10 @@ object MobileStateProtoMapper {
         occurredAtEpochMillis = occurredAtEpochMillis,
         expiresAtEpochMillis = expiresAtEpochMillis,
         sequence = sequence,
+        kind = when (kind) {
+            AlertEventKindProto.ALERT_EVENT_KIND_FULL_CHARGE -> AlertEventKind.FULL_CHARGE
+            else -> AlertEventKind.LOW_BATTERY
+        },
     )
 
     private fun ThresholdReachedEvent.toProto() = ThresholdReachedEventProto.newBuilder()
@@ -129,6 +139,12 @@ object MobileStateProtoMapper {
         .setOccurredAtEpochMillis(occurredAtEpochMillis)
         .setExpiresAtEpochMillis(expiresAtEpochMillis)
         .setSequence(sequence)
+        .setKind(
+            when (kind) {
+                AlertEventKind.LOW_BATTERY -> AlertEventKindProto.ALERT_EVENT_KIND_LOW_BATTERY
+                AlertEventKind.FULL_CHARGE -> AlertEventKindProto.ALERT_EVENT_KIND_FULL_CHARGE
+            }
+        )
         .build()
 
     private fun ThresholdChangeResultProto.toDomain() = ThresholdChangeResult(

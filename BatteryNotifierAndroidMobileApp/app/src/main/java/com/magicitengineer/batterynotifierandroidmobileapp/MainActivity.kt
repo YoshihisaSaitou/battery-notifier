@@ -21,6 +21,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -31,6 +32,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -143,6 +145,12 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         },
+                        onFullChargeNotificationToggle = { enabled ->
+                            scope.launch {
+                                thresholdSettingsController
+                                    .saveFullChargeNotificationEnabled(enabled)
+                            }
+                        },
                         onNotificationPermissionAction = {
                             when (notificationPermissionState) {
                                 NotificationPermissionUiState.REQUEST_AVAILABLE ->
@@ -244,6 +252,7 @@ private fun SettingsAndSyncScreen(
     onSaveThreshold: () -> Unit,
     onSync: () -> Unit,
     onMonitoringToggle: () -> Unit,
+    onFullChargeNotificationToggle: (Boolean) -> Unit,
     onNotificationPermissionAction: () -> Unit,
 ) {
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
@@ -289,6 +298,21 @@ private fun SettingsAndSyncScreen(
                 )
             }
             Text(text = stringResource(monitoringCommandState.messageResource()))
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.full_charge_notification_title),
+                    modifier = Modifier.weight(1f),
+                )
+                Switch(
+                    checked = settings.fullChargeNotificationEnabled,
+                    onCheckedChange = onFullChargeNotificationToggle,
+                )
+            }
+            Text(text = stringResource(R.string.full_charge_notification_description))
 
             HorizontalDivider()
 

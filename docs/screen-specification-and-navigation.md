@@ -3,7 +3,7 @@
 文書ID: UIS-001  
 版: 0.1  
 状態: Draft  
-最終更新: 2026-07-29
+最終更新: 2026-08-09
 
 ## 1. Mobile画面一覧
 
@@ -44,6 +44,7 @@
 - 保存は明示ボタン方式とし、連続ドラッグ中にData Layerへ大量送信しない。
 - 監視ON/OFF。ONはユーザーのタップを起点にFGSを開始する。
 - 現在値以下へしきい値を上げた場合の挙動を説明する。
+- `満充電になったら通知 / Notify when fully charged`のSwitchを表示する。既定OFFで、変更はMobileへ即時永続化し、現在状態とともにWearへ同期する。
 
 ### M-005 Wear連携
 
@@ -66,6 +67,7 @@
 | W-003 | 通知権限 | Wear通知の説明と権限要求 |
 | W-004 | 情報 | アプリ版、最終受信、schema、Mobileで設定する案内 |
 | W-005 | しきい値編集 | Wear固有の非セグメント型スライダーによる5～100%・1%刻みの下書き、減少・増加操作、保存、送信中、未保存、競合、再試行 |
+| W-006 | 満充電通知設定 | Mobile確定済みON/OFF、変更要求、送信中、同期確認中、未保存、競合、再試行、破棄 |
 
 v1.0ではWear上のしきい値編集を行わない。BN-002のv1.1提案ではW-005からMobileへ変更を要求するが、設定の正本と永続化writerはMobileへ一本化する。
 
@@ -103,10 +105,12 @@ flowchart TD
     NeedPermission -->|Yes| Permission["W-003 通知権限"]
     Status --> About["W-004 情報"]
     Status --> Threshold["W-005 しきい値編集"]
+    Status --> FullCharge["W-006 満充電通知設定"]
     Help -->|再試行| Status
     Permission --> Status
     About --> Status
     Threshold -->|適用結果・戻る| Status
+    FullCharge -->|適用結果・戻る| Status
 ```
 
 ### W-005 しきい値編集（BN-002提案）
@@ -117,6 +121,13 @@ flowchart TD
 - Message送信成功だけを「保存済み」と表示しない。Mobile結果とphone-stateの収束を別状態で示す。
 - 切断/送信失敗では未保存、結果喪失では結果不明、競合ではMobile有効値を示し、それぞれ復旧操作を併記する。
 - No Dataまたは対応Mobile capabilityなしでは保存を無効にし、W-002へ案内する。
+
+### W-006 満充電通知設定（BN-004）
+
+- W-001の確定済みON/OFFから遷移し、切替は明示的なユーザー要求として扱う。
+- Message送信成功だけでは確定表示を変更せず、後続phone-stateでON/OFFを更新する。
+- 切断または送信失敗では現在の確定表示を維持し、再接続後も自動送信しない。ユーザーが切替を再操作する。
+- 旧Mobile、No Data、対応Capabilityなしでは操作を無効化し、Mobile更新/接続案内を表示する。
 
 ## 5. Fold対応
 

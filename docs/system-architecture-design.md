@@ -3,7 +3,7 @@
 文書ID: SAD-001  
 版: 0.1  
 状態: Draft  
-最終更新: 2026-07-29
+最終更新: 2026-08-09
 
 ## 1. アーキテクチャ方針
 
@@ -46,6 +46,7 @@ Data Layerは配送路であり永続ストレージではない。各端末は�
 |---|---|---|
 | Battery Monitoring | OS電池値の取得・正規化 | `BatterySnapshot` |
 | Alerting | しきい値、再アーム、通知イベント | `AlertRule`, `AlertState`, `ThresholdReachedEvent` |
+| Full-charge Alerting | 充電セッション、満充電arm、通知イベント | `FullChargeAlertState`, `FullChargeReachedEvent` |
 | Wear Synchronization | DTO検証、順序、送受信、再接続 | `BatterySyncEnvelope`, `SyncCursor` |
 | Presentation | 画面状態、鮮度、ローカライズ | `BatteryUiState`, `Freshness` |
 
@@ -135,6 +136,14 @@ Mobile/Wearのapplication IDと署名は一致させる。現在の雛形は異�
 6. Mobileはphone-stateと要求結果を送る。Wearは結果だけで新しい正本を作らず、phone-stateへ収束する。
 
 WearからMobile DataStoreを直接更新する境界は作らない。Wearの未確定要求はUI復旧用であり、設定の正本ではない。
+
+### 7.2 満充電通知とWear起点設定（BN-004）
+
+1. Mobileの同じBatterySnapshot処理内で、低残量判定と独立した純粋domain ruleが充電セッションごとの満充電到達を評価する。
+2. Mobile DataStoreは満充電arm、event、sequence、通知/sync outboxを低残量状態と同じtransactionで保存する。
+3. MobileとWearのnotification adapterはイベント種別ごとの処理済み状態を使い、互いのeventを上書きしない。
+4. WearのON/OFF操作は専用MessageClient要求としてMobileへ送り、ADR-015と同じMobile単一writer、期待値競合、結果永続化、明示再試行境界を使う。
+5. phone-stateの任意booleanで確定値を同期し、旧Mobile/旧Wearはfalseまたは未知path無視で安全に共存する。
 
 ## 8. 並行処理
 

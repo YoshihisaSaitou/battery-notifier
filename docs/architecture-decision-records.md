@@ -2,7 +2,7 @@
 
 文書ID: ADR-INDEX  
 版: 0.1  
-最終更新: 2026-07-29
+最終更新: 2026-08-09
 
 ## 運用
 
@@ -164,3 +164,13 @@ handoff_notes: ""
 - [Android architecture recommendations](https://developer.android.com/topic/architecture/recommendations)
 - [DataStore](https://developer.android.com/topic/libraries/architecture/datastore)
 - [Wear Data Layer](https://developer.android.com/training/wearables/data/overview)
+
+## ADR-016 満充電通知設定もMobile単一writerと明示的MessageClient要求を使う
+
+- **状態**: Accepted（2026-08-09、人間のBN-004機能指示と既存単一writer制約に基づく）
+- **文脈**: MobileとWearの両方から満充電通知をON/OFFしたいが、Wearを第二writerにすると切断中変更、同時編集、再起動、通知arm状態との原子性に新しい競合解決が必要になる。
+- **決定**: 有効設定と充電セッション判定はMobile Proto DataStoreを唯一の正本とする。Wearは専用MessageClient pathで`requestId`、要求boolean、期待booleanを送る。Mobileが完全検証、競合判定、設定・満充電arm・sequence・outboxの原子的保存を行い、phone-stateで確定値を返す。
+- **切断/再起動**: command DataItemや自動再送を使わず、現在の確定表示を維持してユーザーの明示再操作を待つ。
+- **イベント互換性**: 満充電イベントは低残量イベントとは別の固定DataItem pathを使い、phone-stateのbooleanはBN-004以前のpayloadで欠落可能な任意fieldとしてfalseへfallbackする。
+- **理由**: ADR-015の検証済み単一writer/冪等要求モデルを再利用し、99/100の揺れを充電セッション状態で一元管理できる。新権限、外部サービス、署名、application ID変更を要しない。
+- **結果**: Mobile/Wear Proto、domain、通知outbox、message contract、日英UI、単体/contract/E2E/必須実機試験を更新する。

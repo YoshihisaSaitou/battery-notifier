@@ -15,6 +15,7 @@ import com.magicitengineer.batterynotifierandroidwearapp.application.notificatio
 import com.magicitengineer.batterynotifierandroidwearapp.application.notification.WearNotificationGateway
 import com.magicitengineer.batterynotifierandroidwearapp.application.notification.WearNotificationPostResult
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.ReceivedThresholdEvent
+import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.AlertEventKind
 import com.magicitengineer.batterynotifierandroidwearapp.presentation.MainActivity
 
 const val BATTERY_ALERT_CHANNEL_ID = "battery_alerts"
@@ -50,16 +51,24 @@ class AndroidWearNotificationGateway(
         val notification = Notification.Builder(applicationContext, BATTERY_ALERT_CHANNEL_ID)
             .setSmallIcon(R.drawable.splash_icon)
             .setContentTitle(
-                applicationContext.getString(
-                    R.string.phone_battery_alert_title,
-                    event.levelPercent,
-                )
+                if (event.kind == AlertEventKind.FULL_CHARGE) {
+                    applicationContext.getString(R.string.full_charge_reached_title)
+                } else {
+                    applicationContext.getString(
+                        R.string.phone_battery_alert_title,
+                        event.levelPercent,
+                    )
+                }
             )
             .setContentText(
-                applicationContext.getString(
-                    R.string.phone_battery_alert_body,
-                    event.thresholdPercent,
-                )
+                if (event.kind == AlertEventKind.FULL_CHARGE) {
+                    applicationContext.getString(R.string.full_charge_reached_body)
+                } else {
+                    applicationContext.getString(
+                        R.string.phone_battery_alert_body,
+                        event.thresholdPercent,
+                    )
+                }
             )
             .setContentIntent(openApp)
             .setAutoCancel(true)

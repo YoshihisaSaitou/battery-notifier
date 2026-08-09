@@ -13,6 +13,7 @@ import com.magicitengineer.batterynotifierandroidwearapp.domain.state.WearPersis
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.NotificationDisposition
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.ReceivedPhoneState
 import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.ReceivedThresholdEvent
+import com.magicitengineer.batterynotifierandroidwearapp.domain.sync.AlertEventKind
 
 object WearStateProtoMapper {
     fun toDomain(proto: WearStateProto): WearPersistentState {
@@ -97,6 +98,7 @@ object WearStateProtoMapper {
         thresholdPercent = thresholdPercent,
         monitoringEnabled = monitoringEnabled,
         sentAtEpochMillis = sentAtEpochMillis,
+        fullChargeNotificationEnabled = fullChargeNotificationEnabled,
     )
 
     private fun ReceivedPhoneState.toProto() = PhoneStateProto.newBuilder()
@@ -108,6 +110,7 @@ object WearStateProtoMapper {
         .setThresholdPercent(thresholdPercent)
         .setMonitoringEnabled(monitoringEnabled)
         .setSentAtEpochMillis(sentAtEpochMillis)
+        .setFullChargeNotificationEnabled(fullChargeNotificationEnabled)
         .build()
 
     private fun ThresholdEventProto.toDomain() = ReceivedThresholdEvent(
@@ -118,6 +121,8 @@ object WearStateProtoMapper {
         thresholdPercent = thresholdPercent,
         occurredAtEpochMillis = occurredAtEpochMillis,
         expiresAtEpochMillis = expiresAtEpochMillis,
+        kind = AlertEventKind.entries.firstOrNull { it.persistedValue == eventKind }
+            ?: AlertEventKind.LOW_BATTERY,
     )
 
     private fun ReceivedThresholdEvent.toProto() = ThresholdEventProto.newBuilder()
@@ -128,6 +133,7 @@ object WearStateProtoMapper {
         .setThresholdPercent(thresholdPercent)
         .setOccurredAtEpochMillis(occurredAtEpochMillis)
         .setExpiresAtEpochMillis(expiresAtEpochMillis)
+        .setEventKind(kind.persistedValue)
         .build()
 
     private fun ThresholdChangeRequestProto.toDomain() = ThresholdChangeRequest(

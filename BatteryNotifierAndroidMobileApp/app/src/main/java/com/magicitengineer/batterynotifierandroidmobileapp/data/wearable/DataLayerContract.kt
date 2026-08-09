@@ -1,6 +1,7 @@
 package com.magicitengineer.batterynotifierandroidmobileapp.data.wearable
 
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.ThresholdReachedEvent
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.AlertEventKind
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.sync.PhoneStateSync
 import java.util.UUID
 
@@ -8,12 +9,17 @@ object BatteryDataLayerContractV1 {
     const val SCHEMA_VERSION = 1
     const val PHONE_STATE_PATH = "/battery-notifier/v1/phone-state"
     const val THRESHOLD_EVENT_PATH = "/battery-notifier/v1/threshold-event"
+    const val FULL_CHARGE_EVENT_PATH = "/battery-notifier/v1/full-charge-event"
     const val REQUEST_STATE_PATH = "/battery-notifier/v1/request-state"
     const val CHANGE_THRESHOLD_PATH = "/battery-notifier/v1/change-threshold"
     const val CHANGE_THRESHOLD_RESULT_PATH =
         "/battery-notifier/v1/change-threshold-result"
+    const val CHANGE_FULL_CHARGE_SETTING_PATH =
+        "/battery-notifier/v1/change-full-charge-setting"
     const val WEAR_STATE_RECEIVER_CAPABILITY = "battery_notifier_state_receiver"
     const val MOBILE_THRESHOLD_WRITER_CAPABILITY = "battery_notifier_threshold_writer"
+    const val MOBILE_FULL_CHARGE_SETTING_WRITER_CAPABILITY =
+        "battery_notifier_full_charge_setting_writer_v1"
 
     object Keys {
         const val SCHEMA_VERSION = "schemaVersion"
@@ -32,6 +38,9 @@ object BatteryDataLayerContractV1 {
         const val RESULT_CODE = "resultCode"
         const val EFFECTIVE_THRESHOLD_PERCENT = "effectiveThresholdPercent"
         const val PHONE_STATE_SEQUENCE = "phoneStateSequence"
+        const val FULL_CHARGE_NOTIFICATION_ENABLED = "fullChargeNotificationEnabled"
+        const val EXPECTED_FULL_CHARGE_NOTIFICATION_ENABLED =
+            "expectedFullChargeNotificationEnabled"
     }
 }
 
@@ -76,6 +85,8 @@ object MobileDataLayerPayloadMapper {
                 DataLayerValue.BooleanValue(state.monitoringEnabled),
             BatteryDataLayerContractV1.Keys.SENT_AT_EPOCH_MILLIS to
                 DataLayerValue.LongValue(state.sentAtEpochMillis),
+            BatteryDataLayerContractV1.Keys.FULL_CHARGE_NOTIFICATION_ENABLED to
+                DataLayerValue.BooleanValue(state.fullChargeNotificationEnabled),
         ),
         urgent = true,
     )
@@ -85,7 +96,11 @@ object MobileDataLayerPayloadMapper {
             "eventId must be a UUID"
         }
         return DataLayerPayload(
-            path = BatteryDataLayerContractV1.THRESHOLD_EVENT_PATH,
+            path = if (event.kind == AlertEventKind.FULL_CHARGE) {
+                BatteryDataLayerContractV1.FULL_CHARGE_EVENT_PATH
+            } else {
+                BatteryDataLayerContractV1.THRESHOLD_EVENT_PATH
+            },
             values = mapOf(
                 BatteryDataLayerContractV1.Keys.SCHEMA_VERSION to
                     DataLayerValue.IntValue(BatteryDataLayerContractV1.SCHEMA_VERSION),

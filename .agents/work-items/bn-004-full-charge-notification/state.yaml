@@ -1,0 +1,542 @@
+schema_version: 1
+
+work_item:
+  id: "BN-004"
+  slug: "bn-004-full-charge-notification"
+  title: "Full-charge notification and cross-device setting"
+  scope: >-
+    Notify once on Mobile and Wear when the monitored phone reaches 100 percent
+    during a charging session, and let the user enable or disable this behavior
+    from either app while Mobile remains the only authoritative settings writer.
+
+status: "in_test"
+current_phase: "test"
+current_role: "test"
+current_actor:
+  type: "agent"
+  id: "codex-test-2"
+
+last_transition:
+  from_phase: "review"
+  to_phase: "test"
+  reason: >-
+    RV-003 independently verified closed: contract constant, listener branch,
+    source manifest, merged manifest, and exact-set regression all agree. No
+    Critical or High finding remains; rerun TC-E087 on connected required devices.
+
+spec_refs:
+  - "docs/product-requirements.md"
+  - "docs/functional-requirements.md"
+  - "docs/notification-background-monitoring-specification.md"
+  - "docs/notification-bridge-specification.md"
+  - "docs/data-design.md"
+  - "docs/wear-os-integration-specification.md"
+  - "docs/wear-os-display-specification.md"
+  - "docs/screen-specification-and-navigation.md"
+  - "docs/use-case-specification.md"
+  - "docs/localization-specification.md"
+  - "docs/system-architecture-design.md"
+  - "docs/test-plan-and-cases.md"
+  - "docs/architecture-decision-records.md"
+  - "docs/permissions-and-privacy-specification.md"
+
+affected_components:
+  - "BatteryNotifierAndroidMobileApp"
+  - "BatteryNotifierAndroidWearApp"
+  - "docs"
+
+traceability:
+  product_requirements:
+    - "PR-015"
+  functional_requirements:
+    - "FR-025"
+    - "FR-026"
+    - "FR-027"
+    - "FR-028"
+    - "FR-029"
+  acceptance_criteria:
+    - "AC-019"
+    - "AC-020"
+    - "AC-021"
+    - "AC-022"
+  architecture_decisions:
+    - "ADR-016"
+  tests:
+    - "TC-U032"
+    - "TC-U033"
+    - "TC-U034"
+    - "TC-U035"
+    - "TC-E085"
+    - "TC-E086"
+    - "TC-E087"
+    - "TC-E088"
+    - "TC-E089"
+
+phases:
+  specification:
+    status: "completed_approved"
+    owner: "codex"
+    tasks:
+      - id: "SPEC-013"
+        title: "Define full-charge detection, deduplication, and notification behavior"
+        status: "done"
+        evidence:
+          - "docs/functional-requirements.md"
+          - "docs/notification-background-monitoring-specification.md"
+          - "docs/notification-bridge-specification.md"
+      - id: "SPEC-014"
+        title: "Define Mobile and Wear setting persistence and request/result contract"
+        status: "done"
+        evidence:
+          - "docs/data-design.md"
+          - "docs/wear-os-integration-specification.md"
+          - "docs/architecture-decision-records.md"
+      - id: "SPEC-015"
+        title: "Define localized UI, acceptance criteria, and test traceability"
+        status: "done"
+        evidence:
+          - "docs/wear-os-display-specification.md"
+          - "docs/screen-specification-and-navigation.md"
+          - "docs/localization-specification.md"
+          - "docs/test-plan-and-cases.md"
+  implementation:
+    status: "completed"
+    owner: "codex"
+    tasks:
+      - id: "IMP-019"
+        title: "Implement Mobile full-charge domain state, persistence, notifications, and sync"
+        status: "done"
+      - id: "IMP-020"
+        title: "Implement Wear event handling, notification, and authoritative setting request UI"
+        status: "done"
+      - id: "IMP-021"
+        title: "Add Mobile and Wear unit, contract, and UI tests"
+        status: "done"
+  review:
+    status: "completed_passed"
+    owner: "codex-review"
+  test:
+    status: "in_progress_retest"
+    owner: "codex-test"
+  human_verification:
+    status: "not_started"
+    owner: "human"
+
+decisions_needed:
+  - id: "DEC-006"
+    owner: "specification"
+    status: "resolved"
+    question: "What is the safe default for existing and new installations?"
+    decision: >-
+      Default full-charge notifications to disabled so an update does not begin
+      producing a new notification class without an explicit user opt-in.
+  - id: "DEC-007"
+    owner: "specification"
+    status: "resolved"
+    question: "How is duplicate notification within one charging session prevented?"
+    decision: >-
+      Arm only after a charging session is observed below 100 percent, emit on
+      the first below-100 to 100 transition while charging, and do not re-arm
+      until a non-charging state followed by a new below-100 charging session.
+
+blockers:
+  - id: "BLK-008"
+    owner: "test"
+    status: "resolved"
+    summary: >-
+      No connected and paired Mobile/Wear test environment is available for
+      TC-E085..089. `adb devices -l` returned an empty device list.
+    unblock_requirement: >-
+      Start and pair a compatible Mobile/Wear emulator pair or connect a paired
+      test device set, then identify both builds and rerun TC-E085 first.
+  - id: "BLK-009"
+    owner: "test"
+    status: "active"
+    summary: >-
+      Pixel 10 Pro Fold and Pixel Watch 4 are now connected and the specific
+      Wear-button regression passed, but the remaining mandatory real-device
+      scenarios, battery impact, and notification latency are not completed.
+    unblock_requirement: >-
+      Execute the remaining TC-E085..089 scenarios and record battery/latency
+      observations without device identifiers.
+
+risks:
+  - id: "RSK-011"
+    severity: "high"
+    summary: >-
+      Battery level may oscillate between 99 and 100 while still plugged in;
+      session-scoped arming must prevent repeated full-charge notifications.
+  - id: "RSK-012"
+    severity: "medium"
+    summary: >-
+      A Wear setting request can be applied on Mobile while its result is lost;
+      request/result state must be persisted and explicitly retryable.
+  - id: "RSK-013"
+    severity: "medium"
+    summary: >-
+      Older app versions do not understand the new setting or event; optional
+      phone-state data and a separate fixed event path must remain compatible.
+
+evidence:
+  - id: "EV-001"
+    type: "request"
+    result: "recorded"
+    summary: "Human requested the feature on 2026-08-09."
+  - id: "EV-002"
+    type: "specification_check"
+    result: "pass"
+    summary: >-
+      git diff --check passed; PR/FR/AC/ADR/TC traceability IDs are present in
+      the normative documents.
+  - id: "EV-003"
+    type: "independent_review"
+    result: "pass"
+    summary: >-
+      codex-review-4 inspected transition fixtures, event routing, atomic state,
+      notification kind handling, and dedicated capability UI availability;
+      RV-001 and RV-002 are verified closed with no open Critical/High finding.
+  - id: "EV-004"
+    type: "human_test_failure_and_resume_authorization"
+    result: "recorded"
+    summary: >-
+      Human reported on 2026-08-09 that the Wear full-charge notification button
+      does not react and explicitly requested a fix. This authorizes the narrow
+      manifest-routing correction after phase return 5/5; no device identifier
+      is stored.
+  - id: "EV-005"
+    type: "implementation_fix_check"
+    result: "pass"
+    summary: >-
+      Mobile source and merged debug manifests contain the exact full-charge
+      setting MessageClient path. MobileCapabilityRoutingTest passes for all
+      supported incoming paths; Mobile unit tests are 100/100 and lintDebug passes.
+  - id: "EV-006"
+    type: "required_device_regression"
+    result: "pass"
+    summary: >-
+      Matching debug builds were installed with data preservation on the required
+      Pixel phone/watch pair. The Wear button changed the Mobile-authoritative
+      setting ON to OFF and OFF to ON; Wear confirmed both returned phone-state
+      values. The original ON setting was restored. No device identifier stored.
+
+test_results:
+  - id: "UNIT-MOBILE-DEBUG"
+    status: "pass"
+    command: "cached Gradle 8.13 testDebugUnitTest -Pkotlin.compiler.execution.strategy=in-process --no-daemon"
+    result: "100 tests, 0 failures"
+  - id: "UNIT-WEAR-DEBUG"
+    status: "pass"
+    command: "cached Gradle 8.13 testDebugUnitTest -Pkotlin.compiler.execution.strategy=in-process --no-daemon"
+    result: "87 tests, 0 failures"
+  - id: "LINT-MOBILE-DEBUG"
+    status: "pass"
+    command: "cached Gradle 8.13 lintDebug -Pkotlin.compiler.execution.strategy=in-process --no-daemon"
+  - id: "LINT-WEAR-DEBUG"
+    status: "pass"
+    command: "cached Gradle 8.13 lintDebug -Pkotlin.compiler.execution.strategy=in-process --no-daemon"
+  - id: "JVM-FULL-TEST"
+    status: "blocked"
+    command: "Mobile/Wear test run concurrently"
+    result: "runner timed out at 120 seconds; individual debug unit gates pass"
+  - id: "TC-E085"
+    status: "blocked"
+    result: "No connected paired Mobile/Wear environment; ADB device list empty"
+  - id: "TC-E086"
+    status: "blocked"
+    result: "Depends on paired session continuity after TC-E085"
+  - id: "TC-E087"
+    status: "blocked"
+    result: >-
+      Wear-button regression now passes in both directions. The full case remains
+      blocked because Mobile-origin change and both-app restart coverage were not run.
+  - id: "TC-E087-WEAR-BUTTON-REGRESSION"
+    status: "pass"
+    result: >-
+      Required phone/watch pair, matching debug builds: ON -> OFF -> ON converged
+      through Mobile-authoritative phone-state. Initial ON setting restored.
+  - id: "TC-E088"
+    status: "blocked"
+    result: "No paired environment for disconnect/reconnect checks"
+  - id: "TC-E089"
+    status: "blocked"
+    result: "No paired environment for expected-value conflict checks"
+  - id: "REAL-DEVICE-BN004"
+    status: "not_run"
+    result: "Pixel 10 Pro Fold and Pixel Watch 4 unavailable"
+
+loop_control:
+  same_cause_failure_limit: 3
+  phase_return_limit: 5
+  current_failure_signature: null
+  consecutive_same_cause_failures: 0
+  total_phase_returns: 5
+  attempts:
+    - id: "ATT-001"
+      phase: "implementation"
+      check: "Mobile compileDebugKotlin"
+      failure_signature: "kind mapped on BatterySnapshot instead of ThresholdReachedEvent"
+      root_cause_hypothesis: "Patch matched the first sequence mapper block."
+      corrective_change: "Moved event-kind mapping to ThresholdReachedEvent mapper."
+      result: "passed on next compile"
+    - id: "ATT-002"
+      phase: "implementation"
+      check: "Mobile compileDebugUnitTestKotlin"
+      failure_signature: "ThresholdSettingsRunner no longer accepted SAM test fakes"
+      root_cause_hypothesis: "Interface conversion broke existing lambda fixtures."
+      corrective_change: "Restored fun interface and made the new method a default."
+      result: "passed on next compile"
+    - id: "ATT-003"
+      phase: "implementation"
+      check: "MobileDataLayerPayloadMapperTest"
+      failure_signature: "exact phone-state map omitted the new optional boolean"
+      root_cause_hypothesis: "Contract fixture was not updated with production mapping."
+      corrective_change: "Added the boolean and dedicated full-charge path assertion."
+      result: "passed; Mobile 99 tests, 0 failures"
+    - id: "ATT-004"
+      phase: "review"
+      check: "RV-001 capability registration re-verification"
+      failure_signature: "battery_notifier_full_charge_setting_writer_v1 advertised twice"
+      root_cause_hypothesis: "The review-fix patch inserted the resource item twice."
+      corrective_change: "Remove the duplicate Mobile capability resource item."
+      result: "passed; capability appears once and all four Gradle gates pass"
+    - id: "ATT-005"
+      phase: "implementation"
+      check: "TC-E087 manifest routing regression and Mobile unit/lint gates"
+      failure_signature: >-
+        Mobile manifest omitted /battery-notifier/v1/change-full-charge-setting.
+      root_cause_hypothesis: >-
+        Production handler and contract constants were added without registering
+        the new MessageClient path on the exported listener service.
+      corrective_change: >-
+        Added the exact manifest filter and a regression test asserting the full
+        supported incoming MessageClient path set.
+      result: "passed; targeted test, Mobile 100/100, lintDebug, and merged manifest"
+  termination_reason: null
+  resume_condition: null
+  last_resume:
+    authorized_at: "2026-08-09T14:53:49+09:00"
+    authorized_by: "human"
+    authorization: "Explicit request to fix the non-responsive Wear button."
+    new_approach: >-
+      Add the missing fixed-path Mobile manifest filter and a source-manifest
+      contract test covering every supported incoming MessageClient path.
+    first_check: "Mobile testDebugUnitTest"
+
+handoff:
+  summary: >-
+    The human-reported non-responsive Wear button is fixed and verified on the
+    required device pair with ON/OFF round trips. The complete TC-E087 restart
+    case and the remaining BN-004 release scenarios are still not complete.
+  next_role: "test"
+  first_action: >-
+    Execute the remaining TC-E087 Mobile-origin and both-app restart steps, then
+    proceed with TC-E085, TC-E086, TC-E088, and TC-E089.
+
+review_findings:
+  - id: "RV-001"
+    severity: "High"
+    status: "verified_closed"
+    location: >-
+      BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/
+      batterynotifierandroidwearapp/platform/wearable/
+      GooglePlayServicesThresholdChangeRequestGateway.kt
+    violated_requirement: "FR-029, RSK-013, wear-os-integration-specification compatibility"
+    scenario: >-
+      Pair the new Wear app with a BN-002-era Mobile that advertises only
+      battery_notifier_threshold_writer. Wear enables the full-charge control,
+      sends an unknown message path, and the setting never changes.
+    required_outcome: >-
+      Advertise and query a dedicated versioned Mobile capability for the
+      full-charge setting request, leaving the threshold capability unchanged.
+  - id: "RV-002"
+    severity: "High"
+    status: "verified_closed"
+    location: >-
+      BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/
+      batterynotifierandroidwearapp/presentation/MainActivity.kt
+    violated_requirement: "FR-029 and dedicated BN-004 capability compatibility"
+    scenario: >-
+      Pair new Wear with an old Mobile that exposes the threshold writer only.
+      The full-charge button is enabled from thresholdWriterAvailable, but its
+      dedicated capability lookup fails and the requested change never occurs.
+    required_outcome: >-
+      Track full-charge writer availability independently using
+      battery_notifier_full_charge_setting_writer_v1 and disable only that
+      control when the dedicated capability is unavailable.
+  - id: "RV-003"
+    severity: "High"
+    status: "verified_closed"
+    location: "BatteryNotifierAndroidMobileApp/app/src/main/AndroidManifest.xml"
+    violated_requirement: "FR-029, AC-021, TC-E087, MessageClient fixed-path routing"
+    scenario: >-
+      Wear sends /battery-notifier/v1/change-full-charge-setting, but Google Play
+      services cannot dispatch it because the Mobile listener manifest omits the
+      corresponding MESSAGE_RECEIVED data path.
+    required_outcome: >-
+      Register the exact path and keep a regression contract for every supported
+      incoming MessageClient route.
+
+next_actions:
+  - "Complete the remaining TC-E087 restart and Mobile-origin steps."
+  - "Execute TC-E085, TC-E086, TC-E088, and TC-E089."
+  - "Record battery impact and notification latency during human verification."
+
+progress_reporting:
+  format_version: 1
+  current:
+    reported_at: "2026-08-09T15:07:15+09:00"
+    work_item: "BN-004"
+    role: "test"
+    phase: "test"
+    actor: "codex-test-2"
+    status: "in_test"
+    completed:
+      - "Read existing notification, sync, setting, privacy, and test contracts."
+      - "Separated BN-004 from the blocked BN-002 test environment work."
+      - "Completed PR-015, FR-025..029, AC-019..022, ADR-016, and TC traceability."
+      - "Specification diff validation passed."
+      - "Implemented Mobile/Wear full-charge notifications and settings."
+      - "Mobile 99/99 and Wear 87/87 debug unit tests passed."
+      - "Mobile/Wear lintDebug passed."
+      - "RV-001 dedicated capability is registered exactly once."
+      - "RV-001 and RV-002 were independently verified closed."
+      - "Added the missing Mobile full-charge MessageClient manifest route."
+      - "Mobile manifest routing regression and 100/100 unit tests passed."
+      - "Mobile lintDebug and merged-manifest inspection passed."
+      - "RV-003 independently verified closed with no open Critical/High finding."
+      - "Installed matching debug builds on the required phone/watch pair."
+      - "Wear button ON -> OFF -> ON regression passed and initial ON was restored."
+    in_progress:
+      - "Remaining BN-004 paired-device and restart scenarios."
+    next:
+      - "Complete the remaining TC-E087 steps before other E2E cases."
+    checks:
+      - "git status --short: clean before BN-004 changes"
+      - "git diff --check: pass after specification changes"
+      - "Mobile testDebugUnitTest: pass (100 tests)"
+      - "Wear testDebugUnitTest: pass (87 tests)"
+      - "Mobile/Wear lintDebug: pass"
+      - "git diff --check: pass after RV-001 fix"
+      - "TC-E085..089: Blocked (0 Pass, 0 Fail, 5 Blocked)"
+      - "Required Pixel hardware: Not Run"
+      - "TC-E087 Wear setting toggle: Fail (human observed no response)"
+      - "Root cause: Mobile manifest route missing"
+      - "Targeted manifest route test: pass"
+      - "Merged debug manifest exact path: pass"
+      - "TC-E087-WEAR-BUTTON-REGRESSION: pass on required device pair"
+      - "TC-E087 full restart case: blocked remaining steps"
+    blockers:
+      - "BLK-009: remaining required-device scenarios and measurements not complete."
+  history:
+    - reported_at: "2026-08-09T11:10:43+09:00"
+      event: "work_item_started"
+      role: "specification"
+      phase: "specification"
+      actor: "codex"
+      summary: "Started BN-004 specification from the explicit human request."
+    - reported_at: "2026-08-09T11:15:21+09:00"
+      event: "role_handoff"
+      role: "specification_to_implementation"
+      phase: "implementation"
+      actor: "codex"
+      summary: >-
+        Specification gate passed with data contracts, lifecycle behavior,
+        acceptance criteria, localization, compatibility, and tests defined.
+    - reported_at: "2026-08-09T11:41:22+09:00"
+      event: "role_handoff"
+      role: "implementation_to_review"
+      phase: "review"
+      actor: "codex"
+      summary: >-
+        Implementation gate passed with transition matrix, 185 debug unit tests,
+        both lint gates, and specification alignment; E2E remains not run.
+    - reported_at: "2026-08-09T11:44:00+09:00"
+      event: "review_finding"
+      role: "review_to_implementation"
+      phase: "implementation"
+      actor: "codex-review"
+      summary: "RV-001 High requires a dedicated full-charge writer capability."
+    - reported_at: "2026-08-09T11:49:30+09:00"
+      event: "review_finding_reverification_failed"
+      role: "review_to_implementation"
+      phase: "implementation"
+      actor: "codex-review-2"
+      summary: >-
+        RV-001 dedicated routing is present, but Mobile advertises the new
+        capability twice; phase return 3/5 removes the duplicate.
+    - reported_at: "2026-08-09T11:52:07+09:00"
+      event: "role_handoff"
+      role: "implementation_to_review"
+      phase: "review"
+      actor: "codex"
+      summary: >-
+        Duplicate capability registration removed; Mobile 99/99, Wear 87/87,
+        both lintDebug gates, and diff checks pass for re-review.
+    - reported_at: "2026-08-09T11:55:00+09:00"
+      event: "review_finding"
+      role: "review_to_implementation"
+      phase: "implementation"
+      actor: "codex-review-3"
+      summary: >-
+        RV-001 is closed. RV-002 High found the full-charge button using legacy
+        threshold capability availability; phase return 4/5 fixes the UI gate.
+    - reported_at: "2026-08-09T11:59:49+09:00"
+      event: "role_handoff"
+      role: "implementation_to_review"
+      phase: "review"
+      actor: "codex"
+      summary: >-
+        RV-002 now resolves the dedicated capability independently and gates
+        only the full-charge control; Wear 87/87, lintDebug, and diff pass.
+    - reported_at: "2026-08-09T12:02:00+09:00"
+      event: "role_handoff"
+      role: "review_to_test"
+      phase: "test"
+      actor: "codex-review-4"
+      summary: >-
+        Review gate passed with RV-001/RV-002 closed and no unresolved
+        Critical/High finding. Test starts by identifying a paired environment.
+    - reported_at: "2026-08-09T12:05:00+09:00"
+      event: "test_blocked"
+      role: "test"
+      phase: "test"
+      actor: "codex-test"
+      summary: >-
+        ADB listed zero connected devices. TC-E085..089 are Blocked, required
+        Pixel hardware is Not Run, and no product failure was observed.
+    - reported_at: "2026-08-09T14:53:49+09:00"
+      event: "human_failure_report_and_authorized_resume"
+      role: "test_to_implementation"
+      phase: "implementation"
+      actor: "human"
+      summary: >-
+        TC-E087 failed because Mobile AndroidManifest omits the full-charge
+        MessageClient path. Return 5/5 reached the limit; the human's explicit
+        fix request authorizes only this manifest-routing correction.
+    - reported_at: "2026-08-09T14:58:18+09:00"
+      event: "role_handoff"
+      role: "implementation_to_review"
+      phase: "review"
+      actor: "codex"
+      summary: >-
+        RV-003 fix adds the exact Mobile manifest route plus an all-supported-path
+        regression. Mobile 100/100, lintDebug, merged manifest, and diff pass.
+    - reported_at: "2026-08-09T14:59:25+09:00"
+      event: "role_handoff"
+      role: "review_to_test"
+      phase: "test"
+      actor: "codex-review-5"
+      summary: >-
+        RV-003 closed after source and merged-manifest verification. Test resumes
+        TC-E087 on the connected Pixel phone/watch pair.
+    - reported_at: "2026-08-09T15:07:15+09:00"
+      event: "required_device_regression_pass"
+      role: "test"
+      phase: "test"
+      actor: "codex-test-2"
+      summary: >-
+        Matching debug builds passed the Wear full-charge button ON/OFF round
+        trip on the required phone/watch pair; the initial ON setting was restored.
+
+updated_at: "2026-08-09T15:07:15+09:00"
+updated_by: "codex-test-2"

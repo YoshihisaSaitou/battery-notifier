@@ -3,7 +3,7 @@
 文書ID: PPS-001  
 版: 0.1  
 状態: Draft  
-最終更新: 2026-07-29
+最終更新: 2026-08-09
 
 ## 1. 基本方針
 
@@ -42,6 +42,7 @@ Data Layer通信はGoogle Play services APIを使用し、独自のBluetooth権�
 |---|---:|---:|---:|---|
 | 電池残量・充電状態 | Yes | Yes | Yes | 表示・判定 |
 | しきい値・監視状態 | Yes | Yes | Yes | 表示・判定 |
+| 満充電通知ON/OFF・充電session arm | Yes | ON/OFFのみ | ON/OFFと未確定要求 | 表示・判定・要求復旧 |
 | 取得/送受信時刻・sequence | Yes | Yes | Yes | 鮮度・順序 |
 | eventId・有効期限 | Yes | Yes | Yes | 通知重複防止 |
 | 通知権限状態 | 派生/必要最小限 | No | 派生/必要最小限 | UI案内 |
@@ -103,3 +104,10 @@ Data LayerはBluetooth、Wi-Fi、またはGoogle管理のクラウド中継を�
 - `requestId`はランダムUUIDであり、端末識別子として再利用しない。
 - Mobileは直近要求結果、Wearは下書きと未確定要求を各Proto DataStoreへ保存する。両Protoは引き続きcloud backupとdevice transferから除外する。
 - 不正payloadをログへ出力せず、エラー分類と診断件数だけを記録する。
+
+## 12. 満充電通知とWear設定（BN-004）
+
+- 既存の電池状態、通知権限、Data Layerだけを使用し、新しいAndroid権限、Bluetooth権限、外部サービス、分析SDKを追加しない。
+- 同期する追加データは満充電通知ON/OFF、満充電eventId/sequence/発生時刻/期限だけとする。充電履歴や端末識別子を保存・送信しない。
+- Wear要求のnode IDは実行時routingだけに使い、Protoやログへ保存しない。`requestId`はランダムUUIDで、端末識別に再利用しない。
+- Mobile/Wear Protoは引き続きbackup/transfer対象外とし、不正payloadは値を記録せず分類と件数だけを残す。

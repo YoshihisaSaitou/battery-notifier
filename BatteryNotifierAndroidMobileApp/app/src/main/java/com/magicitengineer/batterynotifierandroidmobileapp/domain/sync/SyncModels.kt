@@ -8,6 +8,7 @@ data class PhoneStateSync(
     val thresholdPercent: Int,
     val monitoringEnabled: Boolean,
     val sentAtEpochMillis: Long,
+    val fullChargeNotificationEnabled: Boolean = false,
 ) {
     init {
         require(thresholdPercent in 5..100)

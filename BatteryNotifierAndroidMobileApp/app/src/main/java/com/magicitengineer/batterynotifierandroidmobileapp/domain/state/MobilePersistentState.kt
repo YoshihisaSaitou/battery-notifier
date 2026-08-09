@@ -28,6 +28,7 @@ data class MobilePersistentState(
     val invalidInputCount: Long = 0,
     val unsupportedSchemaCount: Long = 0,
     val lastThresholdChangeResult: ThresholdChangeResult? = null,
+    val fullChargeArmed: Boolean = false,
 ) {
     init {
         require(storageSchemaVersion == CURRENT_STORAGE_SCHEMA_VERSION)

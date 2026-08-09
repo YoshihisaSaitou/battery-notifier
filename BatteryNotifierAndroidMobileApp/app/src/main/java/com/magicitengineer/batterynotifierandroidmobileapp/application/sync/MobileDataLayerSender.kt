@@ -100,6 +100,8 @@ class MobileDataLayerSender(
                     thresholdPercent = state.alertRule.thresholdPercent,
                     monitoringEnabled = state.alertRule.monitoringEnabled,
                     sentAtEpochMillis = sentAtEpochMillis,
+                    fullChargeNotificationEnabled =
+                        state.alertRule.fullChargeNotificationEnabled,
                 )
             )
         }

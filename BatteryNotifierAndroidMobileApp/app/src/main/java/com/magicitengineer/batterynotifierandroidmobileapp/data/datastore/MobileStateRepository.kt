@@ -5,6 +5,7 @@ import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.AlertRule
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.AlertRuleChangeEvaluator
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.ThresholdEvaluator
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.FullChargeEvaluator
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.ThresholdReachedEvent
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.battery.BatteryReading
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.battery.BatterySnapshot
@@ -106,21 +107,30 @@ class ProtoMobileStateRepository(
                 snapshot = snapshot,
                 candidateEventId = candidateEventId,
             )
+            val fullChargeEvaluation = FullChargeEvaluator.evaluate(
+                rule = current.alertRule,
+                armed = current.fullChargeArmed,
+                previousSnapshot = current.lastSnapshot,
+                snapshot = snapshot,
+                candidateEventId = candidateEventId,
+            )
+            val event = evaluation.event ?: fullChargeEvaluation.event
             MobileStateProtoMapper.toProto(
                 current.copy(
                     lastSnapshot = snapshot,
                     sequence = nextSequence,
                     alertState = evaluation.state,
+                    fullChargeArmed = fullChargeEvaluation.armed,
                     pendingStateSequence = nextSequence,
-                    pendingEvent = evaluation.event ?: current.pendingEvent,
-                    pendingMobileNotification = evaluation.event ?:
+                    pendingEvent = event ?: current.pendingEvent,
+                    pendingMobileNotification = event ?:
                         current.pendingMobileNotification,
-                    lastMobileNotificationEventId = if (evaluation.event != null) {
+                    lastMobileNotificationEventId = if (event != null) {
                         null
                     } else {
                         current.lastMobileNotificationEventId
                     },
-                    mobileNotificationDisposition = if (evaluation.event != null) {
+                    mobileNotificationDisposition = if (event != null) {
                         MobileNotificationDisposition.NONE
                     } else {
                         current.mobileNotificationDisposition
@@ -152,6 +162,10 @@ class ProtoMobileStateRepository(
                     state = current.alertState,
                     snapshot = current.lastSnapshot,
                 ),
+                fullChargeArmed = FullChargeEvaluator.reevaluateWithoutEvent(
+                    rule = rule,
+                    snapshot = current.lastSnapshot,
+                ),
                 pendingStateSequence = nextSequence,
             )
         }
@@ -180,6 +194,10 @@ class ProtoMobileStateRepository(
                     state = current.alertState,
                     snapshot = current.lastSnapshot,
                 ),
+                fullChargeArmed = FullChargeEvaluator.reevaluateWithoutEvent(
+                    rule = nextRule,
+                    snapshot = current.lastSnapshot,
+                ),
                 pendingStateSequence = nextSequence,
             )
         }
@@ -189,6 +207,7 @@ class ProtoMobileStateRepository(
         update { current ->
             current.copy(
                 alertState = current.alertState.copy(previousLevelPercent = null),
+                fullChargeArmed = false,
             )
         }
 
@@ -356,6 +375,14 @@ class ProtoMobileStateRepository(
                         )
                     } else {
                         current.alertState
+                    },
+                    fullChargeArmed = if (shouldChange) {
+                        FullChargeEvaluator.reevaluateWithoutEvent(
+                            rule = nextRule,
+                            snapshot = current.lastSnapshot,
+                        )
+                    } else {
+                        current.fullChargeArmed
                     },
                     pendingStateSequence = if (shouldChange) {
                         nextSequence

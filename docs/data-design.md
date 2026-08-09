@@ -3,7 +3,7 @@
 文書ID: DDS-001  
 版: 0.1  
 状態: Draft  
-最終更新: 2026-07-29
+最終更新: 2026-08-09
 
 ## 1. ドメインモデル
 
@@ -24,6 +24,7 @@
 | `monitoringEnabled` | Boolean | false | ユーザー操作で変更 |
 | `notifyIfAlreadyBelowOnStart` | Boolean | false | v1.0 UIでは固定でもよい |
 | `rearmHysteresisPercent` | Int | 2 | 1..10 |
+| `fullChargeNotificationEnabled` | Boolean | false | Mobileが正本 |
 
 ### AlertState
 
@@ -33,6 +34,7 @@
 | `previousLevelPercent` | Int? | 直前正常値 |
 | `lastEventId` | String? | 直近イベントUUID |
 | `lastTriggeredAtEpochMillis` | Long? | 直近到達時刻 |
+| `fullChargeArmed` | Boolean | 現在の充電セッションで満充電通知可能か |
 
 ### ThresholdReachedEvent
 
@@ -64,18 +66,33 @@ WearからMobileへ送る変更要求であり、設定の正本ではない。
 | `effectiveThresholdPercent` | Int | 5..100 | 結果時点のMobile有効値 |
 | `phoneStateSequence` | Long | 1以上 | 結果に対応してMobileが確定したstate順序 |
 
+### FullChargeReachedEvent
+
+| 項目 | 型 | 説明 |
+|---|---|---|
+| `eventId` | String | UUID v4 |
+| `levelPercent` | Int | 常に100 |
+| `occurredAtEpochMillis` | Long | Mobileでの発生時刻 |
+| `expiresAtEpochMillis` | Long | Wear通知有効期限。既定は発生+5分 |
+| `sequence` | Long | phone-stateと同じ順序系列 |
+
+### FullChargeSettingChangeRequest
+
+要求は`requestId`、`enabled`、`expectedEnabled`を持つ。Mobileが設定の正本を保持し、Wearは後続phone-stateだけを確定値として表示する。
+
 ## 2. Mobile Proto DataStore
 
 推奨ファイル名: `battery_notifier_mobile.pb`
 
 | グループ | 保存項目 |
 |---|---|
-| Settings | threshold、monitoringEnabled、onboardingCompleted、hysteresis |
+| Settings | threshold、monitoringEnabled、fullChargeNotificationEnabled、onboardingCompleted、hysteresis |
 | Battery | last snapshot、sequence counter |
 | Alert | armed、previous level、last event、Mobile通知済みeventId |
 | Sync outbox | pending state sequence、pending event、最終成功時刻、最終エラー分類 |
 | Diagnostics | invalid input count、unsupported schema count |
 | Wear threshold request result | 直近requestId、resultCode、有効しきい値、対応state sequence |
+| Full-charge alert/outbox | arm状態、直近event、Mobile通知済みeventId、Wear同期outbox |
 
 保持するイベントは最新の未期限切れ1件と直近処理IDだけでよい。履歴分析はv1.0対象外とする。
 
@@ -91,6 +108,7 @@ WearからMobileへ送る変更要求であり、設定の正本ではない。
 | Notification | last processed eventId、processedAtEpochMillis |
 | Diagnostics | invalid payload count、unsupported schema、last receive error |
 | Threshold edit | 下書き、expected threshold、未確定requestId、送信/結果状態 |
+| Full-charge notification | 直近処理eventId、投稿状態、試行回数 |
 
 鮮度は保存せず、`now - receivedAtEpochMillis`で都度算出する。端末時刻変更を跨ぐ画面内計測には`elapsedRealtime`を併用してよいが、再起動を跨ぐ永続値にはepoch millisを用いる。
 
@@ -107,8 +125,12 @@ WearからMobileへ送る変更要求であり、設定の正本ではない。
 | 状態要求 | `/battery-notifier/v1/request-state` | MessageClient。ベストエフォート |
 | しきい値変更要求 | `/battery-notifier/v1/change-threshold` | MessageClient。WearからMobileへの接続中RPC |
 | しきい値変更結果 | `/battery-notifier/v1/change-threshold-result` | MessageClient。Mobileから要求元Wearへの応答 |
+| 満充電イベント | `/battery-notifier/v1/full-charge-event` | 固定パスをeventId/sequence付きで上書き |
+| 満充電通知設定要求 | `/battery-notifier/v1/change-full-charge-setting` | MessageClient。WearからMobileへの接続中RPC |
 
 DataItemパスをイベントごとに増やさない。固定パスにして不要DataItemを蓄積させず、値が同じ場合でも`sequence`の変更で同期を発生させる。
+
+満充電通知設定要求に対応するMobile capabilityは`battery_notifier_full_charge_setting_writer_v1`とする。既存の`battery_notifier_threshold_writer`とは分離し、旧Mobileを誤って対応済みと判定しない。
 
 ### phone-state DataMap
 
@@ -122,6 +144,7 @@ DataItemパスをイベントごとに増やさない。固定パスにして不
 | `thresholdPercent` | Int | Yes | 5..100 |
 | `monitoringEnabled` | Boolean | Yes | - |
 | `sentAtEpochMillis` | Long | Yes | 0より大 |
+| `fullChargeNotificationEnabled` | Boolean | No | 欠落時はfalse。BN-004以前の送信元との互換用 |
 
 ### threshold-event DataMap
 
@@ -132,6 +155,17 @@ DataItemパスをイベントごとに増やさない。固定パスにして不
 | `sequence` | Long | Yes | 1以上 |
 | `levelPercent` | Int | Yes | 0..100 |
 | `thresholdPercent` | Int | Yes | 5..100 |
+| `occurredAtEpochMillis` | Long | Yes | 0より大 |
+| `expiresAtEpochMillis` | Long | Yes | occurredより後、最大+15分 |
+
+### full-charge-event DataMap
+
+| Key | DataMap型 | 必須 | 制約 |
+|---|---|---|---|
+| `schemaVersion` | Int | Yes | v1は1 |
+| `eventId` | String | Yes | UUID、最大64文字 |
+| `sequence` | Long | Yes | 1以上 |
+| `levelPercent` | Int | Yes | 100 |
 | `occurredAtEpochMillis` | Long | Yes | 0より大 |
 | `expiresAtEpochMillis` | Long | Yes | occurredより後、最大+15分 |
 
@@ -214,3 +248,16 @@ JSONは説明用であり、実装はDataMapを使用する。
 8. Wearは`APPLIED`結果を受けても、後続または既受信のphone-stateが`phoneStateSequence`以上へ収束するまで「同期確認中」と表示できる。最終表示の正本はphone-stateのしきい値である。
 
 MessageClientは接続が必要で永続再送を行わない。未送信または結果不明の要求はWear Proto DataStoreへ保持するが、再接続や再起動だけでは自動送信しない。
+
+## 10. Wear満充電通知設定メッセージ契約（BN-004）
+
+### change-full-charge-setting request
+
+| Key | DataMap型 | 必須 | 制約 |
+|---|---|---|---|
+| `schemaVersion` | Int | Yes | 1 |
+| `requestId` | String | Yes | UUID、最大64文字 |
+| `enabled` | Boolean | Yes | 要求値 |
+| `expectedEnabled` | Boolean | Yes | Wearが最後に確認したMobile値 |
+
+Mobileは要求を完全検証する。要求値が現在値と同じ場合は設定・sequenceを変更せず現在のphone-stateを再送する。期待値が現在値と異なる場合も設定を変更せず現在のphone-stateを再送する。それ以外は設定・満充電arm状態・sequence・outboxを原子的に確定してphone-stateを送る。MessageClient送信失敗、再接続、再起動だけでは自動再送せず、ユーザーの再操作を待つ。

@@ -13,6 +13,7 @@ message MobileStateProto {
   int32 rearm_hysteresis_percent = 14;
   bool resume_required = 15;
   bool notification_permission_requested = 16;
+  bool full_charge_notification_enabled = 17;
 
   BatterySnapshotProto last_snapshot = 20;
   int64 sequence = 21;
@@ -32,6 +33,7 @@ message MobileStateProto {
   int64 unsupported_schema_count = 51;
 
   ThresholdChangeResultProto last_threshold_change_result = 60;
+  bool full_charge_armed = 61;
 }
 
 enum MobileNotificationDispositionProto {
@@ -63,6 +65,12 @@ message ThresholdReachedEventProto {
   int64 occurred_at_epoch_millis = 4;
   int64 expires_at_epoch_millis = 5;
   int64 sequence = 6;
+  AlertEventKindProto kind = 7;
+}
+
+enum AlertEventKindProto {
+  ALERT_EVENT_KIND_LOW_BATTERY = 0;
+  ALERT_EVENT_KIND_FULL_CHARGE = 1;
 }
 
 message ThresholdChangeResultProto {

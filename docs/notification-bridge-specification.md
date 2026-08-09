@@ -3,11 +3,13 @@
 文書ID: NBR-001  
 版: 0.2
 状態: Draft  
-最終更新: 2026-07-22
+最終更新: 2026-08-09
 
 ## 1. 目的
 
 Mobileで確定したしきい値到達イベントをWearへ伝え、MobileとWearでそれぞれ1回だけ通知する。Android標準の通知ミラーリングへ全面依存せず、到達イベントをData Layerで明示的に連携する。
+
+BN-004では同じ配送・権限・期限・Locale方針を`FullChargeReachedEvent`へ適用する。低残量イベントと満充電イベントは別の固定pathと別の処理済み状態を持ち、旧Wearが満充電イベントを低残量通知として誤解しないようにする。
 
 ## 2. 責務
 
@@ -18,6 +20,7 @@ Mobileで確定したしきい値到達イベントをWearへ伝え、MobileとW
 | Notification bridge sender | event DataItemを送信し、outbox状態を更新 |
 | Wear bridge receiver | 検証、有効期限、重複を判定 |
 | Wear notification adapter | Wearローカル通知を投稿 |
+| Full-charge alert domain | 充電セッションごとに満充電eventIdを1回だけ生成 |
 
 ## 3. 通知フロー
 
@@ -47,6 +50,7 @@ sequenceDiagram
 - DataItem再配信、Service再生成、プロセス再起動で同じeventIdを受けても投稿しない。
 - Wearは処理予約を原子的に保存してから通知する。初回予約を投稿試行1回目として永続化し、投稿API失敗時の状態は`RESERVED_FAILED`とする。
 - Mobileの通知には`setLocalOnly(true)`を設定し、WearへのOS自動ブリッジとWearローカル通知の重複を防ぐ。
+- 低残量と満充電は独立した`last...EventId`、投稿状態、試行回数を持ち、片方の処理で他方を上書きしない。
 
 ### 4.1 Wear投稿失敗の有限再試行
 

@@ -5,11 +5,16 @@ import java.util.UUID
 object WearDataLayerContract {
     const val PHONE_STATE_PATH = "/battery-notifier/v1/phone-state"
     const val THRESHOLD_EVENT_PATH = "/battery-notifier/v1/threshold-event"
+    const val FULL_CHARGE_EVENT_PATH = "/battery-notifier/v1/full-charge-event"
     const val REQUEST_STATE_PATH = "/battery-notifier/v1/request-state"
     const val CHANGE_THRESHOLD_PATH = "/battery-notifier/v1/change-threshold"
     const val CHANGE_THRESHOLD_RESULT_PATH =
         "/battery-notifier/v1/change-threshold-result"
+    const val CHANGE_FULL_CHARGE_SETTING_PATH =
+        "/battery-notifier/v1/change-full-charge-setting"
     const val MOBILE_THRESHOLD_WRITER_CAPABILITY = "battery_notifier_threshold_writer"
+    const val MOBILE_FULL_CHARGE_SETTING_WRITER_CAPABILITY =
+        "battery_notifier_full_charge_setting_writer_v1"
     const val PATH_PREFIX = "/battery-notifier/v1/"
 
     const val KEY_SCHEMA_VERSION = "schemaVersion"
@@ -28,6 +33,9 @@ object WearDataLayerContract {
     const val KEY_RESULT_CODE = "resultCode"
     const val KEY_EFFECTIVE_THRESHOLD_PERCENT = "effectiveThresholdPercent"
     const val KEY_PHONE_STATE_SEQUENCE = "phoneStateSequence"
+    const val KEY_FULL_CHARGE_NOTIFICATION_ENABLED = "fullChargeNotificationEnabled"
+    const val KEY_EXPECTED_FULL_CHARGE_NOTIFICATION_ENABLED =
+        "expectedFullChargeNotificationEnabled"
 }
 
 sealed interface PayloadValidationResult {
@@ -53,7 +61,8 @@ object WearPayloadValidator {
         require(receivedAtEpochMillis > 0)
         if (
             path != WearDataLayerContract.PHONE_STATE_PATH &&
-            path != WearDataLayerContract.THRESHOLD_EVENT_PATH
+            path != WearDataLayerContract.THRESHOLD_EVENT_PATH &&
+            path != WearDataLayerContract.FULL_CHARGE_EVENT_PATH
         ) {
             return PayloadValidationResult.UnknownPath
         }
@@ -70,9 +79,15 @@ object WearPayloadValidator {
                 receivedAtEpochMillis = receivedAtEpochMillis,
             )
 
-            WearDataLayerContract.THRESHOLD_EVENT_PATH -> validateEvent(
+            WearDataLayerContract.THRESHOLD_EVENT_PATH,
+            WearDataLayerContract.FULL_CHARGE_EVENT_PATH -> validateEvent(
                 values = values,
                 schemaVersion = schemaVersion,
+                kind = if (path == WearDataLayerContract.FULL_CHARGE_EVENT_PATH) {
+                    AlertEventKind.FULL_CHARGE
+                } else {
+                    AlertEventKind.LOW_BATTERY
+                },
             )
 
             else -> PayloadValidationResult.UnknownPath
@@ -96,6 +111,14 @@ object WearPayloadValidator {
         val monitoringEnabled = values[WearDataLayerContract.KEY_MONITORING_ENABLED] as? Boolean
             ?: return invalidType()
         val sentAt = values[WearDataLayerContract.KEY_SENT_AT] as? Long ?: return invalidType()
+        val fullChargeValue = values[
+            WearDataLayerContract.KEY_FULL_CHARGE_NOTIFICATION_ENABLED
+        ]
+        val fullChargeNotificationEnabled = when (fullChargeValue) {
+            null -> false
+            is Boolean -> fullChargeValue
+            else -> return invalidType()
+        }
 
         if (sequence < 1 || levelPercent !in 0..100 || thresholdPercent !in 5..100) {
             return PayloadValidationResult.Invalid(ReceiveErrorClassification.OUT_OF_RANGE)
@@ -118,6 +141,7 @@ object WearPayloadValidator {
                 thresholdPercent = thresholdPercent,
                 monitoringEnabled = monitoringEnabled,
                 sentAtEpochMillis = sentAt,
+                fullChargeNotificationEnabled = fullChargeNotificationEnabled,
             )
         )
     }
@@ -125,6 +149,7 @@ object WearPayloadValidator {
     private fun validateEvent(
         values: Map<String, Any?>,
         schemaVersion: Int,
+        kind: AlertEventKind,
     ): PayloadValidationResult {
         val eventId = values[WearDataLayerContract.KEY_EVENT_ID] as? String ?: return invalidType()
         val sequence = values[WearDataLayerContract.KEY_SEQUENCE] as? Long ?: return invalidType()
@@ -159,6 +184,7 @@ object WearPayloadValidator {
                 thresholdPercent = thresholdPercent,
                 occurredAtEpochMillis = occurredAt,
                 expiresAtEpochMillis = expiresAt,
+                kind = kind,
             )
         )
     }

@@ -17,6 +17,7 @@ data class ThresholdSettingsState(
     val mobileNotificationDisposition: MobileNotificationDisposition =
         MobileNotificationDisposition.NONE,
     val notificationPermissionRequested: Boolean = false,
+    val fullChargeNotificationEnabled: Boolean = false,
 )
 
 enum class ThresholdSaveRejectionReason {
@@ -37,10 +38,17 @@ sealed interface ThresholdSaveResult {
 
 fun interface ThresholdSettingUpdater {
     suspend fun updateThreshold(thresholdPercent: Int): MobilePersistentState
+
+    suspend fun updateFullChargeNotificationEnabled(enabled: Boolean): MobilePersistentState =
+        error("Full-charge setting updates are not configured")
 }
 
 fun interface ThresholdSettingsRunner {
     suspend fun saveThreshold(thresholdPercent: Int): ThresholdSaveResult
+
+    suspend fun saveFullChargeNotificationEnabled(
+        enabled: Boolean,
+    ): MobileSyncCoordinationResult = error("Full-charge settings are not configured")
 }
 
 class RepositoryThresholdSettingUpdater(
@@ -50,6 +58,15 @@ class RepositoryThresholdSettingUpdater(
         val current = repository.state.first()
         return repository.updateAlertRule(
             current.alertRule.copy(thresholdPercent = thresholdPercent)
+        )
+    }
+
+    override suspend fun updateFullChargeNotificationEnabled(
+        enabled: Boolean,
+    ): MobilePersistentState {
+        val current = repository.state.first()
+        return repository.updateAlertRule(
+            current.alertRule.copy(fullChargeNotificationEnabled = enabled)
         )
     }
 }
@@ -62,6 +79,10 @@ class ThresholdSettingsController(
 
     suspend fun saveThreshold(thresholdPercent: Int): ThresholdSaveResult =
         runner.saveThreshold(thresholdPercent)
+
+    suspend fun saveFullChargeNotificationEnabled(
+        enabled: Boolean,
+    ): MobileSyncCoordinationResult = runner.saveFullChargeNotificationEnabled(enabled)
 
     suspend fun markNotificationPermissionRequested() {
         repository.markNotificationPermissionRequested()
@@ -76,4 +97,5 @@ internal fun MobilePersistentState.toSettingsState(): ThresholdSettingsState =
         resumeRequired = resumeRequired,
         mobileNotificationDisposition = mobileNotificationDisposition,
         notificationPermissionRequested = notificationPermissionRequested,
+        fullChargeNotificationEnabled = alertRule.fullChargeNotificationEnabled,
     )

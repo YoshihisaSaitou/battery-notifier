@@ -56,4 +56,8 @@
     <string name="mobile_sync_failed">現在の電池状態を送信できませんでした。ウォッチの接続後に再試行してください。</string>
     <string name="mobile_sync_battery_unavailable">現在の電池状態を取得できません。</string>
     <string name="mobile_sync_invalid_battery">電池情報が不正なため送信しませんでした。</string>
+    <string name="full_charge_notification_title">満充電になったら通知</string>
+    <string name="full_charge_notification_description">充電中にスマートフォンが100%になったとき、この端末とペア設定済みウォッチへ1回通知します。</string>
+    <string name="full_charge_reached_title">スマートフォンの充電が完了しました</string>
+    <string name="full_charge_reached_body">電池残量が100%になりました。</string>
 </resources>

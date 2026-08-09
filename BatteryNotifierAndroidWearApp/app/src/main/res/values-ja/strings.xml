@@ -62,4 +62,11 @@
     <string name="threshold_conflict">スマートフォンで設定が変更されました。現在値を確認してください。</string>
     <string name="threshold_rejected">スマートフォンがしきい値変更を拒否しました</string>
     <string name="threshold_writer_unavailable">スマートフォンアプリを起動または更新し、再接続してください</string>
+    <string name="full_charge_notification_title">満充電になったら通知</string>
+    <string name="full_charge_reached_title">スマートフォンの充電が完了しました</string>
+    <string name="full_charge_reached_body">電池残量が100%になりました。</string>
+    <string name="full_charge_notification_on">満充電通知はONです</string>
+    <string name="full_charge_notification_off">満充電通知はOFFです</string>
+    <string name="enable_full_charge_notification">満充電通知をONにする</string>
+    <string name="disable_full_charge_notification">満充電通知をOFFにする</string>
 </resources>

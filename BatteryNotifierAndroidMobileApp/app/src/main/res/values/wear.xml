@@ -2,5 +2,6 @@
 <resources>
     <string-array name="android_wear_capabilities" translatable="false">
         <item>battery_notifier_threshold_writer</item>
+        <item>battery_notifier_full_charge_setting_writer_v1</item>
     </string-array>
 </resources>

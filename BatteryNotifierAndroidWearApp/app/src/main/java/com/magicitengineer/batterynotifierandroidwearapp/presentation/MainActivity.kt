@@ -56,6 +56,7 @@ import com.magicitengineer.batterynotifierandroidwearapp.domain.presentation.Wea
 import com.magicitengineer.batterynotifierandroidwearapp.domain.state.WearPersistentState
 import com.magicitengineer.batterynotifierandroidwearapp.presentation.theme.BatteryNotifierAndroidWearAppTheme
 import com.magicitengineer.batterynotifierandroidwearapp.platform.wearable.GooglePlayServicesPhoneStateRequestGateway
+import com.magicitengineer.batterynotifierandroidwearapp.platform.wearable.GooglePlayServicesFullChargeSettingGateway
 import com.magicitengineer.batterynotifierandroidwearapp.platform.notification.BATTERY_ALERT_CHANNEL_ID
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -77,6 +78,9 @@ class MainActivity : ComponentActivity() {
     private val thresholdSettingsController by lazy {
         WearAppContainer.thresholdSettingsController(this)
     }
+    private val fullChargeSettingGateway by lazy {
+        GooglePlayServicesFullChargeSettingGateway(this)
+    }
     private val thresholdDraftCommandQueue by lazy {
         (application as BatteryNotifierWearApplication).thresholdDraftCommandQueue
     }
@@ -84,6 +88,7 @@ class MainActivity : ComponentActivity() {
     private var notificationsEnabled by mutableStateOf(false)
     private var batteryAlertChannelDisabled = false
     private var thresholdWriterAvailable by mutableStateOf(false)
+    private var fullChargeWriterAvailable by mutableStateOf(false)
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -232,6 +237,7 @@ class MainActivity : ComponentActivity() {
                     ?: displayState.thresholdPercent,
                 thresholdChangeStatus = persistentState.thresholdChangeStatus,
                 thresholdWriterAvailable = thresholdWriterAvailable,
+                fullChargeWriterAvailable = fullChargeWriterAvailable,
                 thresholdEditing = thresholdDraftEditorState.isEditing,
                 onThresholdEdit = {
                     val initialDraft = persistentState.thresholdDraftPercent
@@ -258,6 +264,14 @@ class MainActivity : ComponentActivity() {
                 onThresholdCancel = {
                     thresholdDraftEditorState.cancel()
                 },
+                onFullChargeNotificationToggle = {
+                    coroutineScope.launch {
+                        fullChargeSettingGateway.send(
+                            enabled = !displayState.fullChargeNotificationEnabled,
+                            expectedEnabled = displayState.fullChargeNotificationEnabled,
+                        )
+                    }
+                },
             )
         }
     }
@@ -267,6 +281,7 @@ class MainActivity : ComponentActivity() {
         refreshNotificationPermissionState()
         lifecycleScope.launch {
             thresholdWriterAvailable = thresholdSettingsController.isAvailable()
+            fullChargeWriterAvailable = fullChargeSettingGateway.isAvailable()
         }
     }
 
@@ -338,12 +353,14 @@ private fun WearApp(
     thresholdDraftPercent: Int? = displayState.thresholdPercent,
     thresholdChangeStatus: ThresholdChangeStatus = ThresholdChangeStatus.IDLE,
     thresholdWriterAvailable: Boolean = false,
+    fullChargeWriterAvailable: Boolean = false,
     thresholdEditing: Boolean = false,
     onThresholdEdit: () -> Unit = {},
     onThresholdStep: (Int) -> Unit = {},
     onThresholdSave: () -> Unit = {},
     onThresholdRetry: () -> Unit = {},
     onThresholdCancel: () -> Unit = {},
+    onFullChargeNotificationToggle: () -> Unit = {},
 ) {
     BatteryNotifierAndroidWearAppTheme {
         Box(
@@ -363,12 +380,14 @@ private fun WearApp(
                 thresholdDraftPercent = thresholdDraftPercent,
                 thresholdChangeStatus = thresholdChangeStatus,
                 thresholdWriterAvailable = thresholdWriterAvailable,
+                fullChargeWriterAvailable = fullChargeWriterAvailable,
                 thresholdEditing = thresholdEditing,
                 onThresholdEdit = onThresholdEdit,
                 onThresholdStep = onThresholdStep,
                 onThresholdSave = onThresholdSave,
                 onThresholdRetry = onThresholdRetry,
                 onThresholdCancel = onThresholdCancel,
+                onFullChargeNotificationToggle = onFullChargeNotificationToggle,
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -387,12 +406,14 @@ private fun BatteryStateList(
     thresholdDraftPercent: Int?,
     thresholdChangeStatus: ThresholdChangeStatus,
     thresholdWriterAvailable: Boolean,
+    fullChargeWriterAvailable: Boolean,
     thresholdEditing: Boolean,
     onThresholdEdit: () -> Unit,
     onThresholdStep: (Int) -> Unit,
     onThresholdSave: () -> Unit,
     onThresholdRetry: () -> Unit,
     onThresholdCancel: () -> Unit,
+    onFullChargeNotificationToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val batteryDescription = displayState.levelPercent?.let {
@@ -449,6 +470,33 @@ private fun BatteryStateList(
             }
             displayState.thresholdPercent?.let { threshold ->
                 item { StateText(stringResource(R.string.threshold_value, threshold)) }
+            }
+            item {
+                StateText(
+                    stringResource(
+                        if (displayState.fullChargeNotificationEnabled) {
+                            R.string.full_charge_notification_on
+                        } else {
+                            R.string.full_charge_notification_off
+                        }
+                    )
+                )
+            }
+            item {
+                Button(
+                    onClick = onFullChargeNotificationToggle,
+                    enabled = fullChargeWriterAvailable,
+                ) {
+                    Text(
+                        stringResource(
+                            if (displayState.fullChargeNotificationEnabled) {
+                                R.string.disable_full_charge_notification
+                            } else {
+                                R.string.enable_full_charge_notification
+                            }
+                        )
+                    )
+                }
             }
             if (thresholdEditing && thresholdDraftPercent != null) {
                 item {
@@ -741,6 +789,7 @@ fun ThresholdEditorPreview() {
         ),
         thresholdDraftPercent = 20,
         thresholdWriterAvailable = true,
+        fullChargeWriterAvailable = true,
         thresholdEditing = true,
     )
 }

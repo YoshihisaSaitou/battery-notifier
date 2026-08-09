@@ -3,7 +3,7 @@
 文書ID: NBS-001  
 版: 0.1  
 状態: Draft  
-最終更新: 2026-07-20
+最終更新: 2026-08-09
 
 ## 1. 監視方式
 
@@ -65,6 +65,15 @@ threshold=100は上側の値が存在しないため、満充電100%から99%以
 - 連続した同値、順不同callback、Service再生成に耐えるようAlertStateをDataStoreへ保存する。
 - イベント作成、disarm、sequence増加、outbox記録を同じDataStore transactionで行う。
 
+### 4.1 満充電アルゴリズム
+
+- 既定値は`fullChargeNotificationEnabled=false`とし、監視中かつ有効な場合だけ評価する。
+- 充電中の初回正常観測が100%未満なら、その充電セッションの満充電通知をarmする。初回が100%なら通知せずdisarmする。
+- 同一充電セッションで`previousLevelPercent < 100 && currentLevelPercent == 100 && isCharging`となった最初の1回だけ`FullChargeReachedEvent`を生成する。
+- 通知後に充電中のまま99%と100%を往復しても再armしない。非充電状態を1回観測し、その後100%未満で充電を開始した場合だけ次のセッションをarmする。
+- 設定をONにした時点が充電中100%未満なら現在セッションをarmできるが、100%ならイベントを生成せず次の充電セッションまで待つ。OFFは満充電判定をdisarmする。
+- イベント作成、disarm、sequence増加、Mobile通知outbox、Wear同期outboxを同じDataStore transactionで確定する。
+
 ## 5. Notification Channel
 
 | Channel ID | 重要度 | 用途 | ユーザー制御 |
@@ -74,6 +83,8 @@ threshold=100は上側の値が存在しないため、満充電100%から99%以
 | `sync_issues` | DEFAULTまたはLOW | 監視復旧が必要なとき | 頻発させない |
 
 Channel作成後は重要度をアプリから変更できないため、文言と初期値をリリース前に実機確認する。
+
+満充電通知も`battery_alerts`を使用する。通知種別ごとに安定したeventId由来IDを使い、低残量通知と満充電通知を同じIDで上書きしない。
 
 ## 6. Mobile通知
 

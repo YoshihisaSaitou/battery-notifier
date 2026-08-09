@@ -3,7 +3,7 @@
 文書ID: WIS-001  
 版: 0.1  
 状態: Draft  
-最終更新: 2026-07-29
+最終更新: 2026-08-09
 
 ## 1. 目的
 
@@ -24,6 +24,7 @@ Mobileの電池状態と到達イベントをWearへ安全かつ省電力に同�
 | DataClient / DataItem | 最新状態と到達イベント | 切断中にバッファされ、再接続時に同期できる |
 | MessageClient | Wearからの即時状態要求 | 保存不要のベストエフォート要求に適する |
 | MessageClient | Wearからのしきい値変更要求とMobileの結果応答 | 接続中RPCとして扱い、遅延した自動適用を避ける |
+| MessageClient | Wearからの満充電通知設定要求 | Mobile単一writerを維持し、切断中の遅延自動適用を避ける |
 | NodeClient | 現在到達可能なnodeの診断 | UIの接続参考情報に使う |
 | CapabilityClient | 対応アプリ/nodeの発見 | Mobile/Wear機能の存在確認に使う |
 
@@ -32,6 +33,7 @@ Mobileの電池状態と到達イベントをWearへ安全かつ省電力に同�
 - 監視開始・停止。
 - 残量または充電状態の変更。
 - しきい値変更。
+- 満充電通知設定変更と満充電イベント生成。
 - 到達イベント生成。
 - nodeの再到達。
 - Wearからの状態要求。
@@ -184,3 +186,13 @@ sequenceDiagram
 - 未対応schemaは設定を変更せず診断へ記録する。安全に`requestId`を読めないpayloadへ結果を捏造しない。
 
 公式Android資料の確認日: 2026-07-29。MessageClientはRPC/remote-control用途で、接続が必要かつ永続化・自動再試行を持たない。DataItemは切断時にbufferされるため、本機能では遅延した設定適用を避ける目的でcommandに使用しない。
+
+## 14. Wearからの満充電通知設定（BN-004）
+
+- 設定の正本、Proto DataStore writer、充電セッション判定はMobileに置く。Wearは`enabled`と最後に確認した`expectedEnabled`を含む要求を送る。
+- 接続中は`battery_notifier_full_charge_setting_writer_v1` capabilityを持つ単一Mobile nodeへ`/battery-notifier/v1/change-full-charge-setting`を送信し、Mobileは完全検証、期待値競合、冪等性を評価する。既存のしきい値writer capabilityでは代用しない。
+- Mobileは設定、満充電arm状態、phone-state sequence、同期outboxを同じ直列化/transaction境界で確定し、Wearへphone-stateを送る。
+- WearはMessage送信成功を適用成功とみなさず、後続phone-stateへ収束した時点で確定表示する。
+- 切断、送信失敗、Wear/Mobile再起動では自動送信しない。再接続後もユーザーの明示的な再操作を待つ。
+- 競合時はMobile設定を変更せず現在のphone-stateを再送する。No Data、旧Mobile、対応Capabilityなしでは切替を確定せず更新案内を表示する。
+- phone-stateの`fullChargeNotificationEnabled`欠落は旧Mobileとしてfalse表示とし、編集を無効にする。満充電イベントは別の固定DataItem pathを使用し、旧Wearは未知pathとして無視する。

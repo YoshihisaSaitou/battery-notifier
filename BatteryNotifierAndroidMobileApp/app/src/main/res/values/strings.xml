@@ -57,4 +57,8 @@
     <string name="mobile_sync_failed">Could not send the current battery state. Try again when the watch is connected.</string>
     <string name="mobile_sync_battery_unavailable">The current battery state is unavailable.</string>
     <string name="mobile_sync_invalid_battery">The current battery reading was invalid and was not sent.</string>
+    <string name="full_charge_notification_title">Notify when fully charged</string>
+    <string name="full_charge_notification_description">Notify this phone and the paired watch once when the phone reaches 100% in a charging session.</string>
+    <string name="full_charge_reached_title">Phone is fully charged</string>
+    <string name="full_charge_reached_body">Battery level reached 100%.</string>
 </resources>

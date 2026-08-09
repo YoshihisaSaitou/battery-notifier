@@ -41,6 +41,7 @@ message PhoneStateProto {
   int32 threshold_percent = 6;
   bool monitoring_enabled = 7;
   int64 sent_at_epoch_millis = 8;
+  bool full_charge_notification_enabled = 9;
 }
 
 message ThresholdEventProto {
@@ -51,6 +52,7 @@ message ThresholdEventProto {
   int32 threshold_percent = 5;
   int64 occurred_at_epoch_millis = 6;
   int64 expires_at_epoch_millis = 7;
+  string event_kind = 8;
 }
 
 message ThresholdChangeRequestProto {

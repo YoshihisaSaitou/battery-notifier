@@ -16,6 +16,7 @@ import com.magicitengineer.batterynotifierandroidmobileapp.application.notificat
 import com.magicitengineer.batterynotifierandroidmobileapp.application.notification.MobileNotificationPostResult
 import com.magicitengineer.batterynotifierandroidmobileapp.application.notification.StableMobileNotificationId
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.ThresholdReachedEvent
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.AlertEventKind
 
 class AndroidMobileAlertNotificationFactory(
     context: Context,
@@ -50,16 +51,24 @@ class AndroidMobileAlertNotificationFactory(
         return NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_battery_monitoring)
             .setContentTitle(
-                applicationContext.getString(
-                    R.string.phone_battery_alert_title,
-                    event.levelPercent,
-                )
+                if (event.kind == AlertEventKind.FULL_CHARGE) {
+                    applicationContext.getString(R.string.full_charge_reached_title)
+                } else {
+                    applicationContext.getString(
+                        R.string.phone_battery_alert_title,
+                        event.levelPercent,
+                    )
+                }
             )
             .setContentText(
-                applicationContext.getString(
-                    R.string.phone_battery_alert_body,
-                    event.thresholdPercent,
-                )
+                if (event.kind == AlertEventKind.FULL_CHARGE) {
+                    applicationContext.getString(R.string.full_charge_reached_body)
+                } else {
+                    applicationContext.getString(
+                        R.string.phone_battery_alert_body,
+                        event.thresholdPercent,
+                    )
+                }
             )
             .setContentIntent(openApp)
             .setAutoCancel(true)

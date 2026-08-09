@@ -67,4 +67,11 @@
     <string name="threshold_conflict">Setting changed on phone. Review the current value.</string>
     <string name="threshold_rejected">The phone rejected this threshold change</string>
     <string name="threshold_writer_unavailable">Open or update the phone app, then reconnect</string>
+    <string name="full_charge_notification_title">Notify when fully charged</string>
+    <string name="full_charge_reached_title">Phone is fully charged</string>
+    <string name="full_charge_reached_body">Battery level reached 100%.</string>
+    <string name="full_charge_notification_on">Full-charge notifications are on</string>
+    <string name="full_charge_notification_off">Full-charge notifications are off</string>
+    <string name="enable_full_charge_notification">Enable full-charge notifications</string>
+    <string name="disable_full_charge_notification">Disable full-charge notifications</string>
 </resources>

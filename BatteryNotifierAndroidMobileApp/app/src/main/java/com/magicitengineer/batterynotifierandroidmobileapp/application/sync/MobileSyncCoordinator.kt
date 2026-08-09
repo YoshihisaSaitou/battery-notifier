@@ -119,6 +119,13 @@ class MobileSyncCoordinator(
         }
     }
 
+    override suspend fun saveFullChargeNotificationEnabled(
+        enabled: Boolean,
+    ): MobileSyncCoordinationResult = mutex.withLock {
+        thresholdSettingUpdater.updateFullChargeNotificationEnabled(enabled)
+        syncLocked(MobileSyncTrigger.SETTINGS_CHANGED)
+    }
+
     override suspend fun processBatteryChange(
         result: BatteryReadResult,
     ): MobileSyncCoordinationResult = mutex.withLock {

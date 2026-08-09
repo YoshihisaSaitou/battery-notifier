@@ -5,6 +5,7 @@ data class AlertRule(
     val monitoringEnabled: Boolean = false,
     val notifyIfAlreadyBelowOnStart: Boolean = false,
     val rearmHysteresisPercent: Int = DEFAULT_HYSTERESIS_PERCENT,
+    val fullChargeNotificationEnabled: Boolean = false,
 ) {
     init {
         require(thresholdPercent in MIN_THRESHOLD_PERCENT..MAX_THRESHOLD_PERCENT) {
@@ -26,6 +27,11 @@ data class AlertRule(
         const val MIN_HYSTERESIS_PERCENT = 1
         const val MAX_HYSTERESIS_PERCENT = 10
     }
+}
+
+enum class AlertEventKind {
+    LOW_BATTERY,
+    FULL_CHARGE,
 }
 
 data class AlertState(
@@ -51,6 +57,7 @@ data class ThresholdReachedEvent(
     val occurredAtEpochMillis: Long,
     val expiresAtEpochMillis: Long,
     val sequence: Long,
+    val kind: AlertEventKind = AlertEventKind.LOW_BATTERY,
 ) {
     init {
         require(eventId.isNotBlank()) { "eventId must not be blank" }

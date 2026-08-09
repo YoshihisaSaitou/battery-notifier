@@ -3,7 +3,7 @@
 文書ID: L10N-001  
 版: 0.1  
 状態: Draft  
-最終更新: 2026-07-29
+最終更新: 2026-08-09
 
 ## 1. 対応言語
 
@@ -58,6 +58,15 @@ threshold_not_saved
 threshold_conflict
 retry_threshold_change
 threshold_slider_description
+full_charge_notification
+full_charge_notification_description
+full_charge_reached_title
+full_charge_reached_body
+full_charge_setting_checking_phone
+full_charge_setting_saved_confirming_sync
+full_charge_setting_not_saved
+full_charge_setting_conflict
+retry_full_charge_setting_change
 ```
 
 ## 4. 表記ルール
@@ -73,8 +82,12 @@ threshold_slider_description
 | Sync | 同期 | Sync |
 | 未確定 | まだ保存されていません | Not saved yet |
 | 競合 | スマートフォンで設定が変更されました | Setting changed on phone |
+| 満充電通知 | 満充電になったら通知 | Notify when fully charged |
+| 満充電 | 充電が完了しました | Fully charged |
 
 BN-002では要求payloadと結果payloadに完成済み文言を含めず、Wearが現在のLocaleで編集、送信中、適用済み、未保存、競合、拒否、再試行の文言を組み立てる。
+
+BN-004の満充電イベントおよび設定要求payloadにも完成済み文言を含めず、Mobile/Wearが各端末の現在Localeで通知と設定状態を組み立てる。
 
 - 日本語は簡潔な「です・ます」調を基本とする。
 - 英語はsentence caseを使用する。

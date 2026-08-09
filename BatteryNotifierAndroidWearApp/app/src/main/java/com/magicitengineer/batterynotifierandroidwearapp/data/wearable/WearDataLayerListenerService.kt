@@ -22,7 +22,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 internal fun ownsInitialWearNotificationDelivery(path: String): Boolean =
-    path == WearDataLayerContract.THRESHOLD_EVENT_PATH
+    path == WearDataLayerContract.THRESHOLD_EVENT_PATH ||
+        path == WearDataLayerContract.FULL_CHARGE_EVENT_PATH
 
 internal suspend fun <T> protectInitialWearNotificationDelivery(
     path: String,

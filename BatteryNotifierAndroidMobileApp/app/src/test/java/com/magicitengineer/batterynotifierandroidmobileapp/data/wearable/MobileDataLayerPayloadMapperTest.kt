@@ -1,6 +1,7 @@
 package com.magicitengineer.batterynotifierandroidmobileapp.data.wearable
 
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.ThresholdReachedEvent
+import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.AlertEventKind
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.battery.BatterySnapshot
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.sync.PhoneStateSync
 import org.junit.Assert.assertEquals
@@ -38,9 +39,27 @@ class MobileDataLayerPayloadMapperTest {
                 "thresholdPercent" to DataLayerValue.IntValue(20),
                 "monitoringEnabled" to DataLayerValue.BooleanValue(true),
                 "sentAtEpochMillis" to DataLayerValue.LongValue(1_784_516_400_500L),
+                "fullChargeNotificationEnabled" to DataLayerValue.BooleanValue(false),
             ),
             payload.values,
         )
+    }
+
+    @Test
+    fun fullChargeEventUsesTheDedicatedFixedPath() {
+        val event = ThresholdReachedEvent(
+            eventId = EVENT_ID,
+            levelPercent = 100,
+            thresholdPercent = 100,
+            occurredAtEpochMillis = 1_784_516_400_000L,
+            expiresAtEpochMillis = 1_784_516_700_000L,
+            sequence = 44L,
+            kind = AlertEventKind.FULL_CHARGE,
+        )
+
+        val payload = MobileDataLayerPayloadMapper.thresholdEvent(event)
+
+        assertEquals(BatteryDataLayerContractV1.FULL_CHARGE_EVENT_PATH, payload.path)
     }
 
     @Test

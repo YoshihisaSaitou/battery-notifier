@@ -4,6 +4,7 @@ import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.
 import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.MobileStateProto
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.AlertRule
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.alert.ThresholdReachedEvent
+import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.proto.AlertEventKindProto
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.state.MobilePersistentState
 import com.magicitengineer.batterynotifierandroidmobileapp.domain.settings.ThresholdChangeResultCode
 import java.util.UUID
@@ -109,7 +110,8 @@ object MobileStateSanitizer {
             occurredAtEpochMillis > 0 &&
             expiresAtEpochMillis > occurredAtEpochMillis &&
             expiresAtEpochMillis - occurredAtEpochMillis <= ThresholdReachedEvent.MAX_EXPIRY_MILLIS &&
-            sequence >= 1
+            sequence >= 1 &&
+            kind != AlertEventKindProto.UNRECOGNIZED
 
     private fun String.isNullOrValidUuid(): Boolean =
         isBlank() || runCatching { UUID.fromString(this) }.isSuccess

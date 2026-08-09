@@ -6,6 +6,18 @@ import org.junit.Test
 
 class WearPayloadValidatorTest {
     @Test
+    fun fullChargeSettingCapabilityIsVersionedAndDistinctFromThresholdWriter() {
+        assertEquals(
+            "battery_notifier_full_charge_setting_writer_v1",
+            WearDataLayerContract.MOBILE_FULL_CHARGE_SETTING_WRITER_CAPABILITY,
+        )
+        assertTrue(
+            WearDataLayerContract.MOBILE_FULL_CHARGE_SETTING_WRITER_CAPABILITY !=
+                WearDataLayerContract.MOBILE_THRESHOLD_WRITER_CAPABILITY
+        )
+    }
+
+    @Test
     fun validPhoneStateMapsEveryRequiredField() {
         val result = WearPayloadValidator.validate(
             path = WearDataLayerContract.PHONE_STATE_PATH,
@@ -19,6 +31,7 @@ class WearPayloadValidatorTest {
         assertTrue(state.isCharging)
         assertEquals(20, state.thresholdPercent)
         assertTrue(state.monitoringEnabled)
+        assertTrue(state.fullChargeNotificationEnabled)
     }
 
     @Test
@@ -29,8 +42,11 @@ class WearPayloadValidatorTest {
         val wrongType = validStateValues().toMutableMap().apply {
             this[WearDataLayerContract.KEY_SEQUENCE] = 42
         }
+        val wrongOptionalType = validStateValues().toMutableMap().apply {
+            this[WearDataLayerContract.KEY_FULL_CHARGE_NOTIFICATION_ENABLED] = "true"
+        }
 
-        listOf(missing, wrongType).forEach { values ->
+        listOf(missing, wrongType, wrongOptionalType).forEach { values ->
             val result = WearPayloadValidator.validate(
                 WearDataLayerContract.PHONE_STATE_PATH,
                 values,
@@ -133,6 +149,22 @@ class WearPayloadValidatorTest {
         )
     }
 
+    @Test
+    fun fullChargeEventUsesDedicatedPathAndKind() {
+        val values = validEventValues().toMutableMap().apply {
+            this[WearDataLayerContract.KEY_LEVEL_PERCENT] = 100
+            this[WearDataLayerContract.KEY_THRESHOLD_PERCENT] = 100
+        }
+
+        val result = WearPayloadValidator.validate(
+            WearDataLayerContract.FULL_CHARGE_EVENT_PATH,
+            values,
+            RECEIVED_AT,
+        ) as PayloadValidationResult.ValidEvent
+
+        assertEquals(AlertEventKind.FULL_CHARGE, result.event.kind)
+    }
+
     private fun validStateValues(): Map<String, Any?> = mapOf(
         WearDataLayerContract.KEY_SCHEMA_VERSION to 1,
         WearDataLayerContract.KEY_SEQUENCE to 42L,
@@ -142,6 +174,7 @@ class WearPayloadValidatorTest {
         WearDataLayerContract.KEY_THRESHOLD_PERCENT to 20,
         WearDataLayerContract.KEY_MONITORING_ENABLED to true,
         WearDataLayerContract.KEY_SENT_AT to 950_000L,
+        WearDataLayerContract.KEY_FULL_CHARGE_NOTIFICATION_ENABLED to true,
     )
 
     private fun validEventValues(): Map<String, Any?> = mapOf(

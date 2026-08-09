@@ -57,6 +57,7 @@ threshold_saved_confirming_sync
 threshold_not_saved
 threshold_conflict
 retry_threshold_change
+threshold_slider_description
 ```
 
 ## 4. 表記ルール

@@ -12,6 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,11 +36,15 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.material.Button
+import androidx.wear.compose.material.Icon
+import androidx.wear.compose.material.InlineSlider
+import androidx.wear.compose.material.InlineSliderDefaults
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.TimeText
 import androidx.wear.tooling.preview.devices.WearDevices
 import com.magicitengineer.batterynotifierandroidwearapp.R
+import com.magicitengineer.batterynotifierandroidwearapp.BatteryNotifierWearApplication
 import com.magicitengineer.batterynotifierandroidwearapp.application.sync.PhoneStateRequestResult
 import com.magicitengineer.batterynotifierandroidwearapp.application.sync.RequestPhoneState
 import com.magicitengineer.batterynotifierandroidwearapp.domain.settings.ThresholdChangeStatus
@@ -53,6 +58,7 @@ import com.magicitengineer.batterynotifierandroidwearapp.presentation.theme.Batt
 import com.magicitengineer.batterynotifierandroidwearapp.platform.wearable.GooglePlayServicesPhoneStateRequestGateway
 import com.magicitengineer.batterynotifierandroidwearapp.platform.notification.BATTERY_ALERT_CHANNEL_ID
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 private enum class RetryUiState {
@@ -71,16 +77,61 @@ class MainActivity : ComponentActivity() {
     private val thresholdSettingsController by lazy {
         WearAppContainer.thresholdSettingsController(this)
     }
+    private val thresholdDraftCommandQueue by lazy {
+        (application as BatteryNotifierWearApplication).thresholdDraftCommandQueue
+    }
+    private lateinit var thresholdDraftEditorState: ThresholdDraftEditorState
     private var notificationsEnabled by mutableStateOf(false)
     private var batteryAlertChannelDisabled = false
     private var thresholdWriterAvailable by mutableStateOf(false)
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        val restoredEditorState = savedStateRegistry.consumeRestoredStateForKey(
+            THRESHOLD_EDITOR_SAVED_STATE_KEY
+        )
+        thresholdDraftEditorState = ThresholdDraftEditorState(
+            initialSnapshot = ThresholdDraftEditorSnapshot(
+                isEditing = restoredEditorState?.getBoolean(
+                    THRESHOLD_EDITOR_EDITING_KEY
+                ) ?: false,
+                draftPercent = restoredEditorState?.takeIf {
+                    it.containsKey(THRESHOLD_EDITOR_DRAFT_KEY)
+                }?.getInt(THRESHOLD_EDITOR_DRAFT_KEY),
+                pendingSavePercent = restoredEditorState?.takeIf {
+                    it.containsKey(THRESHOLD_EDITOR_PENDING_SAVE_KEY)
+                }?.getInt(THRESHOLD_EDITOR_PENDING_SAVE_KEY),
+            ),
+            commandSink = thresholdDraftCommandQueue,
+        )
+        thresholdDraftEditorState.reconcileRestoredDraft()
+        savedStateRegistry.registerSavedStateProvider(THRESHOLD_EDITOR_SAVED_STATE_KEY) {
+            val snapshot = thresholdDraftEditorState.snapshot()
+            Bundle().apply {
+                putBoolean(THRESHOLD_EDITOR_EDITING_KEY, snapshot.isEditing)
+                snapshot.draftPercent?.let { putInt(THRESHOLD_EDITOR_DRAFT_KEY, it) }
+                snapshot.pendingSavePercent?.let {
+                    putInt(THRESHOLD_EDITOR_PENDING_SAVE_KEY, it)
+                }
+            }
+        }
         setTheme(android.R.style.Theme_DeviceDefault)
         refreshNotificationPermissionState()
         lifecycleScope.launch {
             repository.recoverInterruptedThresholdChange()
+        }
+        lifecycleScope.launch {
+            if (thresholdDraftEditorState.pendingSavePercent != null) {
+                val state = repository.state.first()
+                if (
+                    state.pendingThresholdChangeRequest != null ||
+                    state.thresholdChangeStatus != ThresholdChangeStatus.IDLE
+                ) {
+                    thresholdDraftEditorState.acknowledgePendingSave()
+                } else {
+                    thresholdDraftEditorState.replayPendingSave()
+                }
+            }
         }
         val requestPhoneState = RequestPhoneState(
             GooglePlayServicesPhoneStateRequestGateway(this)
@@ -95,7 +146,6 @@ class MainActivity : ComponentActivity() {
             var nowEpochMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
             var retryUiState by remember { mutableStateOf(RetryUiState.IDLE) }
             var notificationRetryInProgress by remember { mutableStateOf(false) }
-            var thresholdEditing by remember { mutableStateOf(false) }
             LaunchedEffect(lifecycleOwner) {
                 lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                     while (true) {
@@ -106,6 +156,17 @@ class MainActivity : ComponentActivity() {
             }
             LaunchedEffect(persistentState.phoneStateReceivedAtEpochMillis) {
                 nowEpochMillis = System.currentTimeMillis()
+            }
+            LaunchedEffect(
+                persistentState.pendingThresholdChangeRequest,
+                persistentState.thresholdChangeStatus,
+            ) {
+                if (
+                    persistentState.pendingThresholdChangeRequest != null ||
+                    persistentState.thresholdChangeStatus != ThresholdChangeStatus.IDLE
+                ) {
+                    thresholdDraftEditorState.acknowledgePendingSave()
+                }
             }
             val mappedDisplayState = WearDisplayStateMapper.map(
                     state = persistentState,
@@ -166,28 +227,28 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 },
-                thresholdDraftPercent = persistentState.thresholdDraftPercent
+                thresholdDraftPercent = thresholdDraftEditorState.draftPercent
+                    ?: persistentState.thresholdDraftPercent
                     ?: displayState.thresholdPercent,
                 thresholdChangeStatus = persistentState.thresholdChangeStatus,
                 thresholdWriterAvailable = thresholdWriterAvailable,
-                thresholdEditing = thresholdEditing,
+                thresholdEditing = thresholdDraftEditorState.isEditing,
                 onThresholdEdit = {
-                    thresholdEditing = true
+                    val initialDraft = persistentState.thresholdDraftPercent
+                        ?: displayState.thresholdPercent
+                    if (initialDraft != null) {
+                        thresholdDraftEditorState.beginEditing(initialDraft)
+                    }
                     coroutineScope.launch {
                         thresholdWriterAvailable =
                             thresholdSettingsController.isAvailable()
                     }
                 },
-                onThresholdDraftChange = { value ->
-                    coroutineScope.launch {
-                        thresholdSettingsController.updateDraft(value)
-                    }
+                onThresholdStep = { direction ->
+                    thresholdDraftEditorState.stepBy(direction)
                 },
                 onThresholdSave = {
-                    thresholdEditing = false
-                    coroutineScope.launch {
-                        thresholdSettingsController.save()
-                    }
+                    thresholdDraftEditorState.save()
                 },
                 onThresholdRetry = {
                     coroutineScope.launch {
@@ -195,10 +256,7 @@ class MainActivity : ComponentActivity() {
                     }
                 },
                 onThresholdCancel = {
-                    thresholdEditing = false
-                    coroutineScope.launch {
-                        thresholdSettingsController.cancel()
-                    }
+                    thresholdDraftEditorState.cancel()
                 },
             )
         }
@@ -260,6 +318,10 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val REQUEST_NOTIFICATION_PERMISSION = 1001
+        const val THRESHOLD_EDITOR_SAVED_STATE_KEY = "threshold-editor"
+        const val THRESHOLD_EDITOR_EDITING_KEY = "editing"
+        const val THRESHOLD_EDITOR_DRAFT_KEY = "draft-percent"
+        const val THRESHOLD_EDITOR_PENDING_SAVE_KEY = "pending-save-percent"
     }
 }
 
@@ -278,7 +340,7 @@ private fun WearApp(
     thresholdWriterAvailable: Boolean = false,
     thresholdEditing: Boolean = false,
     onThresholdEdit: () -> Unit = {},
-    onThresholdDraftChange: (Int) -> Unit = {},
+    onThresholdStep: (Int) -> Unit = {},
     onThresholdSave: () -> Unit = {},
     onThresholdRetry: () -> Unit = {},
     onThresholdCancel: () -> Unit = {},
@@ -303,7 +365,7 @@ private fun WearApp(
                 thresholdWriterAvailable = thresholdWriterAvailable,
                 thresholdEditing = thresholdEditing,
                 onThresholdEdit = onThresholdEdit,
-                onThresholdDraftChange = onThresholdDraftChange,
+                onThresholdStep = onThresholdStep,
                 onThresholdSave = onThresholdSave,
                 onThresholdRetry = onThresholdRetry,
                 onThresholdCancel = onThresholdCancel,
@@ -327,7 +389,7 @@ private fun BatteryStateList(
     thresholdWriterAvailable: Boolean,
     thresholdEditing: Boolean,
     onThresholdEdit: () -> Unit,
-    onThresholdDraftChange: (Int) -> Unit,
+    onThresholdStep: (Int) -> Unit,
     onThresholdSave: () -> Unit,
     onThresholdRetry: () -> Unit,
     onThresholdCancel: () -> Unit,
@@ -398,28 +460,10 @@ private fun BatteryStateList(
                     )
                 }
                 item {
-                    Button(
-                        onClick = {
-                            onThresholdDraftChange(
-                                (thresholdDraftPercent - 1).coerceAtLeast(5)
-                            )
-                        },
-                        enabled = thresholdDraftPercent > 5,
-                    ) {
-                        Text(stringResource(R.string.decrease_threshold))
-                    }
-                }
-                item {
-                    Button(
-                        onClick = {
-                            onThresholdDraftChange(
-                                (thresholdDraftPercent + 1).coerceAtMost(100)
-                            )
-                        },
-                        enabled = thresholdDraftPercent < 100,
-                    ) {
-                        Text(stringResource(R.string.increase_threshold))
-                    }
+                    ThresholdDraftSlider(
+                        thresholdDraftPercent = thresholdDraftPercent,
+                        onThresholdStep = onThresholdStep,
+                    )
                 }
                 item {
                     Button(
@@ -564,6 +608,46 @@ private fun BatteryStateList(
     }
 }
 
+@Composable
+internal fun ThresholdDraftSlider(
+    thresholdDraftPercent: Int,
+    onThresholdStep: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val sliderDescription = stringResource(
+        R.string.threshold_slider_description,
+        thresholdDraftPercent,
+    )
+    val decreaseDescription = stringResource(R.string.decrease_threshold)
+    val increaseDescription = stringResource(R.string.increase_threshold)
+    InlineSlider(
+        value = thresholdDraftPercent,
+        onValueChange = { requestedValue ->
+            val direction = (requestedValue - thresholdDraftPercent).compareTo(0)
+            if (direction != 0) {
+                onThresholdStep(direction)
+            }
+        },
+        valueProgression = THRESHOLD_PERCENT_RANGE,
+        decreaseIcon = {
+            Icon(
+                imageVector = InlineSliderDefaults.Decrease,
+                contentDescription = decreaseDescription,
+            )
+        },
+        increaseIcon = {
+            Icon(
+                imageVector = InlineSliderDefaults.Increase,
+                contentDescription = increaseDescription,
+            )
+        },
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = sliderDescription },
+        segmented = false,
+    )
+}
+
 private fun androidx.wear.compose.foundation.lazy.ScalingLazyListScope.ThresholdChangeStatusText(
     status: ThresholdChangeStatus,
 ) {
@@ -642,5 +726,21 @@ fun StalePreview() {
             monitoringEnabled = false,
             ageMinutes = 6,
         )
+    )
+}
+
+@Preview(device = WearDevices.SMALL_ROUND, showSystemUi = true)
+@Composable
+fun ThresholdEditorPreview() {
+    WearApp(
+        displayState = WearDisplayState(
+            freshness = Freshness.FRESH,
+            levelPercent = 68,
+            thresholdPercent = 20,
+            monitoringEnabled = true,
+        ),
+        thresholdDraftPercent = 20,
+        thresholdWriterAvailable = true,
+        thresholdEditing = true,
     )
 }

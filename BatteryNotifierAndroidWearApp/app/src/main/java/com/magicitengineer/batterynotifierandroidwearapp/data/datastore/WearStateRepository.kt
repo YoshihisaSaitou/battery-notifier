@@ -128,6 +128,7 @@ interface WearStateRepository {
 
     suspend fun prepareThresholdChange(
         requestId: String,
+        desiredThresholdPercent: Int? = null,
     ): ThresholdChangePreparationResult
 
     suspend fun reserveThresholdChangeRetry(): ThresholdChangeRetryReservationResult
@@ -423,7 +424,9 @@ class ProtoWearStateRepository(
 
     override suspend fun prepareThresholdChange(
         requestId: String,
+        desiredThresholdPercent: Int?,
     ): ThresholdChangePreparationResult {
+        require(desiredThresholdPercent == null || desiredThresholdPercent in 5..100)
         var outcome = ThresholdChangePreparationOutcome.NO_PHONE_STATE
         var request: ThresholdChangeRequest? = null
         val updated = update { current ->
@@ -435,7 +438,9 @@ class ProtoWearStateRepository(
             val confirmedThreshold = current.thresholdChangeResult
                 ?.effectiveThresholdPercent
                 ?: phoneState.thresholdPercent
-            val desired = current.thresholdDraftPercent ?: confirmedThreshold
+            val desired = desiredThresholdPercent
+                ?: current.thresholdDraftPercent
+                ?: confirmedThreshold
             request = ThresholdChangeRequest(
                 requestId = requestId,
                 thresholdPercent = desired,

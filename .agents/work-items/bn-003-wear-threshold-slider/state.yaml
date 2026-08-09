@@ -1,0 +1,1515 @@
+schema_version: 1
+
+work_item:
+  id: "BN-003"
+  slug: "bn-003-wear-threshold-slider"
+  title: "Wear threshold slider adjustment"
+  scope: >-
+    Replace the Wear threshold editor's separate increment/decrement buttons
+    with a Wear-native non-segmented slider that adjusts the 5..100 percent
+    draft in one-percent steps, preserves tap controls, leaves crown input for
+    screen scrolling, and sends no threshold request until the existing
+    explicit Save action.
+
+status: "done"
+current_phase: "human_verification"
+current_role: "human"
+current_actor:
+  type: "human"
+  id: "human-user"
+
+last_transition:
+  from_phase: "test"
+  to_phase: "human_verification"
+  reason: >-
+    The human explicitly reported that real-device testing found no problem and
+    directed BN-003 to close. This user attestation is recorded separately from
+    agent runtime evidence and constitutes final Human approval.
+
+spec_refs:
+  - "docs/architecture-decision-records.md#adr-001-kotlin--jetpack-composeを採用する"
+  - "docs/architecture-decision-records.md#adr-015-wearはmobileへしきい値変更を要求しmobileを単一writerに保つ"
+  - "docs/functional-requirements.md#211-wearからのしきい値変更状態"
+  - "docs/screen-specification-and-navigation.md#wear"
+  - "docs/wear-os-display-specification.md#9-しきい値編集uibn-002提案"
+  - "docs/localization-specification.md"
+  - "docs/test-plan-and-cases.md"
+
+affected_components:
+  - "BatteryNotifierAndroidWearApp presentation"
+  - "Wear English and Japanese resources"
+  - "Wear unit and UI test contracts"
+  - "BN-002 UI specifications"
+
+phase_tasks:
+  specification:
+    - id: "SPEC-018"
+      status: "completed"
+      summary: >-
+        Record Wear-native non-segmented slider, one-percent tap/rotary
+        adjustment, draft-only behavior, explicit Save, and acceptance tests.
+    - id: "SPEC-019"
+      status: "completed"
+      summary: >-
+        Remove crown/rotary threshold adjustment from the normative contract,
+        reserve crown input for screen scrolling, and retain one-percent
+        decrease/increase controls plus explicit Save.
+  implementation:
+    - id: "IMP-018"
+      status: "completed"
+      summary: >-
+        Implement the Wear slider, rotary focus/adjustment, localized
+        accessibility text, and deterministic adjustment tests.
+    - id: "IMP-019"
+      status: "completed"
+      summary: >-
+        Fix RV-011-001 with an editor-local authoritative draft and an ordered
+        persistence/Save command queue, then add the burst-handler regression.
+    - id: "IMP-020"
+      status: "completed"
+      summary: >-
+        Fix RV-011-002 with process-owned command execution, saved editor state,
+        atomic final-draft preparation, and recreation/cancellation regression.
+    - id: "IMP-021"
+      status: "completed"
+      summary: >-
+        Fix RV-011-003 by reconciling a restored unsaved editing draft into Wear
+        Proto without sending, retrying, or changing a durable pending request.
+    - id: "IMP-022"
+      status: "completed"
+      summary: >-
+        Remove rotary event capture, forced editor focus, rotary guidance, and
+        rotary-only unit tests while retaining InlineSlider tap adjustment and
+        explicit Save behavior.
+    - id: "IMP-023"
+      status: "completed"
+      summary: >-
+        Fix RV-012-001 with an actual ThresholdDraftEditorState upper-boundary
+        fixture proving +1 is a no-op and -1 persists 99 without sending.
+  review:
+    - id: "RV-011"
+      status: "completed"
+      summary: >-
+        Independently review UI behavior, ADR-001/ADR-015 compliance,
+        accessibility semantics, and test completeness.
+    - id: "RV-012"
+      status: "completed"
+      summary: >-
+        Independently verify that crown input is no longer consumed by the
+        threshold editor and that retained adjustment/save behavior still
+        matches FR-007 and AC-018.
+  test:
+    - id: "TST-004"
+      status: "completed_by_human_real_device_attestation"
+      summary: >-
+        Automated unit/compile/lint evidence passed. Agent-run Compose UI runtime
+        and TC-E083/TC-E084 remain historically Not Run; the human reported
+        real-device testing had no problem and approved closure.
+  human_verification:
+    - id: "HUM-003"
+      status: "completed_approved"
+      summary: >-
+        Human real-device testing reported no problem and final closure was
+        explicitly approved. Device/build details and separate measurements not
+        supplied by the human are not inferred.
+
+decisions_needed: []
+blockers: []
+human_verification:
+  status: "completed_approved"
+  owner: "human"
+  tasks:
+    - id: "HUM-003"
+      title: "Verify BN-003 threshold editing on a physical Wear device"
+      status: "approved_by_human_real_device_attestation"
+    - id: "HUM-003-APPROVAL"
+      title: "Record final approval or required changes"
+      status: "approved"
+  approval:
+    decision: "approved"
+    approver: "human-user"
+    build_identity: >-
+      Current BN-003 worktree based on HEAD
+      7e99d3cb3999f49a782113f6cc6cc9286a5511af; Wear
+      com.magicitengineer.batterynotifier versionCode 3/versionName 1.0.
+    devices: >-
+      Physical device testing was reported by the human. Exact model, size, OS
+      build, connection mode, permission state, and device identifiers were not
+      provided and are not inferred.
+    observed_result: >-
+      Human reported no problem during real-device testing and explicitly
+      directed that BN-003 be closed.
+    battery_impact: >-
+      No separate numeric comparison was provided or claimed for this UI-only
+      feature closure.
+    notification_latency: >-
+      No separate sample series or percentile was provided or claimed for this
+      UI-only feature closure.
+    decided_at: "2026-08-09T10:32:09+09:00"
+    rationale: >-
+      Explicit human real-device acceptance and closure instruction are the final
+      product-owner decision. Agent-run runtime tests remain distinct historical
+      Not Run evidence and are not relabeled as agent Pass.
+risks:
+  - id: "RSK-012"
+    summary: >-
+      A 96-value range is dense on a round screen; the Wear-native slider must
+      remain non-segmented and retain one-percent tap adjustment.
+    mitigation: >-
+      Use androidx.wear.compose.material InlineSlider, explicit range semantics,
+      localized controls, and required 41/45 mm accessibility verification.
+  - id: "RSK-013"
+    summary: >-
+      Crown-based threshold adjustment conflicts with ScalingLazyColumn
+      scrolling.
+    mitigation: >-
+      Human decision removes rotary capture from the threshold editor. Crown
+      input remains available for ordinary screen scrolling.
+
+review_findings:
+  - id: "RV-011-001"
+    severity: "Medium"
+    status: "verified_fixed"
+    file: >-
+      BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt:189
+    related_locations:
+      - >-
+        BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt:578
+      - >-
+        BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt:597
+    requirements:
+      - "FR-007"
+      - "AC-018"
+      - "TC-U031"
+      - "TC-E084"
+    summary: >-
+      Rapid tap or rotary events can collapse because each handler derives the
+      next value from thresholdDraftPercent supplied by the last DataStore Flow
+      recomposition, while onThresholdDraftChange launches asynchronous
+      persistence without an immediate local authoritative draft update.
+    reproduction: >-
+      Start editing at 20 percent and deliver two positive rotary events, or
+      two increase taps, before the first updateDraft transaction is emitted
+      back through repository.state and recomposes the InlineSlider. Both
+      callbacks observe 20 and request 21, so the durable draft can finish at
+      21 rather than the required 22; explicit Save then sends that collapsed
+      final value.
+    required_outcome: >-
+      Serialize adjustment against the latest accepted draft, or update an
+      editor-local authoritative draft synchronously before asynchronous
+      persistence, so every accepted tap/rotary event advances exactly one
+      percent and Save cannot overtake the final adjustment. Add a deterministic
+      actual-handler fixture proving two positive events produce 20 -> 21 -> 22,
+      boundaries remain 5/100, no request is sent during adjustment, and Save
+      sends 22 exactly once.
+    disposition: >-
+      Must fix before Test because the defect affects the central one-percent
+      continuous-input behavior; return to Implementation and independently
+      re-review the fix.
+    resolution: >-
+      ThresholdDraftEditSession now owns each accepted value synchronously,
+      while ThresholdDraftCommandQueue processes draft persistence and explicit
+      Save in UI-event order. Save persists the session's authoritative value
+      immediately before invoking the existing controller request path.
+    resolution_evidence:
+      - "CHK-BN003-007"
+      - "CHK-BN003-008"
+      - "CHK-BN003-RV011-003"
+    verification: >-
+      Independent re-review traced the production ThresholdDraftEditSession and
+      ordered queue and reran 12 targeted tests. Two positive events update the
+      synchronous session 20 -> 21 -> 22, queued persistence precedes Save,
+      adjustment sends zero gateway requests, and the explicit Save path sends
+      the final 22 exactly once while the composition remains alive.
+  - id: "RV-011-002"
+    severity: "Medium"
+    status: "verified_fixed"
+    file: >-
+      BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt:103
+    related_locations:
+      - >-
+        BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt:108
+      - >-
+        BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt:119
+      - >-
+        BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/ThresholdDraftEditSession.kt:67
+      - >-
+        BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/ThresholdDraftEditSession.kt:101
+    requirements:
+      - "W-005"
+      - "NFR-016"
+      - "FR-009"
+      - "AC-018"
+      - "TC-E084"
+    summary: >-
+      ThresholdDraftEditSession is remember-only and ThresholdDraftCommandQueue
+      runs in rememberCoroutineScope. When composition is disposed, close only
+      closes the channel and the same composition scope is cancelled without
+      joining or durably transferring queued commands, so an in-flight final
+      draft or Save can be lost during Activity recreation/process teardown.
+    reproduction: >-
+      Edit 20 -> 21 -> 22 and immediately rotate/recreate the Activity, or tap
+      Save and recreate before DataStore update/save completes. The session is
+      not rememberSaveable and onDispose closes the queue while its worker is
+      cancelled with the composition scope. The next Activity can restore an
+      older persisted draft, and a queued Save may never create a pending
+      request or MessageClient send even though the user tapped Save.
+    required_outcome: >-
+      Move command ownership to a lifecycle boundary that guarantees accepted
+      draft/Save commands are durably handed off before composition cancellation,
+      and preserve the authoritative editing value across Activity recreation.
+      Add a deterministic cancellation/recreation fixture with a suspended
+      persist action proving the final 22 is restored and a tapped Save is
+      processed exactly once, while passive recreation never auto-sends an
+      unsaved draft and ADR-015 explicit-retry behavior remains unchanged.
+    disposition: >-
+      Must fix before Test because W-005 and NFR-016 explicitly require editable
+      input persistence across Activity recreation, and loss of a tapped Save is
+      user-intent loss in a central settings flow. Return to Implementation for
+      lifecycle ownership and regression coverage, then independently re-review.
+    resolution: >-
+      ThresholdDraftCommandQueue is now owned by BatteryNotifierWearApplication's
+      process scope rather than Composition. ThresholdDraftEditorState snapshots
+      editing, draft, and an unacknowledged explicit-Save intent through
+      ComponentActivity SavedStateRegistry. Controller Save atomically prepares
+      the authoritative final draft and pending request before gateway send; a
+      restored intent replays only when no durable pending/status exists.
+    resolution_evidence:
+      - "CHK-BN003-009"
+      - "CHK-BN003-010"
+      - "CHK-BN003-RV011-006"
+    verification: >-
+      Independent re-review confirmed application-process ownership, restored
+      explicit-Save intent, atomic final-draft plus pending preparation, and the
+      pending/status guard that prevents reconnect/recreation auto-retry. The
+      actual cancellation fixture and controller paths send final 22 exactly
+      once; the independent targeted rerun passed 16/16.
+  - id: "RV-011-003"
+    severity: "Medium"
+    status: "verified_fixed"
+    file: >-
+      BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt:94
+    related_locations:
+      - >-
+        BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt:126
+      - >-
+        BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/ThresholdDraftEditSessionTest.kt:75
+      - >-
+        docs/wear-os-display-specification.md:93
+    requirements:
+      - "W-005"
+      - "NFR-016"
+      - "ADR-015"
+    summary: >-
+      SavedStateRegistry restores an unsaved editing draft into local editor
+      state after process-scope cancellation, but MainActivity replays only a
+      pending explicit-Save intent. It never re-enqueues the restored unsaved
+      draft for Wear Proto persistence, so restored UI state and the durable
+      draft can diverge.
+    reproduction: >-
+      Start from durable draft 20, adjust rapidly to 21 then 22 while the first
+      persist action is suspended, save the Activity snapshot, cancel the
+      application process scope, and recreate the application and Activity from
+      the snapshot without tapping Save. The UI restores editing draft 22 and
+      sends zero MessageClient requests, but the replacement queue receives no
+      persist command and Wear Proto remains 20. A later process/device restart
+      without that Activity saved state therefore restores 20 and loses 22.
+    required_outcome: >-
+      When an editing draft is restored and no explicit-Save intent is pending,
+      durably reconcile that restored final draft into Wear Proto without sending
+      a threshold-change request or triggering retry. Add a deterministic
+      process-scope cancellation/recreation fixture with a suspended persist that
+      asserts durable draft 22, zero gateway sends, and unchanged pending/status;
+      retain the existing pending/status no-auto-resend guard and explicit retry.
+    disposition: >-
+      Must fix before Test because W-005 explicitly requires the draft to survive
+      Wear process and device restart. Return to Implementation and independently
+      re-review the passive-process-recreation persistence fixture.
+    resolution: >-
+      MainActivity now asks ThresholdDraftEditorState to re-enqueue only a restored
+      editing draft with no explicit-Save intent. The application-owned ordered
+      queue persists that value through the existing repository transaction and
+      never invokes Save or retry. Active pending/status states remain protected by
+      the repository transaction and are not overwritten or re-sent.
+    resolution_evidence:
+      - "CHK-BN003-011"
+      - "CHK-BN003-012"
+      - "CHK-BN003-013"
+    verification: >-
+      Independent re-review traced MainActivity restore into the application-owned
+      ordered queue, controller updateDraft, and the repository transaction. Actual
+      fixtures prove 20 -> 21 -> 22, process-scope cancellation, restored durable
+      draft 22 with zero sends and null/IDLE request state, duplicate Activity
+      reconciliation with zero sends, explicit-Save exclusion and one Save of 22,
+      and SEND_FAILED pending/status preservation. The independent targeted plus
+      repository rerun passed 40/40.
+  - id: "RV-012-001"
+    severity: "Medium"
+    status: "verified_fixed"
+    file: >-
+      BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/ThresholdDraftEditSessionTest.kt:46
+    related_locations:
+      - >-
+        BatteryNotifierAndroidWearApp/app/src/androidTest/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/ThresholdDraftSliderInstrumentedTest.kt:44
+    requirements:
+      - "FR-007"
+      - "AC-018"
+      - "TC-U031"
+    summary: >-
+      Removing the rotary-only boundary helper tests also removed deterministic
+      actual-editor JVM coverage for TC-U031's current=100 input. The retained
+      editor test starts at 5 and proves only 5 -> 5 -> 6, while the unexecuted
+      Compose fixture uses a local Int instead of ThresholdDraftEditorState, the
+      ordered queue, or Proto persistence and checks only that increase is disabled
+      at 100. No fixture proves that decrease at 100 produces and persists 99.
+    reproduction: >-
+      Regress ThresholdDraftEditorState.stepBy at the upper boundary so an increase
+      from 100 is persisted as a duplicate, or a decrease from 100 does not produce
+      99. The independently executed editor/controller/repository suite still
+      passes because no actual editor fixture starts at 100; the Compose fixture is
+      not runtime evidence and does not exercise 100 -> 99 or durable persistence.
+    required_outcome: >-
+      Add a deterministic JVM fixture using the actual ThresholdDraftEditorState
+      and ordered persistence path, starting at 100. Assert that stepBy(+1) keeps
+      draft 100 without enqueuing duplicate persistence or sending a request, then
+      stepBy(-1) changes the draft to 99 and persists exactly 99 with zero sends.
+      Retain the existing 5- and 20-percent fixtures and explicit-Save assertions.
+    disposition: >-
+      Must fix before Test because TC-U031 explicitly requires current=5/20/100 and
+      the missing upper-boundary decrement is core one-percent slider behavior.
+      Return to Implementation and independently re-review the added fixture.
+    resolution_evidence:
+      - "CHK-BN003-018"
+      - "CHK-BN003-019"
+      - "CHK-BN003-020"
+    verification: >-
+      Independent re-review inspected and executed the actual
+      ThresholdDraftEditorState plus ThresholdDraftCommandQueue fixture at 100.
+      It asserts +1 keeps draft 100 with persisted [] and sent [], then -1 yields
+      draft 99, persisted [99], and sent []. Existing 5/20, Save, Activity/process
+      recreation, retry, pending, and repository siblings remain and the targeted
+      independent rerun passed 38/38 with zero failures, errors, or skips.
+
+implementation_transition_matrix:
+  authoritative_writer: "Mobile remains the sole effective-settings writer."
+  wear_persistence_boundary: >-
+    Every accepted InlineSlider decrease/increase value calls the existing
+    WearThresholdSettingsController.updateDraft repository transaction only.
+  rows:
+    - input: "InlineSlider decrease while draft is above 5"
+      result: "Persist draft minus one percent; send no MessageClient request."
+    - input: "InlineSlider increase while draft is below 100"
+      result: "Persist draft plus one percent; send no MessageClient request."
+    - input: "Decrease/increase at the 5/100 boundary"
+      result: "Keep the current in-range draft; send no request."
+    - input: "Crown rotation while the threshold editor is visible"
+      result: >-
+        Do not consume the rotary event in the threshold editor; leave it to
+        ordinary ScalingLazyColumn screen scrolling and keep the draft unchanged.
+    - input: "Explicit Save"
+      result: >-
+        Preserve the existing BN-002 prepare/send/result state machine and send
+        only the final persisted draft.
+    - input: "Passive recreation with an unsaved editing draft and no Save intent"
+      result: >-
+        Re-enqueue only the restored draft for Wear Proto persistence; send no
+        MessageClient request and create no pending request or retry.
+    - input: "Recreation with an explicit Save intent or durable pending request"
+      result: >-
+        An explicit Save intent uses the existing atomic replay guard. If a durable
+        request/status already exists, the draft transaction is a no-op; preserve
+        pending/status and explicit-retry-only behavior with no additional send.
+    - input: "Disconnect, reconnect, process recreation, retry, or cancel"
+      result: >-
+        Preserve existing ADR-015 behavior; this UI change introduces no new
+        callback ordering, pending field, automatic send, or auto-apply path.
+  unsupported_combinations: []
+
+evidence:
+  - id: "EVD-065"
+    type: "repository_inspection"
+    result: "pass"
+    summary: >-
+      Mobile already uses a 5..100 Slider with 94 intermediate steps and
+      explicit Save; Wear currently exposes separate one-percent buttons.
+  - id: "EVD-066"
+    type: "architecture_scope"
+    result: "pass"
+    summary: >-
+      ADR-001 requires Wear-specific UI components and ADR-015 keeps Mobile as
+      sole writer. No Data Layer, Proto, permission, application ID, or signing
+      change is required.
+  - id: "EVD-067"
+    type: "specification_gate"
+    result: "pass"
+    summary: >-
+      FR-007, AC-018, W-005, TC-U031, TC-E083, and TC-E084 now define the
+      non-segmented slider, one-percent tap/rotary behavior, explicit Save
+      boundary, localization, accessibility, and required device checks.
+  - id: "EVD-068"
+    type: "implementation"
+    result: "pass"
+    files:
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt"
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/ThresholdSliderAdjustment.kt"
+      - "BatteryNotifierAndroidWearApp/app/src/main/res/values/strings.xml"
+      - "BatteryNotifierAndroidWearApp/app/src/main/res/values-ja/strings.xml"
+      - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/ThresholdSliderAdjustmentTest.kt"
+      - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/application/settings/WearThresholdSettingsControllerTest.kt"
+      - "BatteryNotifierAndroidWearApp/app/src/androidTest/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/ThresholdDraftSliderInstrumentedTest.kt"
+    summary: >-
+      Replaced standalone increment/decrement buttons with Wear InlineSlider,
+      retained embedded one-percent tap controls, added focused rotary input,
+      localized value/range semantics and hint text, and retained the existing
+      explicit Save callback as the only request trigger.
+  - id: "EVD-069"
+    type: "impact_analysis"
+    result: "pass"
+    summary: >-
+      Inspected every onThresholdDraftChange call site and the existing Save,
+      retry, cancel, disconnect/reconnect, and process-recovery paths. The new
+      UI calls only updateDraft; repeated adjustments send zero requests and
+      the existing Save path sends exactly the final persisted value once.
+  - id: "EVD-070"
+    type: "independent_review"
+    result: "fail"
+    summary: >-
+      RV-011 independently traced InlineSlider, rotary focus/consumption,
+      every onThresholdDraftChange call site, controller updateDraft/Save,
+      reconnect/retry/cancel, resources, fixtures, and the scoped worktree diff.
+      One Medium correctness finding, RV-011-001, remains open; no Critical or
+      High finding was found.
+  - id: "EVD-071"
+    type: "scope_review"
+    result: "pass"
+    summary: >-
+      BN-003 changes are limited to Wear presentation, localized resources,
+      tests, normative UI/test documents, and BN-003 state. No permission,
+      Proto, Data Layer, Gradle dependency, application ID, or signing change
+      is present. The pre-existing BN-002 state change was not modified by the
+      BN-003 reviewer.
+  - id: "EVD-072"
+    type: "implementation_fix"
+    result: "pass"
+    files:
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt"
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/ThresholdDraftEditSession.kt"
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/ThresholdSliderAdjustment.kt"
+      - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/ThresholdDraftEditSessionTest.kt"
+      - "BatteryNotifierAndroidWearApp/app/src/androidTest/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/ThresholdDraftSliderInstrumentedTest.kt"
+    summary: >-
+      IMP-019 makes the editor session the immediate source of truth, converts
+      slider and rotary callbacks to direction events, and serializes DataStore
+      draft updates plus explicit Save without changing ADR-015 or MessageClient.
+  - id: "EVD-073"
+    type: "implementation_gate"
+    result: "pass"
+    summary: >-
+      The actual handler fixture passed 20 -> 21 -> 22, zero sends while
+      adjusting, and one Save request containing 22. Full Wear debug/release
+      unit, UI-test compilation, lint, and scoped whitespace gates passed.
+  - id: "EVD-074"
+    type: "independent_re_review"
+    result: "fail"
+    summary: >-
+      RV-011-001 is independently verified fixed for burst adjustment and Save
+      ordering while composition remains alive. Re-review found RV-011-002
+      Medium: composition-scoped command ownership can lose undrained draft or
+      Save work during Activity recreation, contrary to W-005 and NFR-016. No
+      Critical or High finding was found.
+  - id: "EVD-075"
+    type: "scope_review"
+    result: "pass"
+    summary: >-
+      Static re-review confirmed IMP-019 does not change permissions, Proto,
+      Data Layer contracts, MessageClient gateway behavior, Gradle dependencies,
+      application ID, or signing. Existing retry/reconnect/cancel controller
+      paths remain unchanged; the unrelated BN-002 state was not modified.
+  - id: "EVD-076"
+    type: "implementation_fix"
+    result: "pass"
+    files:
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/BatteryNotifierWearApplication.kt"
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/application/settings/ThresholdDraftCommandQueue.kt"
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/application/settings/WearThresholdSettingsController.kt"
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/data/datastore/WearStateRepository.kt"
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt"
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/ThresholdDraftEditSession.kt"
+      - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/ThresholdDraftEditSessionTest.kt"
+      - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/application/settings/WearThresholdSettingsControllerTest.kt"
+    summary: >-
+      IMP-020 removes Composition ownership from accepted commands, restores the
+      immediate editor draft from Activity saved state, and passes the final
+      editor value into an atomic DataStore prepare-before-send operation.
+  - id: "EVD-077"
+    type: "implementation_gate"
+    result: "pass"
+    summary: >-
+      Suspended-persist recreation fixtures restore draft 22 without passive
+      auto-send and retain a pre-recreation Save as exactly one request for 22.
+      Full Wear unit, UI-test compilation, lint, and scoped whitespace gates pass.
+  - id: "EVD-078"
+    type: "independent_re_review"
+    result: "fail"
+    summary: >-
+      RV-011-002 is independently verified fixed for explicit Save recovery,
+      atomic preparation, exactly-once final value, and no auto-retry of durable
+      pending/status. Re-review found RV-011-003 Medium because passive process
+      recreation restores draft 22 only in Activity state and does not reconcile
+      it to Wear Proto. No Critical or High finding was found.
+  - id: "EVD-079"
+    type: "scope_review"
+    result: "pass"
+    summary: >-
+      The reviewed BN-003 diff adds no permission, Proto schema, Data Layer path,
+      Gradle dependency, application ID, or signing change. English/Japanese
+      resource parity remains intact. The unrelated pre-existing BN-002 state
+      modification was observed but not edited by this reviewer.
+  - id: "EVD-080"
+    type: "implementation_fix"
+    result: "pass"
+    files:
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/MainActivity.kt"
+      - "BatteryNotifierAndroidWearApp/app/src/main/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/ThresholdDraftEditSession.kt"
+      - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/presentation/ThresholdDraftEditSessionTest.kt"
+      - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/application/settings/WearThresholdSettingsControllerTest.kt"
+    summary: >-
+      IMP-021 re-persists only a restored unsaved editing draft through the
+      application-owned queue. It adds no MessageClient, retry, Proto schema,
+      permission, application ID, signing, or localization change.
+  - id: "EVD-081"
+    type: "implementation_gate"
+    result: "pass"
+    summary: >-
+      Process-cancellation and active-pending sibling fixtures pass. Targeted tests
+      pass 18/18, full debug/release unit tests pass 87/87 each, Compose UI-test
+      Kotlin compiles, lint has zero errors, and scoped state/diff checks pass.
+  - id: "EVD-082"
+    type: "independent_re_review"
+    result: "pass"
+    summary: >-
+      IMP-021 matches W-005/NFR-016 and ADR-015. Reconciliation is eligible only
+      for an editing snapshot with a draft and no explicit-Save intent, uses the
+      process-owned ordered queue, and invokes only repository draft persistence.
+      Process cancellation restores durable 20 to 22 with zero gateway sends;
+      duplicate Activity persistence is idempotent; explicit Save remains exactly
+      once; active pending/status blocks the draft overwrite and auto-retry.
+  - id: "EVD-083"
+    type: "scope_review"
+    result: "pass"
+    summary: >-
+      IMP-021 changes no permission, Proto schema, Data Layer path/gateway, Gradle
+      dependency, application ID, signing, or localized resource. The unrelated
+      pre-existing BN-002 state modification was observed but not edited.
+  - id: "EVD-085"
+    type: "independent_review"
+    result: "fail"
+    summary: >-
+      RV-012 independently confirmed no threshold-editor onRotaryScrollEvent,
+      FocusRequester, focusRequester, or focusable capture remains; the crown is
+      left to the ScalingLazyColumn. InlineSlider remains 5..100, one-percent,
+      segmented=false, and draft-only until explicit Save. However, TC-U031's
+      actual-editor current=100 boundary fixture is missing after rotary-only test
+      removal, so Medium RV-012-001 keeps the Review -> Test gate closed.
+  - id: "EVD-086"
+    type: "scope_review"
+    result: "pass"
+    summary: >-
+      RV-012 found no permission, Proto schema, Data Layer path/gateway, Gradle
+      dependency, application ID, signing, or BN-002 state edit in IMP-022 scope.
+      English/Japanese threshold resource names remain paired apart from the
+      pre-existing English-only hello_world key.
+  - id: "EVD-087"
+    type: "independent_re_review"
+    result: "pass"
+    summary: >-
+      RV-012-001 is independently verified fixed. The actual editor and ordered
+      queue fixture starts at 100, asserts +1 leaves draft 100 with persistence
+      and send both empty, then asserts -1 yields draft 99, persisted [99], and
+      no send. Independent editor/controller/repository execution passed 38/38;
+      retained 5/20, explicit Save, recreation, retry, and pending fixtures pass.
+  - id: "EVD-088"
+    type: "scope_review"
+    result: "pass"
+    summary: >-
+      IMP-023 is test-only: after its recorded start, only
+      ThresholdDraftEditSessionTest.kt and BN-003 state have later timestamps in
+      the reviewed source/test/spec/state scope. No production, specification,
+      resource, permission, Proto, Data Layer, Gradle, application ID, signing,
+      or BN-002 state change was made by this fix/re-review.
+
+test_results:
+  - id: "CHK-BN003-001"
+    command: >-
+      gradle.bat testDebugUnitTest --tests
+      com.magicitengineer.batterynotifierandroidwearapp.presentation.ThresholdSliderAdjustmentTest
+    result: "pass"
+    summary: "TC-U031 targeted unit test class passed and production Compose compiled."
+  - id: "CHK-BN003-002"
+    command: >-
+      gradle.bat compileDebugAndroidTestKotlin
+    result: "fail"
+    summary: >-
+      UI test compilation failed because this Compose test version exposes
+      assertExists as a SemanticsNodeInteraction member, not an importable
+      top-level extension. Production compilation and TC-U031 still passed.
+  - id: "CHK-BN003-003"
+    command: >-
+      gradle.bat compileDebugAndroidTestKotlin testDebugUnitTest --tests
+      com.magicitengineer.batterynotifierandroidwearapp.presentation.ThresholdSliderAdjustmentTest
+    result: "pass"
+    summary: >-
+      After removing only the incompatible import, the Compose UI test compiled
+      and TC-U031 remained passing. No production behavior changed for the fix.
+  - id: "CHK-BN003-004"
+    command: >-
+      gradle.bat test lint compileDebugAndroidTestKotlin
+      -Pkotlin.compiler.execution.strategy=in-process --no-daemon
+    result: "pass"
+    summary: >-
+      Final Wear gate passed. Debug unit tests passed 79/79 and release unit
+      tests passed 79/79 with zero failures, errors, or skips. Lint reported
+      zero errors and 28 warnings; no warning points to a newly added file and
+      the new accessibility-string warning was removed. UI test Kotlin compiled.
+  - id: "CHK-BN003-005"
+    command: "ThresholdDraftSliderInstrumentedTest on emulator or Pixel Watch 4"
+    result: "not_run"
+    summary: >-
+      The automated Compose UI test is compiled but was not installed or run on
+      the connected physical watch during Implementation to avoid changing
+      device app/data state and to preserve Test/Human role ownership.
+  - id: "CHK-BN003-006"
+    command: "Localized resource key parity and scoped git diff --check"
+    result: "pass"
+    summary: >-
+      Both new string keys exist in English and Japanese, the only pre-existing
+      unmatched key is hello_world, and the scoped whitespace check passed.
+  - id: "CHK-BN003-RV011-001"
+    command: >-
+      gradle.bat testDebugUnitTest --tests
+      com.magicitengineer.batterynotifierandroidwearapp.presentation.ThresholdSliderAdjustmentTest
+      --tests
+      com.magicitengineer.batterynotifierandroidwearapp.application.settings.WearThresholdSettingsControllerTest
+      -Pkotlin.compiler.execution.strategy=in-process --no-daemon
+    result: "pass"
+    summary: >-
+      Independent rerun passed ThresholdSliderAdjustmentTest 3/3 and
+      WearThresholdSettingsControllerTest 7/7. The first sandboxed launch was
+      environment-blocked by Gradle loopback connection; the permitted rerun
+      completed successfully. Passing tests do not cover the burst-event
+      stale-Compose-value scenario in RV-011-001.
+  - id: "CHK-BN003-RV011-002"
+    command: "TC-E083, TC-E084, and ThresholdDraftSliderInstrumentedTest runtime"
+    result: "not_run"
+    summary: >-
+      Review inspected the compiled fixture but did not install an APK or run
+      emulator/physical-watch UI tests. Pixel Watch 4 41/45 mm, maximum font,
+      Japanese/English, TalkBack, rendered focus, and actual rotary input remain
+      Test/Human evidence and are not treated as Pass.
+  - id: "CHK-BN003-007"
+    command: >-
+      gradle.bat testDebugUnitTest --tests
+      com.magicitengineer.batterynotifierandroidwearapp.presentation.ThresholdDraftEditSessionTest
+      -Pkotlin.compiler.execution.strategy=in-process
+    result: "pass"
+    summary: >-
+      Two tests passed. The production handler fixture proves rapid positive
+      events synchronously advance 20 -> 21 -> 22, send no request during
+      adjustment, and explicit Save sends the persisted value 22 exactly once;
+      the 5-percent boundary also suppresses a duplicate persistence command.
+  - id: "CHK-BN003-008"
+    command: >-
+      gradle.bat test compileDebugAndroidTestKotlin lint
+      -Pkotlin.compiler.execution.strategy=in-process
+    result: "pass"
+    summary: >-
+      Full Wear gate passed. Debug and release unit tests passed 81/81 each
+      with zero failures, errors, or skips. Compose UI test Kotlin compiled;
+      lint reported zero errors and 28 existing warnings, with zero issues in
+      ThresholdDraftEditSession.kt. Scoped git diff --check passed.
+  - id: "CHK-BN003-RV011-003"
+    command: >-
+      gradle.bat testDebugUnitTest --tests
+      com.magicitengineer.batterynotifierandroidwearapp.presentation.ThresholdDraftEditSessionTest
+      --tests
+      com.magicitengineer.batterynotifierandroidwearapp.presentation.ThresholdSliderAdjustmentTest
+      --tests
+      com.magicitengineer.batterynotifierandroidwearapp.application.settings.WearThresholdSettingsControllerTest
+      -Pkotlin.compiler.execution.strategy=in-process --no-daemon
+    result: "pass"
+    summary: >-
+      Independent rerun passed 12/12: edit session 2/2, rotary adjustment 3/3,
+      and controller 7/7, with zero failures, errors, or skips. The tests prove
+      live-composition ordering but do not cancel the owning scope with a
+      suspended command, so they do not cover RV-011-002.
+  - id: "CHK-BN003-RV011-004"
+    command: "ThresholdDraftSliderInstrumentedTest runtime and TC-E083/TC-E084"
+    result: "not_run"
+    summary: >-
+      Independent Review did not install an APK or run emulator/physical-watch
+      UI tests. Pixel Watch 4 41/45 mm, maximum font, Japanese/English, TalkBack,
+      rendered focus/rotary behavior, and end-to-end request observation remain
+      Test/Human evidence and are not treated as Pass.
+  - id: "CHK-BN003-RV011-005"
+    command: "SnakeYAML state parse and scoped git diff --check"
+    result: "pass"
+    summary: >-
+      BN-003 state parsed as a top-level YAML mapping and the tracked BN-003
+      production/resource/test/specification diff passed git diff --check. The
+      unrelated pre-existing BN-002 state change remains outside review scope.
+  - id: "CHK-BN003-009"
+    command: >-
+      gradle.bat testDebugUnitTest --tests
+      com.magicitengineer.batterynotifierandroidwearapp.presentation.ThresholdDraftEditSessionTest
+      --tests
+      com.magicitengineer.batterynotifierandroidwearapp.application.settings.WearThresholdSettingsControllerTest
+      -Pkotlin.compiler.execution.strategy=in-process
+    result: "pass"
+    summary: >-
+      Targeted tests passed 13/13. Five editor/queue tests cover burst ordering,
+      boundaries, a suspended persist across Activity-state recreation with
+      draft 22 and zero passive sends, a Save tapped before recreation that
+      sends 22 exactly once, and replay of the saved explicit-Save intent after
+      process-scope cancellation. Eight controller tests include atomic final-value
+      preparation over an older persisted draft.
+  - id: "CHK-BN003-010"
+    command: >-
+      gradle.bat test compileDebugAndroidTestKotlin lint
+      -Pkotlin.compiler.execution.strategy=in-process
+    result: "pass"
+    summary: >-
+      Full Wear gate passed. Debug and release unit tests passed 85/85 each with
+      zero failures, errors, or skips. Compose UI-test Kotlin compiled; lint
+      reported zero errors and 28 existing warnings with zero issues in the new
+      queue/editor files. Scoped git diff --check passed.
+  - id: "CHK-BN003-RV011-006"
+    command: >-
+      gradle.bat :app:testDebugUnitTest --tests
+      com.magicitengineer.batterynotifierandroidwearapp.presentation.ThresholdDraftEditSessionTest
+      --tests
+      com.magicitengineer.batterynotifierandroidwearapp.application.settings.WearThresholdSettingsControllerTest
+      --tests
+      com.magicitengineer.batterynotifierandroidwearapp.presentation.ThresholdSliderAdjustmentTest
+      -Pkotlin.compiler.execution.strategy=in-process --no-daemon
+    result: "pass"
+    summary: >-
+      Independent rerun passed 16/16 with zero failures, errors, or skips:
+      editor/queue 5/5, controller 8/8, and adjustment/boundary 3/3. The initial
+      invocation used obsolete package filters and returned No tests found; the
+      corrected real-package invocation completed successfully. Actual fixtures
+      cover 20 -> 21 -> 22, 5/100 boundaries, zero adjustment sends, one Save of
+      22, application-scope Activity recreation, and explicit-Save replay after
+      scope cancellation. They do not cover passive unsaved-draft reconciliation
+      after process-scope cancellation, which is RV-011-003.
+  - id: "CHK-BN003-RV011-007"
+    command: "ThresholdDraftSliderInstrumentedTest runtime and TC-E083/TC-E084"
+    result: "not_run"
+    summary: >-
+      Independent Review did not install an APK or execute emulator/physical-watch
+      runtime tests. Maximum font, Japanese/English, TalkBack, rendered rotary
+      focus/consumption, 41/45 mm layouts, and end-to-end MessageClient observation
+      remain Test/Human evidence and are not treated as Pass.
+  - id: "CHK-BN003-RV011-008"
+    command: "SnakeYAML state parse and tracked/untracked scoped diff --check"
+    result: "pass"
+    summary: >-
+      BN-003 state parsed as a top-level YAML mapping. Tracked scoped diff check
+      and explicit no-index whitespace checks for untracked BN-003 source, test,
+      and state files produced no whitespace error. Temporary parse helper was
+      removed; BN-002 state remains outside review scope and untouched.
+  - id: "CHK-BN003-011"
+    command: >-
+      cached-gradle-8.13 testDebugUnitTest --tests
+      ThresholdDraftEditSessionTest --tests WearThresholdSettingsControllerTest
+      --tests ThresholdSliderAdjustmentTest
+      -Pkotlin.compiler.execution.strategy=in-process --no-daemon
+    result: "pass"
+    summary: >-
+      Targeted tests passed 18/18: editor/queue 6/6, controller/repository 9/9,
+      adjustment 3/3. The passive process-cancellation fixture restores Proto-equivalent
+      draft 22 with zero sends and unchanged null/IDLE request state. Activity
+      recreation, explicit-Save replay, and active SEND_FAILED pending state are
+      covered as same-root sibling paths.
+  - id: "CHK-BN003-012"
+    command: >-
+      cached-gradle-8.13 test; compileDebugAndroidTestKotlin; lint
+      -Pkotlin.compiler.execution.strategy=in-process --no-daemon
+    result: "pass"
+    summary: >-
+      Final debug and release XML each report 87/87 tests with zero failures,
+      errors, or skips. The combined invocation exceeded the 240-second caller
+      timeout after producing the unit results, so UI compilation and lint were
+      rerun separately and each returned BUILD SUCCESSFUL. Lint reports zero
+      errors and 28 existing warnings.
+  - id: "CHK-BN003-013"
+    command: "SnakeYAML 2.0 parse and tracked/untracked scoped git diff --check"
+    result: "pass"
+    summary: >-
+      BN-003 state parses as a top-level mapping and all BN-003 implementation,
+      test, and state changes pass whitespace checks. BN-002 state was not edited.
+  - id: "CHK-BN003-RV011-009"
+    command: >-
+      gradle.bat :app:testDebugUnitTest --tests
+      com.magicitengineer.batterynotifierandroidwearapp.presentation.ThresholdDraftEditSessionTest
+      --tests
+      com.magicitengineer.batterynotifierandroidwearapp.application.settings.WearThresholdSettingsControllerTest
+      --tests
+      com.magicitengineer.batterynotifierandroidwearapp.presentation.ThresholdSliderAdjustmentTest
+      --tests
+      com.magicitengineer.batterynotifierandroidwearapp.data.datastore.ProtoWearStateRepositoryTest
+      -Pkotlin.compiler.execution.strategy=in-process --no-daemon
+    result: "pass"
+    summary: >-
+      Independent corrected-package rerun passed 40/40 with zero failures,
+      errors, or skips: editor/queue 6/6, controller/repository integration 9/9,
+      adjustment/boundary 3/3, and repository 22/22. Review inspected the actual
+      fixture inputs and state assertions rather than approving from totals.
+  - id: "CHK-BN003-RV011-010"
+    command: "ThresholdDraftSliderInstrumentedTest runtime, TC-E083, and TC-E084"
+    result: "not_run"
+    summary: >-
+      Review inspected the Compose fixture but did not install or run an APK.
+      Pixel Watch 4 41/45 mm, maximum font, Japanese/English, TalkBack, rendered
+      focus/rotary behavior, and end-to-end MessageClient observation remain
+      Test/Human evidence and are not treated as Pass.
+  - id: "CHK-BN003-RV011-011"
+    command: "SnakeYAML state parse, resource parity, and tracked/untracked scoped diff --check"
+    result: "pass"
+    summary: >-
+      BN-003 state parsed as a top-level YAML mapping. Tracked and untracked BN-003
+      paths produced no whitespace error. English/Japanese string-name parity has
+      only the pre-existing hello_world English-only key. Manifest, Proto, Gradle,
+      Data Layer, permission, application ID, and signing scope are unchanged;
+      temporary parse helper was removed and BN-002 state was not edited.
+  - id: "EVD-084"
+    type: "implementation"
+    result: "pass"
+    summary: >-
+      IMP-022 removes MainActivity rotary event consumption and forced focus,
+      deletes the localized rotary hint and rotary helper/test, and leaves the
+      InlineSlider decrease/increase callbacks, durable draft queue, and explicit
+      Save path unchanged. Production, test, and resource scope has no remaining
+      rotary API or hint reference.
+  - id: "CHK-BN003-014"
+    command: >-
+      cached-gradle-8.13 testDebugUnitTest testReleaseUnitTest
+      -Pkotlin.compiler.execution.strategy=in-process --no-daemon
+    result: "pass"
+    summary: >-
+      The combined first invocation exceeded its 120-second caller timeout with
+      no assertion failure, so unit tasks were rerun separately and returned
+      BUILD SUCCESSFUL. Debug and release XML each report 84/84 tests with zero
+      failures, errors, or skips; removal of the three rotary-only tests accounts
+      for the prior 87 to 84 total.
+  - id: "CHK-BN003-015"
+    command: >-
+      cached-gradle-8.13 compileDebugAndroidTestKotlin lint
+      -Pkotlin.compiler.execution.strategy=in-process --no-daemon
+    result: "pass"
+    summary: >-
+      Compose AndroidTest Kotlin compilation and lint returned BUILD SUCCESSFUL.
+      Lint reports zero errors and 28 existing warnings.
+  - id: "CHK-BN003-016"
+    command: >-
+      scoped rotary-reference search, English/Japanese changed-key parity,
+      SnakeYAML 2.0 state parse, and scoped git diff --check
+    result: "pass"
+    summary: >-
+      Production, unit, AndroidTest, and resource scope has no rotary API/hint
+      reference. Both locales removed threshold_rotary_hint; the pre-existing
+      hello_world locale difference is unchanged. BN-003 state parsed as a
+      top-level mapping and scoped whitespace checks passed. The temporary parse
+      helper was removed.
+  - id: "CHK-BN003-017"
+    command: "ThresholdDraftSliderInstrumentedTest runtime, TC-E083, and TC-E084"
+    result: "not_run"
+    summary: >-
+      No APK was installed and no emulator or physical watch runtime was used.
+      Pixel Watch 4 41/45 mm, maximum font, Japanese/English, TalkBack, ordinary
+      crown scrolling with unchanged draft, and end-to-end MessageClient
+      observation remain Test/Human evidence.
+  - id: "CHK-BN003-RV012-001"
+    command: >-
+      cached-gradle-8.13 :app:testDebugUnitTest --tests
+      com.magicitengineer.batterynotifierandroidwearapp.presentation.ThresholdDraftEditSessionTest
+      --tests
+      com.magicitengineer.batterynotifierandroidwearapp.application.settings.WearThresholdSettingsControllerTest
+      --tests
+      com.magicitengineer.batterynotifierandroidwearapp.data.datastore.ProtoWearStateRepositoryTest
+      -Pkotlin.compiler.execution.strategy=in-process --no-daemon
+    result: "pass"
+    summary: >-
+      Independent rerun passed 37/37 with zero failures, errors, or skips: editor
+      6/6, controller 9/9, and repository 22/22. Fixture inspection confirms burst
+      20 -> 21 -> 22, adjustment sends zero, explicit Save sends final 22 once,
+      recreation/retry/pending guards, and the 5-percent boundary. It also exposes
+      RV-012-001 because no actual-editor fixture starts at 100 and asserts 100 ->
+      99 persistence.
+  - id: "CHK-BN003-RV012-002"
+    command: "ThresholdDraftSliderInstrumentedTest runtime, TC-E083, and TC-E084"
+    result: "not_run"
+    summary: >-
+      No APK was installed and no emulator or physical watch was used. Runtime
+      crown scrolling, 41/45 mm, maximum font, Japanese/English, TalkBack, and
+      end-to-end MessageClient evidence remain Test/Human work and are not Pass.
+  - id: "CHK-BN003-RV012-003"
+    command: >-
+      SnakeYAML 2.0 state parse, untracked state git diff --no-index --check,
+      tracked/untracked scoped path inspection, and temporary-helper cleanup
+    result: "pass"
+    summary: >-
+      BN-003 state parsed as a top-level YAML mapping and its untracked diff has
+      no whitespace error. No temporary helper remains. IMP-022 scope contains no
+      Manifest/permission, Proto, Gradle dependency, Data Layer gateway/path,
+      application ID, or signing change. The pre-existing modified BN-002 state
+      remains present in the worktree and was not edited by this review.
+  - id: "CHK-BN003-018"
+    command: >-
+      cached-gradle-8.13 :app:testDebugUnitTest --tests
+      com.magicitengineer.batterynotifierandroidwearapp.presentation.ThresholdDraftEditSessionTest
+      -Pkotlin.compiler.execution.strategy=in-process --no-daemon
+    result: "pass"
+    summary: >-
+      Actual editor/ordered queue tests passed 7/7. The new fixture starts at
+      100, proves +1 keeps draft 100 with no persistence or send, then proves -1
+      changes draft to 99, persists exactly [99], and sends nothing.
+  - id: "CHK-BN003-019"
+    command: >-
+      cached-gradle-8.13 testDebugUnitTest testReleaseUnitTest
+      compileDebugAndroidTestKotlin lint
+      -Pkotlin.compiler.execution.strategy=in-process --no-daemon
+    result: "pass"
+    summary: >-
+      Full debug and release XML each report 85/85 tests with zero failures,
+      errors, or skips. AndroidTest Kotlin compilation and lint returned BUILD
+      SUCCESSFUL; lint reports zero errors and 28 existing warnings.
+  - id: "CHK-BN003-020"
+    command: >-
+      RV-012-001 fixture assertion inspection and scoped git diff --check
+    result: "pass"
+    summary: >-
+      Fixture uses ThresholdDraftEditorState and ThresholdDraftCommandQueue, not
+      a local Int fake. The change is test-only and does not touch production,
+      specs, resources, permissions, Proto, Data Layer, application ID, or signing.
+      Scoped whitespace check passes.
+  - id: "CHK-BN003-021"
+    command: "ThresholdDraftSliderInstrumentedTest runtime, TC-E083, and TC-E084"
+    result: "not_run"
+    summary: >-
+      No APK was installed and no emulator or physical watch runtime was used.
+      Runtime crown scrolling, 41/45 mm, maximum font, Japanese/English, TalkBack,
+      and end-to-end MessageClient evidence remain Test/Human work.
+  - id: "CHK-BN003-022"
+    command: "SnakeYAML 2.0 state parse and untracked scoped diff --no-index --check"
+    result: "pass"
+    summary: >-
+      BN-003 state parsed as a top-level YAML mapping. The untracked test/state
+      paths contain no whitespace error, and the temporary parse helper was removed.
+  - id: "CHK-BN003-RV012-004"
+    command: >-
+      cached-gradle-8.13 :app:testDebugUnitTest --tests
+      com.magicitengineer.batterynotifierandroidwearapp.presentation.ThresholdDraftEditSessionTest
+      --tests
+      com.magicitengineer.batterynotifierandroidwearapp.application.settings.WearThresholdSettingsControllerTest
+      --tests
+      com.magicitengineer.batterynotifierandroidwearapp.data.datastore.ProtoWearStateRepositoryTest
+      -Pkotlin.compiler.execution.strategy=in-process --no-daemon
+    result: "pass"
+    summary: >-
+      The first sandboxed launch was environment-blocked by Gradle loopback
+      connection; the permitted identical rerun returned BUILD SUCCESSFUL. XML
+      reports editor 7/7, controller 9/9, and repository 22/22, total 38/38,
+      with zero failures, errors, or skips. This is not a corrective failure.
+  - id: "CHK-BN003-RV012-005"
+    command: >-
+      actual fixture assertion inspection, IMP-023 timestamp scope inspection,
+      and rotary/focus-reference search
+    result: "pass"
+    summary: >-
+      The fixture uses the real ThresholdDraftEditorState and
+      ThresholdDraftCommandQueue at 100 and makes the required draft,
+      persistence, and send assertions. Existing 5/20, Save, recreation,
+      retry/pending siblings remain. Only the test and BN-003 state changed after
+      IMP-023 start; no production file did, and rotary/focus search remains empty.
+  - id: "CHK-BN003-RV012-006"
+    command: "ThresholdDraftSliderInstrumentedTest runtime, TC-E083, and TC-E084"
+    result: "not_run"
+    summary: >-
+      Review did not install an APK or use an emulator/physical watch. Runtime
+      crown scrolling, 41/45 mm, maximum font, Japanese/English, TalkBack, and
+      end-to-end MessageClient observation remain Test/Human evidence, not Pass.
+  - id: "CHK-BN003-RV012-007"
+    command: >-
+      SnakeYAML 2.0 top-level mapping parse, tracked/untracked scoped diff
+      --check, Test handoff consistency check, and temporary-helper cleanup
+    result: "pass"
+    summary: >-
+      BN-003 state parsed as a top-level YAML mapping. Tracked BN-003 source/spec
+      scope and explicit no-index checks for the untracked test/state contain no
+      whitespace error. status/current phase/current role and handoff/next actions
+      consistently point to Test; no temporary parse helper remains. The unrelated
+      pre-existing BN-002 state modification was not edited by this reviewer.
+  - id: "EVD-BN003-HUM-001"
+    type: "human_real_device_attestation"
+    result: "pass_human_verified_real_device"
+    summary: >-
+      On 2026-08-09 the human explicitly reported that real-device testing found
+      no problem and directed BN-003 to close. Exact device models, OS/build
+      details, screenshots/logs, and numeric measurements were not provided and
+      are not inferred. This is Human evidence, not agent-observed runtime output.
+  - id: "CHK-BN003-HUM-001"
+    command: "Human final approval and closure instruction"
+    result: "approved"
+    summary: >-
+      Human accepted the current BN-003 worktree based on HEAD
+      7e99d3cb3999f49a782113f6cc6cc9286a5511af and approved closure. Historical
+      agent-run TC-E083/TC-E084 and Compose runtime remain Not Run rather than
+      being rewritten as agent Pass.
+  - id: "CHK-BN003-HUM-002"
+    command: >-
+      SnakeYAML 2.0 final parse, done/human/completed_approved consistency,
+      next_actions empty, and untracked state diff --no-index --check
+    result: "pass"
+    summary: >-
+      Final BN-003 state is a top-level YAML mapping with status done, Human
+      approval completed_approved/approved, no blocker, and no next action. The
+      state contains no whitespace error and no temporary helper remains.
+
+loop_control:
+  same_cause_failure_limit: 3
+  phase_return_limit: 5
+  current_failure_signature: null
+  consecutive_same_cause_failures: 0
+  total_phase_returns: 4
+  attempts:
+    - id: "IMP-019-A01"
+      check: "ThresholdDraftEditSessionTest"
+      failure_signature: "ThresholdDraftCommandQueue persist callback self-recursion"
+      root_cause_hypothesis: >-
+        The worker callback property and the public enqueue method shared the
+        name persistDraft, so Kotlin resolved the worker call to the enqueue
+        method and continuously re-enqueued the same command.
+      corrective_change: >-
+        Renamed the injected callback to persistDraftAction and added guaranteed
+        queue cleanup in the unit fixture.
+      result: "pass"
+  termination_reason: null
+  resume_condition: null
+
+progress_reporting:
+  format_version: 1
+  current:
+    reported_at: "2026-08-09T10:32:09+09:00"
+    work_item: "BN-003"
+    role: "human"
+    phase: "human_verification"
+    actor: "human-user"
+    status: "done"
+    completed:
+      - "Isolated BN-003 from the blocked BN-002 E2E environment."
+      - "Confirmed no transport, persistence-contract, permission, or signing change."
+      - "Completed SPEC-018 and passed the Specification -> Implementation gate."
+      - "Completed IMP-018 with Wear InlineSlider, rotary input, localization, and automated regression evidence."
+      - "Wear debug/release unit tests passed 79/79 each; UI test compilation and lint passed."
+      - "RV-011 independently reviewed the actual production paths, fixtures, resources, and scoped diff."
+      - "Independent targeted unit rerun passed 10/10."
+      - "RV-011 recorded one Medium finding and no Critical/High findings."
+      - "Completed IMP-019 with an editor-local authoritative draft and ordered persistence/Save queue."
+      - "Burst handler regression passed 20 -> 21 -> 22, zero adjustment sends, and one Save of 22."
+      - "Wear debug/release unit tests passed 81/81 each; UI test compilation and lint passed."
+      - "Independent re-review verified RV-011-001 fixed and passed targeted tests 12/12."
+      - "Independent re-review recorded RV-011-002 Medium for composition-cancellation loss of queued draft/Save work."
+      - "Completed IMP-020 with application-owned commands, Activity saved editor state, and atomic final-draft preparation."
+      - "Recreation regressions passed draft 22 restore, zero passive sends, and one pre-recreation Save of 22."
+      - "Wear debug/release unit tests passed 85/85 each; UI-test compilation and lint passed."
+      - "Independent RV-011-002 targeted rerun passed 16/16 and verified explicit Save recovery and atomic prepare."
+      - "Independent re-review recorded RV-011-003 Medium for missing Proto reconciliation of a passively restored unsaved draft."
+      - "Completed IMP-021 restored-draft reconciliation without MessageClient send or automatic retry."
+      - "RV-011-003 targeted tests passed 18/18; Wear debug/release passed 87/87 each."
+      - "Compose UI-test Kotlin compilation, lint, state parse, and scoped whitespace checks passed."
+      - "Independent re-review verified RV-011-003 fixed with actual path/fixtures and passed 40/40 targeted plus repository tests."
+      - "RV-011 completed with no open findings; Review -> Test gate passed."
+      - "Completed SPEC-019 and passed the Specification -> Implementation gate."
+      - "Completed IMP-022 by removing rotary capture, forced focus, rotary guidance, and rotary-only tests."
+      - "Wear debug/release unit tests passed 84/84 each; AndroidTest compile and lint passed."
+      - "RV-012 independently confirmed rotary/focus capture removal and ADR-015 path non-regression."
+      - "RV-012 targeted editor/controller/repository rerun passed 37/37."
+      - "RV-012 recorded Medium RV-012-001 for missing actual-editor current=100 TC-U031 coverage."
+      - "Completed IMP-023 with the RV-012-001 actual-editor current=100 fixture."
+      - "RV-012-001 targeted editor tests passed 7/7; full debug/release passed 85/85 each."
+      - "Independent re-review verified RV-012-001 fixed with actual fixture assertions and 38/38 targeted tests."
+      - "RV-012 completed with no open findings; Review -> Test gate passed."
+      - "Human reported real-device testing had no problem and explicitly approved closure."
+      - "HUM-003 completed_approved; BN-003 is closed."
+    in_progress: []
+    next: []
+    checks:
+      - "Repository and ADR scope inspection: pass."
+      - "Normative specification whitespace and traceability check: pass."
+      - "Wear test: pass, debug 79/79 and release 79/79."
+      - "Wear lint: pass, 0 errors and 28 warnings; no warning in a newly added file."
+      - "Compose UI test compilation: pass; runtime execution: not_run."
+      - "Independent targeted unit rerun: pass, 10/10."
+      - "TC-E083/TC-E084 and instrumented runtime: not_run."
+      - "RV-011-001 independent verification: pass; targeted tests 12/12."
+      - "Wear full gate: pass, debug/release 81/81, UI compile pass, lint 0 errors."
+      - "BN-003 state YAML parse and scoped diff check: pass."
+      - "RV-011-002 implementation regression: pass, targeted 13/13."
+      - "Wear full gate: pass, debug/release 85/85, UI compile pass, lint 0 errors."
+      - "RV-011-002 independent targeted rerun: pass, 16/16."
+      - "RV-011-003 passive restored-draft Proto persistence: fail (static path and fixture gap)."
+      - "BN-003 state YAML parse and tracked/untracked scoped diff check: pass."
+      - "RV-011-003 implementation targeted rerun: pass, 18/18."
+      - "Wear full unit gate: pass, debug/release 87/87 each."
+      - "Compose UI-test Kotlin compile: pass; lint: pass, 0 errors and 28 warnings."
+      - "BN-003 state YAML parse and scoped diff check: pass."
+      - "RV-011-003 independent targeted plus repository rerun: pass, 40/40."
+      - "RV-011 independent gate: pass; no open findings."
+      - "Final state YAML parse, resource parity, and tracked/untracked scoped diff check: pass."
+      - "SPEC-019 normative traceability check: pass."
+      - "IMP-022 Wear unit gate: pass, debug/release 84/84 each."
+      - "IMP-022 Compose UI-test Kotlin compile: pass; lint: pass, 0 errors and 28 warnings."
+      - "IMP-022 state parse and scoped diff check: pass."
+      - "TC-E083/TC-E084 and physical crown scrolling runtime: not_run."
+      - "RV-012 independent targeted editor/controller/repository rerun: pass, 37/37."
+      - "RV-012-001 actual-editor current=100 TC-U031 coverage: fail."
+      - "RV-012 final state YAML parse and scoped diff check: pass."
+      - "RV-012-001 implementation fixture: pass, editor 7/7."
+      - "IMP-023 full Wear unit gate: pass, debug/release 85/85 each."
+      - "IMP-023 AndroidTest Kotlin compile and lint: pass, lint 0 errors."
+      - "IMP-023 state YAML parse and untracked scoped diff check: pass."
+      - "TC-E083/TC-E084 and physical crown runtime: not_run."
+      - "RV-012-001 independent editor/controller/repository rerun: pass, 38/38."
+      - "RV-012-001 independent fixture and test-only scope review: pass."
+      - "RV-012-001 runtime TC-E083/TC-E084: not_run."
+      - "RV-012 final YAML parse, Test handoff consistency, and scoped diff check: pass."
+      - "Human real-device attestation: pass_human_verified_real_device; no problem reported."
+      - "Human final decision: approved."
+      - "Agent-run TC-E083/TC-E084 and Compose runtime remain historical not_run."
+    blockers: []
+  history:
+    - reported_at: "2026-08-08T20:05:12+09:00"
+      event: "bn003_specification_started"
+      role: "specification"
+      actor: "codex"
+      summary: >-
+        Started SPEC-018 after human implementation authorization. BN-003 is a
+        Wear presentation-only change and does not alter BN-002's current test
+        gate or Mobile-authoritative settings contract.
+    - reported_at: "2026-08-08T20:06:33+09:00"
+      event: "bn003_specification_completed"
+      role: "specification"
+      actor: "codex"
+      summary: >-
+        Completed SPEC-018 with FR-007, AC-018, W-005, TC-U031, TC-E083, and
+        TC-E084. The data contract, disconnect/reconnect/stale behavior, and
+        ADR-015 remain unchanged.
+    - reported_at: "2026-08-08T20:06:33+09:00"
+      event: "bn003_specification_to_implementation_handoff"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Accepted the specification gate and started IMP-018. The first action
+        is to implement deterministic rotary adjustment and the Wear-native
+        non-segmented InlineSlider without changing the Save request boundary.
+    - reported_at: "2026-08-08T20:28:24+09:00"
+      event: "bn003_implementation_completed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Completed IMP-018. Wear InlineSlider, one-percent tap/rotary controls,
+        localized semantics, and the explicit-Save request boundary are covered
+        by deterministic unit/controller tests and a compiled Compose UI test.
+    - reported_at: "2026-08-08T20:28:24+09:00"
+      event: "bn003_implementation_to_review_handoff"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Passed the Implementation -> Review gate with debug/release 79/79,
+        zero test failures/errors/skips, UI-test compilation pass, lint zero
+        errors, scoped resource/diff checks, and no unresolved implementation
+        blocker. RV-011 requires an independent actor.
+    - reported_at: "2026-08-08T20:39:19+09:00"
+      event: "bn003_independent_review_accepted"
+      role: "review"
+      actor: "codex-independent-reviewer-bn003"
+      summary: >-
+        Accepted RV-011 independently from implementation actor codex. Review
+        scope is the normative BN-003 specifications, actual production and
+        test fixtures, controller/Save behavior, accessibility semantics, and
+        the scoped worktree diff; no production, test, or specification file
+        will be modified by the reviewer.
+    - reported_at: "2026-08-08T20:44:12+09:00"
+      event: "bn003_independent_review_returned_to_implementation"
+      role: "review"
+      actor: "codex-independent-reviewer-bn003"
+      summary: >-
+        Completed RV-011 with one open Medium finding, RV-011-001, and no
+        Critical/High finding. Rapid tap/rotary events can collapse while the
+        controlled InlineSlider waits for asynchronous DataStore recomposition.
+        Targeted unit tests passed 10/10, but they do not exercise this actual
+        burst-event path. Review returned the work to Implementation; total
+        failure-driven phase returns is now 1.
+    - reported_at: "2026-08-08T20:58:35+09:00"
+      event: "bn003_review_fix_started"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Accepted RV-011-001 as IMP-019. The fix will keep the newest draft
+        synchronously in the editor and enqueue persistence and Save in UI
+        event order so Save cannot overtake rapid adjustments.
+    - reported_at: "2026-08-08T21:18:19+09:00"
+      event: "bn003_review_fix_completed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Completed IMP-019. The actual handler now advances rapid events against
+        an immediate local draft and orders persistence before Save. The burst
+        fixture and full Wear gates pass; RV-011-001 awaits independent re-review.
+    - reported_at: "2026-08-08T21:18:19+09:00"
+      event: "bn003_implementation_to_re_review_handoff"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Passed the Implementation -> Review gate with debug/release 81/81,
+        Compose UI-test compilation, lint zero errors, and scoped diff check.
+        Runtime TC-E083/TC-E084 remain explicitly not run for the Test phase.
+    - reported_at: "2026-08-08T21:23:13+09:00"
+      event: "bn003_independent_re_review_accepted"
+      role: "review"
+      actor: "codex-independent-reviewer-bn003"
+      summary: >-
+        Accepted the RV-011-001 fix for independent re-review from implementation
+        actor codex. Scope includes burst adjustment and Save ordering, boundary
+        behavior, ADR-015 recovery paths, and composition/activity recreation;
+        no production, test, or specification file will be modified by Review.
+    - reported_at: "2026-08-08T21:25:50+09:00"
+      event: "bn003_independent_re_review_returned_to_implementation"
+      role: "review"
+      actor: "codex-independent-reviewer-bn003"
+      summary: >-
+        Verified RV-011-001 fixed: targeted tests passed 12/12 and live
+        composition preserves 20 -> 21 -> 22, zero adjustment sends, and one
+        Save of 22. Re-review found RV-011-002 Medium because composition scope
+        cancellation can drop undrained draft or Save commands during Activity
+        recreation. Returned work to Implementation; total phase returns is 2.
+    - reported_at: "2026-08-08T21:52:05+09:00"
+      event: "bn003_lifecycle_fix_started"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Accepted RV-011-002 as IMP-020. The fix will retain unsaved editor input
+        in Activity saved state and execute accepted draft/Save commands in the
+        application process scope, with final draft plus pending request prepared
+        atomically before gateway send.
+    - reported_at: "2026-08-08T22:01:10+09:00"
+      event: "bn003_lifecycle_fix_completed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Completed IMP-020. Accepted commands now survive Activity recreation in
+        application process scope, editor draft 22 restores from saved state,
+        passive recreation sends nothing, and a tapped Save sends 22 exactly once.
+    - reported_at: "2026-08-08T22:01:10+09:00"
+      event: "bn003_implementation_to_re_review_handoff_2"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Passed the Implementation -> Review gate with targeted 13/13,
+        debug/release 85/85, UI-test compilation, lint zero errors, and scoped
+        diff check. Runtime TC-E083/TC-E084 remain not run for the Test phase.
+    - reported_at: "2026-08-09T06:19:14+09:00"
+      event: "bn003_independent_re_review_2_accepted"
+      role: "review"
+      actor: "codex-independent-reviewer-bn003"
+      summary: >-
+        Accepted IMP-020 independently from implementation actor codex. Review
+        scope covers process-owned commands, Activity saved editor state,
+        atomic final-draft preparation, exactly-once explicit Save, passive
+        recreation, existing pending/retry guards, and ADR-015 regression.
+    - reported_at: "2026-08-09T06:24:09+09:00"
+      event: "bn003_independent_re_review_2_returned_to_implementation"
+      role: "review"
+      actor: "codex-independent-reviewer-bn003"
+      summary: >-
+        Verified RV-011-002 fixed and independently passed targeted tests 16/16.
+        Found RV-011-003 Medium: after process-scope cancellation, passive
+        SavedStateRegistry restoration shows draft 22 but does not persist it to
+        Wear Proto, contrary to W-005. Returned work to Implementation; total
+        failure-driven phase returns is now 3. Runtime TC-E083/TC-E084 remain not run.
+    - reported_at: "2026-08-09T06:42:05+09:00"
+      event: "bn003_restored_draft_fix_started"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Accepted RV-011-003 as IMP-021. The fix will reconcile only a restored
+        unsaved editing draft into Wear Proto through the ordered queue, with no
+        MessageClient send, automatic retry, or pending/status mutation.
+    - reported_at: "2026-08-09T07:02:19+09:00"
+      event: "bn003_restored_draft_fix_completed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Completed IMP-021. Passive process recreation re-persists restored draft
+        22 with zero sends; explicit Save and active pending/status sibling paths
+        retain ADR-015 behavior. Targeted 18/18 and full Wear gates pass.
+    - reported_at: "2026-08-09T07:02:19+09:00"
+      event: "bn003_implementation_to_re_review_handoff_3"
+      role: "review"
+      actor: "unassigned"
+      summary: >-
+        Passed Implementation -> Review with debug/release 87/87, Compose UI-test
+        compilation, lint zero errors, and state/diff checks. Runtime TC-E083,
+        TC-E084, 41/45 mm, maximum-font, TalkBack, and real rotary remain not run.
+    - reported_at: "2026-08-09T08:25:14+09:00"
+      event: "bn003_independent_re_review_3_accepted"
+      role: "review"
+      actor: "codex-independent-reviewer-bn003"
+      summary: >-
+        Accepted IMP-021 independently from implementation actor codex. Review
+        scope covers restored unsaved-draft eligibility, ordered application
+        queue persistence, process cancellation, duplicate Activity recreation,
+        explicit Save and active pending/status exclusions, repository guards,
+        burst/boundary/retry regressions, actual fixtures, and the scoped diff.
+    - reported_at: "2026-08-09T08:29:33+09:00"
+      event: "bn003_independent_re_review_3_completed_to_test"
+      role: "review"
+      actor: "codex-independent-reviewer-bn003"
+      summary: >-
+        Verified RV-011-003 fixed in production and actual fixtures. Independent
+        targeted plus repository tests passed 40/40, no new finding was found,
+        and Review -> Test passed with all three RV-011 findings verified fixed.
+        Runtime Compose UI, TC-E083/TC-E084, and Pixel Watch accessibility/layout
+        checks remain not run and are handed to Test/Human.
+    - reported_at: "2026-08-09T09:04:31+09:00"
+      event: "bn003_rotary_scope_removed"
+      role: "specification"
+      actor: "codex"
+      summary: >-
+        Human removed crown-based threshold adjustment because it conflicts with
+        screen scrolling. SPEC-019 updated FR-007, AC-018, W-005, TC-U031,
+        TC-E083, and TC-E084; total_phase_returns remains 3 because this is not a
+        failure-driven return.
+    - reported_at: "2026-08-09T09:04:31+09:00"
+      event: "bn003_specification_to_implementation_handoff_2"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Specification gate passed with Mobile sole writer, durable draft,
+        explicit Save, disconnected/reconnected, and stale behavior unchanged.
+        IMP-022 starts by removing rotary capture and forced editor focus.
+    - reported_at: "2026-08-09T09:17:51+09:00"
+      event: "bn003_rotary_removal_implemented"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Completed IMP-022. MainActivity no longer consumes rotary events or
+        force-focuses the threshold editor; rotary hint resources and the
+        rotary-only helper/tests are removed. InlineSlider tap adjustment,
+        durable drafts, and explicit Save remain unchanged.
+    - reported_at: "2026-08-09T09:17:51+09:00"
+      event: "bn003_implementation_to_independent_review_handoff_4"
+      role: "review"
+      actor: "unassigned"
+      summary: >-
+        Implementation -> Review passed with debug/release 84/84, AndroidTest
+        compile, lint zero errors, state parse, and scoped diff checks. RV-012
+        must independently inspect rotary non-consumption and retained behavior.
+    - reported_at: "2026-08-09T09:24:05+09:00"
+      event: "bn003_rv012_independent_review_accepted"
+      role: "review"
+      actor: "codex-independent-reviewer-bn003"
+      summary: >-
+        Accepted RV-012 independently from implementation actor codex. Scope
+        covers absence of threshold-editor rotary/focus capture, ordinary
+        ScalingLazyColumn crown scrolling, InlineSlider 5..100 tap adjustment,
+        durable draft and explicit Save boundary, lifecycle/retry/pending guards,
+        localization/spec parity, deleted helper/tests, and the scoped diff.
+    - reported_at: "2026-08-09T09:29:00+09:00"
+      event: "bn003_rv012_returned_to_implementation"
+      role: "implementation"
+      actor: "unassigned"
+      summary: >-
+        Independent review confirmed rotary/focus capture removal, retained
+        InlineSlider and explicit-Save behavior, ADR-015 non-regression, resource
+        parity, and a 37/37 targeted unit pass. Medium RV-012-001 remains open:
+        TC-U031 lacks an actual-editor current=100 fixture proving +1 stays 100
+        without persistence and -1 produces/persists 99. Review -> Test failed;
+        total_phase_returns increased from 3 to 4.
+    - reported_at: "2026-08-09T09:37:40+09:00"
+      event: "bn003_rv012_001_fix_started"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Accepted RV-012-001 as IMP-023. Scope is limited to a deterministic
+        actual-editor JVM fixture starting at 100 and asserting +1 no-op,
+        -1 to durable draft 99, and zero sends.
+    - reported_at: "2026-08-09T09:40:46+09:00"
+      event: "bn003_rv012_001_fix_completed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Completed IMP-023 test-only fix. The actual editor/ordered queue fixture
+        proves 100 + 1 is a no-op with zero persistence/send and 100 - 1 yields
+        persisted draft 99 with zero sends. Targeted 7/7 and full 85/85 pass.
+    - reported_at: "2026-08-09T09:40:46+09:00"
+      event: "bn003_implementation_to_re_review_handoff_5"
+      role: "review"
+      actor: "unassigned"
+      summary: >-
+        Implementation -> Review passed with the required TC-U031 fixture,
+        debug/release 85/85, AndroidTest compilation, and lint zero errors.
+        RV-012-001 remains implemented_pending_re_review.
+    - reported_at: "2026-08-09T10:03:40+09:00"
+      event: "bn003_rv012_001_independent_re_review_accepted"
+      role: "review"
+      actor: "codex-independent-reviewer-bn003"
+      summary: >-
+        Accepted IMP-023 independently from implementation actor codex. Scope is
+        the actual ThresholdDraftEditorState plus ThresholdDraftCommandQueue
+        current=100 fixture, its persistence/send assertions, retained 5/20,
+        Save/recreation/controller/repository siblings, production-diff absence,
+        and final YAML/scoped-diff integrity; runtime UI remains not run.
+    - reported_at: "2026-08-09T10:06:51+09:00"
+      event: "bn003_rv012_001_independent_re_review_completed_to_test"
+      role: "review"
+      actor: "codex-independent-reviewer-bn003"
+      summary: >-
+        Verified RV-012-001 fixed using the actual 100 -> 100 -> 99 editor/queue
+        fixture and its persisted [] -> [99], sent [] assertions. Independent
+        editor/controller/repository tests passed 38/38; retained 5/20, Save,
+        recreation, retry/pending paths pass and IMP-023 has no production change.
+        RV-012 completed with no new finding; Review -> Test passed while runtime
+        TC-E083/TC-E084 and physical-device checks remain not run.
+    - reported_at: "2026-08-09T10:32:09+09:00"
+      event: "bn003_human_real_device_verification_accepted"
+      role: "human"
+      actor: "human-user"
+      summary: >-
+        Human explicitly reported that real-device testing found no problem.
+        Exact device/build details and numeric measurements were not supplied and
+        are not inferred; this evidence is separate from agent runtime Not Run.
+    - reported_at: "2026-08-09T10:32:09+09:00"
+      event: "bn003_human_approved_closed"
+      role: "human"
+      actor: "human-user"
+      summary: >-
+        Human explicitly directed closure. HUM-003 is completed_approved,
+        approval is approved, status is done, and next_actions is empty.
+
+handoff:
+  from_role: "human"
+  to_role: "human"
+  gate_result: "passed"
+  summary: >-
+    Human reported no problem in real-device testing and explicitly approved
+    closure of the current BN-003 worktree. Human verification is distinct from
+    agent-run runtime evidence, which remains historically Not Run.
+  unresolved_items: []
+  first_action: >-
+    None. Reopen BN-003 only if a new defect or material scope change is reported.
+
+next_actions: []
+
+updated_at: "2026-08-09T10:32:09+09:00"
+updated_by: "codex-recording-human-approval"

@@ -5,6 +5,7 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import com.magicitengineer.batterynotifierandroidwearapp.data.datastore.WearAppContainer
+import com.magicitengineer.batterynotifierandroidwearapp.application.settings.ThresholdDraftCommandQueue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -12,7 +13,16 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class BatteryNotifierWearApplication : Application() {
-    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    internal val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    internal val thresholdDraftCommandQueue by lazy {
+        val controller = WearAppContainer.thresholdSettingsController(this)
+        ThresholdDraftCommandQueue(
+            scope = applicationScope,
+            persistDraftAction = controller::updateDraft,
+            sendSaveRequest = { controller.save(it) },
+            cancelDraft = controller::cancel,
+        )
+    }
 
     override fun onCreate() {
         super.onCreate()

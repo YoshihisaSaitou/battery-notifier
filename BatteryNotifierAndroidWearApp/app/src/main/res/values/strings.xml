@@ -55,6 +55,7 @@
     <string name="threshold_draft_value">New threshold %1$d%%</string>
     <string name="decrease_threshold">Decrease</string>
     <string name="increase_threshold">Increase</string>
+    <string name="threshold_slider_description">Alert threshold control, current value %1$d%%, range 5%% to 100%%</string>
     <string name="save_threshold">Save threshold</string>
     <string name="cancel_threshold_change">Cancel change</string>
     <string name="retry_threshold_change">Retry threshold change</string>

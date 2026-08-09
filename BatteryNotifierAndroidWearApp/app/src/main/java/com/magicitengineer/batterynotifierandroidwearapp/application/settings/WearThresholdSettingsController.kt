@@ -42,8 +42,11 @@ class WearThresholdSettingsController(
 
     suspend fun isAvailable(): Boolean = gateway.isAvailable()
 
-    suspend fun save(): ThresholdChangeCommandResult {
-        val prepared = repository.prepareThresholdChange(requestIdFactory.create())
+    suspend fun save(thresholdPercent: Int? = null): ThresholdChangeCommandResult {
+        val prepared = repository.prepareThresholdChange(
+            requestId = requestIdFactory.create(),
+            desiredThresholdPercent = thresholdPercent,
+        )
         val request = when (prepared.outcome) {
             ThresholdChangePreparationOutcome.PREPARED ->
                 checkNotNull(prepared.request)

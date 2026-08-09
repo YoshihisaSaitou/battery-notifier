@@ -10,21 +10,22 @@ work_item:
     Define request/result messaging, validation, idempotency, conflict handling,
     disconnected behavior, localized UI, and implementation/test gates.
 
-status: "in_test"
+status: "blocked"
 current_phase: "test"
-current_role: "test"
+current_role: "human"
 current_actor:
-  type: "unassigned"
-  id: "unassigned"
+  type: "human"
+  id: "human"
 
 last_transition:
-  from_phase: "review"
+  from_phase: "test"
   to_phase: "test"
   reason: >-
-    Re-review verified the exact APPLIED_WAITING_STATE fixture with pending and
-    result absent, its IDLE/cleared-field/idempotence/domain assertions, and the
-    test-only scope. Reviewer core rerun passed 3/3 and implementation's unchanged
-    state-machine suite passed 44/44, so RV-010 is closed and Review -> Test passes.
+    TC-E077..083 execution started with current Mobile/Wear debug APKs, but the
+    available Phone and Wear AVDs are not paired. The Phone AVD also reports
+    repeated Bluetooth process failure and a system ANR when both AVDs run.
+    Android Studio pairing-assistant/Companion-app setup requires human action,
+    so all seven E2E cases are blocked without a product assertion failure.
 
 spec_refs:
   - "docs/product-requirements.md"
@@ -208,8 +209,8 @@ phases:
       medium: 0
       low: 0
   test:
-    status: "ready"
-    owner: "unassigned"
+    status: "blocked_environment"
+    owner: "human"
   human_verification:
     status: "not_started"
     owner: "human"
@@ -261,6 +262,30 @@ blockers:
     resolution: >-
       The human explicitly authorized the bounded test-only correction and
       re-review on 2026-08-08. Production and specification scope remain frozen.
+  - id: "BLK-007"
+    type: "test_environment_pairing"
+    status: "open"
+    summary: >-
+      Pixel_9a and Wear_OS_6_1_API_36 can run and accept the current debug APKs,
+      but they are not paired for Wear Data Layer. Wear shows No phone data yet.
+      When both AVDs run, the Phone AVD reports Bluetooth keeps stopping and a
+      Process system is not responding dialog.
+    unblock_condition: >-
+      Human completes the Android Studio Wear OS pairing-assistant and Phone
+      Companion-app workflow for Pixel_9a plus Wear_OS_6_1_API_36, confirms both
+      AVDs boot without Bluetooth/system failure, and then asks Test to resume at
+      TC-E077. If pairing needs a Play Store or Google account sign-in, the human
+      performs that interactive account step.
+  - id: "BLK-008"
+    type: "required_hardware_unavailable"
+    status: "open"
+    summary: >-
+      Pixel 10 Pro Fold and Pixel Watch 4 41mm/45mm physical devices are not
+      attached, so mandatory real-device coverage and the physical portion of
+      TC-E083 cannot be executed.
+    unblock_condition: >-
+      Attach the required Pixel devices with matching approved builds or provide
+      explicit Human verification evidence from those devices.
 
 risks:
   - id: "RSK-008"
@@ -1133,6 +1158,25 @@ evidence:
       reviewer execution passed 3/3 with zero failures, errors, or skips. The
       correction is test-only; RV-010 is verified closed and Review -> Test passes.
     verified_at: "2026-08-08"
+  - id: "EVD-BN002-047"
+    type: "bn002_e2e_environment_execution"
+    result: "blocked"
+    artifact: >-
+      BatteryNotifierAndroidMobileApp/app/build/codex-assemble-debug.out.log,
+      BatteryNotifierAndroidWearApp/app/build/codex-assemble-debug.out.log,
+      and ADB/uiautomator runtime observations recorded in state.yaml
+    summary: >-
+      Built Mobile v2 and Wear v3 debug APKs successfully from HEAD 7e99d3cb plus
+      the current BN-002 worktree; both use application ID
+      com.magicitengineer.batterynotifier and the same debug certificate digest.
+      Installed both on API 36 AVDs. Wear launched at 454x454/320dpi but displayed
+      No phone data yet; Phone and Wear were not Data Layer paired. Running both
+      exposed Phone Bluetooth process failure and a system ANR. TC-E077..082
+      could not reach their preconditions. TC-E083 English/max-font/No-Data UI
+      partially ran without an app crash, but the threshold editor, Japanese
+      content, TalkBack interaction, 41mm/45mm matrix, and physical-device result
+      remain unverified. No production assertion failure was established.
+    verified_at: "2026-08-08"
 
 test_results:
   - id: "DOC-BN002-001"
@@ -1607,6 +1651,128 @@ test_results:
       YAML_OK=true; STATUS=in_test; PHASE=test; ROLE=test;
       REVIEW_GATE=approved_for_test; FINDINGS=10; TEST_RESULTS=42 before this
       record; PHASE_RETURNS=5. Scoped test-file whitespace check passed.
+  - id: "BUILD-BN002-001"
+    kind: "test_mobile_debug_build"
+    status: "pass"
+    command: >-
+      Cached Gradle 8.13 assembleDebug with Android Studio JBR,
+      -Pkotlin.compiler.execution.strategy=in-process, --offline,
+      --max-workers=1, --console=plain, and --no-daemon.
+    project: "BatteryNotifierAndroidMobileApp"
+    evidence: >-
+      BUILD SUCCESSFUL in 4m 18s; current APK generated 2026-08-08 16:39 JST.
+      applicationId=com.magicitengineer.batterynotifier, versionCode=2,
+      versionName=1.0, compile/target API 36.
+  - id: "BUILD-BN002-002"
+    kind: "test_wear_debug_build"
+    status: "pass"
+    command: >-
+      Cached Gradle 8.13 assembleDebug with Android Studio JBR,
+      -Pkotlin.compiler.execution.strategy=in-process, --offline,
+      --max-workers=1, --console=plain, and --no-daemon.
+    project: "BatteryNotifierAndroidWearApp"
+    evidence: >-
+      BUILD SUCCESSFUL in 4m 35s; current APK generated 2026-08-08 16:34 JST.
+      applicationId=com.magicitengineer.batterynotifier, versionCode=3,
+      versionName=1.0, compile/target API 36. Mobile and Wear signer certificate
+      SHA-256 digests match.
+  - id: "ENV-BN002-003"
+    kind: "tc_e077_083_emulator_admission"
+    status: "blocked"
+    environment: >-
+      Pixel_9a Phone AVD plus Wear_OS_6_1_API_36 Wear AVD; API 36; current debug
+      APK pair; no physical Pixel device attached.
+    evidence: >-
+      Both APKs installed. Wear at 454x454/320dpi launched and displayed No phone
+      data yet. Phone/Wear were not paired for Data Layer. Concurrent AVD runtime
+      produced Bluetooth keeps stopping and Process system is not responding on
+      Phone. Android official guidance requires the Android Studio Wear OS pairing
+      assistant and Phone Companion-app setup; account steps, if requested, are
+      human-owned. No product Fail was asserted.
+  - id: "TC-E077"
+    kind: "wear_threshold_normal_change"
+    status: "blocked"
+    requirements: "PR-014, FR-007, FR-008, AC-015"
+    expected: >-
+      Wear saves 20 to 15; Mobile persists and reevaluates 15, sends phone-state,
+      Wear shows applied 15, and the setting change creates no alert event.
+    actual: >-
+      Wear had no phone data or reachable writer; threshold editing and save
+      preconditions were unavailable. Scenario actions were not executed.
+  - id: "TC-E078"
+    kind: "wear_threshold_conflict"
+    status: "blocked"
+    requirements: "FR-008, FR-009, AC-016"
+    expected: >-
+      Mobile retains 25 and Wear displays CONFLICT with effective value 25.
+    actual: >-
+      No paired Data Layer route or initial Mobile threshold existed, so the
+      required concurrent Mobile/Wear setup could not be established.
+  - id: "TC-E079"
+    kind: "wear_threshold_save_while_disconnected"
+    status: "blocked"
+    requirements: "FR-009, AC-017"
+    expected: >-
+      Mobile remains unchanged; Wear retains draft/unsaved state and reconnect
+      alone does not send.
+    actual: >-
+      The environment was already unpaired and Wear had never received valid
+      phone state, so the editor/save action was unavailable; this is not a valid
+      controlled disconnect from a previously paired baseline.
+  - id: "TC-E080"
+    kind: "wear_threshold_explicit_retry_after_reconnect"
+    status: "blocked"
+    requirements: "FR-009, AC-017"
+    expected: >-
+      Explicit retry sends the same requestId and converges to Mobile value 15.
+    actual: >-
+      TC-E079 could not create a pending request and the AVD pair could not be
+      reconnected, so retry identity/convergence was not executed.
+  - id: "TC-E081"
+    kind: "wear_threshold_result_loss_replay"
+    status: "blocked"
+    requirements: "FR-008, FR-009, AC-017"
+    expected: >-
+      Dropping only the result and explicitly retrying does not duplicate Mobile
+      mutation, sequence, or alert event; Mobile replays the persisted result.
+    actual: >-
+      No connected baseline or controllable result-message route was available,
+      so result-only loss could not be injected at runtime.
+  - id: "TC-E082"
+    kind: "wear_threshold_restart_during_send"
+    status: "blocked"
+    requirements: "FR-009, TC-U030"
+    expected: >-
+      Wear restores draft/pending state without auto-send and permits retry or
+      discard after process/device restart.
+    actual: >-
+      A pending SENDING request could not be created because the initial phone
+      state and reachable writer capability were unavailable.
+  - id: "TC-E083"
+    kind: "wear_threshold_boundary_locale_accessibility"
+    status: "blocked"
+    requirements: "FR-007, NFR-008, AC-015"
+    expected: >-
+      Pixel Watch 4 41mm/45mm supports 5/100 boundaries, English/Japanese,
+      maximum font, and TalkBack without clipping or out-of-range values.
+    actual: >-
+      Partial emulator evidence only: the 454x454/320dpi API 36 Wear AVD launched
+      the English No Data screen at font scale 1.0 and 1.3 without an app crash;
+      the scroll container remained present and TalkBack package was installed.
+      App locale was set to ja-JP but the observed No Data strings remained
+      English. Because no phone data/writer existed, the threshold editor and
+      5/100 controls never appeared. TalkBack interaction, Japanese editor,
+      41mm/45mm and physical Pixel Watch 4 evidence are not established.
+  - id: "YAML-BN002-012"
+    kind: "blocked_test_handoff_integrity"
+    status: "pass"
+    command: >-
+      Gradle-distributed SnakeYAML 2.0 parse, TC-E077..083 status extraction,
+      and trailing-whitespace scan.
+    evidence: >-
+      YAML_OK=true; STATUS=blocked; PHASE=test; ROLE=human;
+      REVIEW_GATE=approved_for_test; TEST_RESULTS=53 before this record;
+      PHASE_RETURNS=5; TC-E077..083 are each blocked; trailing whitespace=0.
 
 loop_control:
   same_cause_failure_limit: 3
@@ -1685,12 +1851,12 @@ loop_control:
 progress_reporting:
   format_version: 1
   current:
-    reported_at: "2026-08-08T14:48:38+09:00"
+    reported_at: "2026-08-08T17:02:42+09:00"
     work_item: "BN-002"
-    role: "test"
+    role: "human"
     phase: "test"
-    actor: "unassigned"
-    status: "in_test"
+    actor: "human"
+    status: "blocked"
     completed:
       - "IMP-010: Mobile result idempotency and Wear draft/pending Proto state."
       - "IMP-011: capability-scoped MessageClient request/result exchange."
@@ -1772,12 +1938,43 @@ progress_reporting:
         RV-010 re-review passed: exact fixture and shared assertions verified,
         reviewer core rerun passed 3/3, and RV-010 is verified closed.
       - "Review -> Test gate: approved; no open review findings remain."
+      - >-
+        Test builds completed from HEAD 7e99d3cb plus the current worktree:
+        Mobile v2 in 4m18s and Wear v3 in 4m35s; IDs and debug signatures match.
+      - >-
+        TC-E077..083 admission executed on Pixel_9a plus Wear_OS_6_1_API_36.
+        Pass=0, Fail=0, Blocked=7, Not Run=0; no product defect was established.
+      - >-
+        TC-E083 partial: Wear API 36 454x454/320dpi No Data UI launched at font
+        scales 1.0 and 1.3 without app crash; editor and required matrix remained
+        unavailable. Temporary font/locale settings were restored.
     in_progress: []
     next_actions:
       - >-
-        Assign the Test actor and execute TC-E077..083 in the required
-        environments without treating prior unit checks as E2E evidence.
+        Human pairs Pixel_9a with Wear_OS_6_1_API_36 using Android Studio's Wear
+        OS pairing assistant and Phone Companion app, then confirms both AVDs
+        run without Bluetooth/system failure and resumes Test at TC-E077.
+      - >-
+        Attach Pixel 10 Pro Fold and Pixel Watch 4 41mm/45mm later for mandatory
+        physical-device coverage and Human verification.
     checks:
+      - >-
+        Blocked Test handoff integrity: pass; YAML parsed as blocked/test/human,
+        all seven TC-E077..083 statuses are blocked, and whitespace scan passed.
+      - >-
+        Mobile test build: pass; BUILD SUCCESSFUL in 4m18s, v2/1.0 debug APK.
+      - >-
+        Wear test build: pass; BUILD SUCCESSFUL in 4m35s, v3/1.0 debug APK.
+      - >-
+        APK compatibility: pass; common application ID and matching debug signer
+        SHA-256 digest, compile/target API 36.
+      - >-
+        TC-E077..082: blocked; no paired Data Layer route, no initial phone state,
+        and Phone AVD Bluetooth/system instability prevented valid setup.
+      - >-
+        TC-E083: blocked with partial emulator evidence; required editor,
+        language/accessibility interaction, size matrix, and physical devices are
+        incomplete.
       - >-
         Final review handoff integrity: pass; SnakeYAML parsed in_test/test with
         approved_for_test, ten retained findings, and phase returns 5/5.
@@ -1939,7 +2136,12 @@ progress_reporting:
         whitespace in Mobile .idea/deploymentTargetSelector.xml; BN-002 scoped
         diff check passes.
     blockers:
-      - "TC-E077..083 and required real-device gates remain not_run."
+      - >-
+        BLK-007: AVD pairing/Phone Bluetooth-system environment must be repaired
+        by the interactive Android Studio pairing workflow.
+      - >-
+        BLK-008: Pixel 10 Pro Fold and Pixel Watch 4 41mm/45mm physical devices
+        are not attached; mandatory real-device gates remain blocked.
   history:
     - reported_at: "2026-07-29T10:47:03+09:00"
       event: "specification_started"
@@ -2400,25 +2602,74 @@ progress_reporting:
         Scoped test-file whitespace validation and SnakeYAML parsing passed for
         the in_test/test handoff with approved_for_test and retained phase
         returns 5/5.
+    - reported_at: "2026-08-08T15:57:56+09:00"
+      event: "bn002_test_execution_started"
+      role: "test"
+      actor: "codex-test"
+      summary: >-
+        Accepted and verified the Review -> Test handoff. Identified Mobile v2
+        and Wear v3 debug builds at HEAD 7e99d3cb with the current BN-002
+        worktree. No device was initially attached; available AVDs are Pixel_9a,
+        Wear_OS_6_1_API_36, and Wear_OS_Large_Round. TC-E077 is first.
+    - reported_at: "2026-08-08T16:39:16+09:00"
+      event: "bn002_test_builds_completed"
+      role: "test"
+      actor: "codex-test"
+      summary: >-
+        Built current Mobile v2 and Wear v3 debug APKs successfully, verified the
+        common application ID and matching debug certificate, and installed the
+        APKs on Pixel_9a and Wear_OS_6_1_API_36 respectively.
+    - reported_at: "2026-08-08T16:59:31+09:00"
+      event: "bn002_e2e_environment_blocked"
+      role: "test"
+      actor: "codex-test"
+      summary: >-
+        TC-E077..082 could not establish their initial paired Data Layer state:
+        Wear showed No phone data yet, while concurrent Phone/Wear AVD execution
+        produced Phone Bluetooth process failure and a system ANR. TC-E083 only
+        produced partial No Data/max-font evidence. Totals are Pass=0, Fail=0,
+        Blocked=7, Not Run=0; no product defect or phase return was recorded.
+    - reported_at: "2026-08-08T16:59:31+09:00"
+      event: "test_environment_to_human_handoff"
+      role: "test"
+      actor: "codex-test"
+      summary: >-
+        Blocked the test gate on BLK-007/BLK-008 and handed the interactive AVD
+        pairing/Companion-app step to the human. Resume TC-E077 after pairing is
+        stable; physical Pixel device gates remain separate and pending.
+    - reported_at: "2026-08-08T17:02:42+09:00"
+      event: "blocked_test_handoff_integrity_verified"
+      role: "test"
+      actor: "codex-test"
+      summary: >-
+        SnakeYAML parsing, seven-case status extraction, and whitespace checks
+        passed for the blocked Test -> Human handoff; phase-return history remains
+        5/5 and no new corrective attempt was counted.
 
 handoff:
-  from_role: "review"
-  to_role: "test"
-  gate_result: "approved_for_test"
+  from_role: "test"
+  to_role: "human"
+  gate_result: "blocked_environment"
   summary: >-
-    Re-review verified and closed RV-010 using the actual exact fixture,
-    shared invariant assertions, a fresh 3/3 reviewer core rerun, and the
-    completed 44/44 implementation state-machine suite. No review finding remains.
+    Test built and installed the current Mobile/Wear debug pair, but the available
+    AVDs are not paired for Data Layer and concurrent execution exposes Phone
+    Bluetooth/system instability. TC-E077..083 are Blocked, not Pass or Fail.
   unresolved_items:
-    - "TC-E077..083 are not run and must not be treated as passed."
+    - >-
+      BLK-007: Pair Pixel_9a and Wear_OS_6_1_API_36 through Android Studio's Wear
+      OS pairing assistant and Phone Companion app, including any human-owned
+      account step, and confirm stable concurrent boot.
+    - >-
+      TC-E077..082 require a paired baseline and must restart from TC-E077 after
+      BLK-007 clears; partial TC-E083 evidence is not a Pass.
     - "Pixel Watch 4 and Pixel 10 Pro Fold human release gates remain pending."
   first_action: >-
-    Assign the Test actor, verify the handoff against repository evidence, and
-    execute TC-E077 first in the documented emulator/device environment.
+    Human completes and verifies the Android Studio Wear OS pairing-assistant
+    workflow for the two named AVDs, then tells Test to resume at TC-E077.
 
 next_actions:
-  - "Assign a Test actor and execute TC-E077..083 with recorded runtime evidence."
-  - "Keep Pixel Watch 4 and Pixel 10 Pro Fold gates for Human verification."
+  - "Resolve BLK-007 and resume TC-E077..083 from the paired baseline."
+  - "Resolve BLK-008 during mandatory physical-device Human verification."
 
-updated_at: "2026-08-08T14:48:38+09:00"
-updated_by: "codex-review-5"
+updated_at: "2026-08-08T17:02:42+09:00"
+updated_by: "codex-test"

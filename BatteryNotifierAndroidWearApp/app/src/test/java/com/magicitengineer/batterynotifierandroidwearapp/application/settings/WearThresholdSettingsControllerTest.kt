@@ -22,6 +22,52 @@ import org.junit.Test
 
 class WearThresholdSettingsControllerTest {
     @Test
+    fun repeatedDraftAdjustmentsSendOnlyTheFinalValueAfterExplicitSave() = runBlocking {
+        val store = InMemoryDataStore(WearStateSanitizer.defaultValue())
+        val repository = ProtoWearStateRepository(store)
+        repository.applyPhoneState(phoneState(sequence = 10), receivedAtEpochMillis = 1_000L)
+        val gateway = RecordingGateway(ThresholdChangeRequestSendResult.SENT)
+        val controller = WearThresholdSettingsController(
+            repository = repository,
+            gateway = gateway,
+            requestIdFactory = ThresholdChangeRequestIdFactory { REQUEST_ID },
+        )
+
+        listOf(19, 18, 17, 16, 15).forEach { controller.updateDraft(it) }
+
+        assertEquals(15, repository.state.first().thresholdDraftPercent)
+        assertEquals(0, gateway.requests.size)
+
+        assertEquals(ThresholdChangeCommandResult.WAITING_FOR_RESULT, controller.save())
+        assertEquals(1, gateway.requests.size)
+        assertEquals(15, gateway.requests.single().thresholdPercent)
+    }
+
+    @Test
+    fun saveWithAuthoritativeEditorValueAtomicallyOverridesOlderPersistedDraft() = runBlocking {
+        val store = InMemoryDataStore(WearStateSanitizer.defaultValue())
+        val repository = ProtoWearStateRepository(store)
+        repository.applyPhoneState(phoneState(sequence = 10), receivedAtEpochMillis = 1_000L)
+        repository.updateThresholdDraft(21)
+        val gateway = RecordingGateway(ThresholdChangeRequestSendResult.SENT)
+        val controller = WearThresholdSettingsController(
+            repository = repository,
+            gateway = gateway,
+            requestIdFactory = ThresholdChangeRequestIdFactory { REQUEST_ID },
+        )
+
+        assertEquals(
+            ThresholdChangeCommandResult.WAITING_FOR_RESULT,
+            controller.save(thresholdPercent = 22),
+        )
+
+        val persisted = repository.state.first()
+        assertEquals(22, persisted.thresholdDraftPercent)
+        assertEquals(22, persisted.pendingThresholdChangeRequest?.thresholdPercent)
+        assertEquals(22, gateway.requests.single().thresholdPercent)
+    }
+
+    @Test
     fun capabilityAvailabilityIsCheckedWithoutSendingARequest() = runBlocking {
         val repository = ProtoWearStateRepository(
             InMemoryDataStore(WearStateSanitizer.defaultValue())
@@ -79,6 +125,37 @@ class WearThresholdSettingsControllerTest {
         assertEquals(REQUEST_ID, gateway.requests[0].requestId)
         assertEquals(REQUEST_ID, gateway.requests[1].requestId)
         assertEquals(ThresholdChangeStatus.WAITING_RESULT, afterRetry.thresholdChangeStatus)
+    }
+
+    @Test
+    fun restoredDraftReconciliationPreservesActiveRequestWithoutSending() = runBlocking {
+        val store = InMemoryDataStore(WearStateSanitizer.defaultValue())
+        val repository = ProtoWearStateRepository(store)
+        repository.applyPhoneState(phoneState(sequence = 10), receivedAtEpochMillis = 1_000L)
+        repository.updateThresholdDraft(30)
+        val gateway = RecordingGateway(ThresholdChangeRequestSendResult.NO_REACHABLE_NODE)
+        val controller = WearThresholdSettingsController(
+            repository = repository,
+            gateway = gateway,
+            requestIdFactory = ThresholdChangeRequestIdFactory { REQUEST_ID },
+        )
+        controller.save()
+        val beforeReconciliation = repository.state.first()
+
+        controller.updateDraft(22)
+
+        val afterReconciliation = repository.state.first()
+        assertEquals(30, afterReconciliation.thresholdDraftPercent)
+        assertEquals(
+            beforeReconciliation.pendingThresholdChangeRequest,
+            afterReconciliation.pendingThresholdChangeRequest,
+        )
+        assertEquals(
+            beforeReconciliation.thresholdChangeStatus,
+            afterReconciliation.thresholdChangeStatus,
+        )
+        assertEquals(ThresholdChangeStatus.SEND_FAILED, afterReconciliation.thresholdChangeStatus)
+        assertEquals(1, gateway.requests.size)
     }
 
     @Test

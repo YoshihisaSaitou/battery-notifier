@@ -50,6 +50,7 @@
     <string name="threshold_draft_value">新しい通知しきい値%1$d%%</string>
     <string name="decrease_threshold">1%下げる</string>
     <string name="increase_threshold">1%上げる</string>
+    <string name="threshold_slider_description">通知しきい値スライダー、現在%1$d%%、範囲5%%から100%%</string>
     <string name="save_threshold">しきい値を保存</string>
     <string name="cancel_threshold_change">変更を取り消す</string>
     <string name="retry_threshold_change">しきい値変更を再試行</string>

@@ -1,0 +1,302 @@
+schema_version: 1
+
+work_item:
+  id: "BN-008"
+  slug: "bn-008-mobile-threshold-slider-layout"
+  title: "Mobile threshold slider layout"
+  scope: >-
+    Update the Mobile notification-threshold editor so the decrease and
+    increase controls flank the slider, with visible numeric scale labels
+    beneath the track, while preserving the 5..100 percent range, one-percent
+    adjustment, draft-only editing, and explicit Save behavior.
+
+status: "in_review"
+current_phase: "review"
+current_role: "review"
+current_actor:
+  type: "unassigned"
+  id: null
+
+last_transition:
+  from_phase: "implementation"
+  to_phase: "review"
+  reason: >-
+    IMP-024 dependency hardening completed before RV-013 began. The full
+    material-icons-extended dependency was replaced with two official Material
+    vector assets, dense slider tick dots were removed while retaining integer
+    values, and all affected automated, runtime, and visual checks passed.
+
+spec_refs:
+  - "docs/product-requirements.md#4-プロダクト要件"
+  - "docs/functional-requirements.md#21-初期設定と設定管理"
+  - "docs/functional-requirements.md#4-受け入れ条件"
+  - "docs/screen-specification-and-navigation.md#m-004-通知設定"
+  - "docs/localization-specification.md"
+  - "docs/test-plan-and-cases.md"
+
+affected_components:
+  - "BatteryNotifierAndroidMobileApp presentation"
+  - "Mobile English and Japanese resources"
+  - "Mobile Compose UI tests"
+
+phase_tasks:
+  specification:
+    - id: "SPEC-020"
+      status: "completed"
+      summary: >-
+        Define the flanking minus/plus controls, numeric scale labels, range,
+        accessibility semantics, responsive behavior, and acceptance tests.
+  implementation:
+    - id: "IMP-024"
+      status: "completed"
+      summary: >-
+        Implement the Mobile threshold control layout and automated UI coverage,
+        including a lightweight official Material icon integration.
+  review:
+    - id: "RV-013"
+      status: "pending"
+      summary: >-
+        Independently review the Mobile UI, accessibility, and retained Save boundary.
+  test:
+    - id: "TST-006"
+      status: "pending"
+      summary: >-
+        Run Mobile unit, lint, Compose UI, and applicable emulator checks.
+  human_verification:
+    - id: "HUM-008"
+      status: "pending"
+      summary: >-
+        Verify the layout and interaction on Pixel 10 Pro Fold form factors.
+
+decisions_needed: []
+blockers: []
+risks:
+  - id: "RSK-018"
+    summary: >-
+      Three numeric labels and two side controls can crowd compact or enlarged-font layouts.
+    mitigation: >-
+      Keep controls at accessible touch size, give the slider flexible width, and verify
+      compact, expanded, Japanese, English, and maximum-font rendering.
+
+evidence:
+  - id: "REF-BN008-001"
+    type: "human_reference_image"
+    summary: >-
+      Reference shows a circular minus button, central slider, circular plus button,
+      and numeric scale labels below the slider.
+
+test_results:
+  - id: "CHK-BN008-001"
+    command: >-
+      BatteryNotifierAndroidMobileApp/gradlew.bat testDebugUnitTest
+      --tests *ThresholdEditorTest
+      -Pkotlin.compiler.execution.strategy=in-process
+    status: "pass"
+    result: "ThresholdEditorTest passed; Mobile debug production and unit-test Kotlin compiled."
+  - id: "CHK-BN008-002"
+    command: >-
+      BatteryNotifierAndroidMobileApp/gradlew.bat compileDebugAndroidTestKotlin
+      -Pkotlin.compiler.execution.strategy=in-process
+    status: "pass"
+    result: "ThresholdEditorInstrumentedTest and all debug Android-test Kotlin compiled."
+  - id: "CHK-BN008-003"
+    command: >-
+      BatteryNotifierAndroidMobileApp/gradlew.bat testDebugUnitTest and
+      testReleaseUnitTest -Pkotlin.compiler.execution.strategy=in-process
+    status: "pass"
+    result: >-
+      Debug 107/107 and release 107/107 passed with zero failures, errors, or skipped tests.
+  - id: "CHK-BN008-004"
+    command: >-
+      BatteryNotifierAndroidMobileApp/gradlew.bat lintDebug and lintRelease
+      -Pkotlin.compiler.execution.strategy=in-process
+    status: "pass"
+    result: >-
+      Debug and release lint completed with zero errors and 25 warnings each;
+      final debug lint after the screenshot fixture also passed.
+  - id: "CHK-BN008-005"
+    command: >-
+      Pixel 9a API 36 AndroidJUnitRunner, ThresholdEditorInstrumentedTest
+    status: "pass"
+    result: >-
+      Layout position 1/1, one-percent/boundary interaction 1/1, and component
+      screenshot capture 1/1 passed. Initial cold-start DEX verification caused
+      environment ANRs; warmed reruns reached and passed the test assertions.
+  - id: "CHK-BN008-006"
+    command: "Product Design comparison against REF-BN008-001"
+    status: "pass"
+    result: >-
+      design-qa.md final result is passed with no actionable P0/P1/P2 mismatch.
+  - id: "CHK-BN008-007"
+    command: "git diff --check"
+    status: "pass"
+    result: "No whitespace error; line-ending conversion warnings only."
+  - id: "CHK-BN008-008"
+    command: >-
+      Local Gradle 8.13 testDebugUnitTest testReleaseUnitTest
+      compileDebugAndroidTestKotlin lintDebug lintRelease assembleDebug
+      connectedDebugAndroidTest --offline
+      -Pkotlin.compiler.execution.strategy=in-process
+    status: "pass"
+    result: >-
+      Final dependency-hardened build passed in 2m21s. Debug and release unit
+      suites passed 107/107 each, lint remained at zero errors and 25 warnings
+      each, and Pixel 9a API 36 completed ThresholdEditorInstrumentedTest 3/3
+      with zero skipped and zero failed tests.
+  - id: "CHK-BN008-009"
+    command: "Compare debug APK size before and after icon dependency hardening"
+    status: "pass"
+    result: >-
+      Debug APK reduced from 62,881,822 bytes to 31,753,073 bytes, a reduction
+      of 31,128,749 bytes (approximately 49.5 percent), with no UI assertion failure.
+  - id: "CHK-BN008-010"
+    command: "Refresh Pixel 9a screenshot and compare beside REF-BN008-001"
+    status: "pass"
+    result: >-
+      Final screenshot retained the circular side controls, central slider, and
+      aligned 5/50/100 labels. Dense tick dots were removed; design-qa.md has no
+      actionable P0/P1/P2 mismatch.
+
+loop_control:
+  same_cause_failure_limit: 3
+  phase_return_limit: 5
+  current_failure_signature: null
+  consecutive_same_cause_failures: 0
+  total_phase_returns: 0
+  attempts: []
+  termination_reason: null
+  resume_condition: null
+
+progress_reporting:
+  format_version: 1
+  current:
+    reported_at: "2026-08-10T07:03:09+09:00"
+    work_item: "BN-008"
+    role: "review"
+    phase: "review"
+    actor: "unassigned"
+    status: "in_review"
+    completed:
+      - "Completed SPEC-020 with FR-075, AC-026, M-004, TC-U037, and TC-E094."
+      - "Implemented the flanking icon buttons, flexible slider, and aligned 5/50/100 scale labels."
+      - "Targeted unit test and Android-test Kotlin compilation passed."
+      - "Completed Mobile debug/release unit, lint, Pixel 9a UI runtime, screenshot, and design QA gates."
+      - "Replaced material-icons-extended with two official Material vector assets and reduced the debug APK by approximately 49.5 percent."
+      - "Removed dense slider tick dots while retaining whole-percent values and one-percent side-button adjustment."
+      - "Repeated the complete Mobile and Pixel 9a gates after the final visual polish."
+    in_progress: []
+    next:
+      - "Assign an independent Review actor for RV-013."
+    checks:
+      - "Repository worktree was clean before BN-008 started."
+      - "CHK-BN008-001 targeted unit test: pass."
+      - "CHK-BN008-002 Compose UI-test compilation: pass."
+      - "CHK-BN008-003 debug/release unit: pass, 107/107 each."
+      - "CHK-BN008-004 debug/release lint: pass, 0 errors and 25 warnings each."
+      - "CHK-BN008-005 Pixel 9a UI runtime: pass, 3/3."
+      - "CHK-BN008-006 design QA: pass."
+      - "CHK-BN008-007 scoped diff check: pass."
+      - "CHK-BN008-008 final hardened build: pass; unit 107/107 per variant, lint 0 errors, Pixel 9a UI 3/3."
+      - "CHK-BN008-009 debug APK reduction: pass, 62,881,822 to 31,753,073 bytes."
+      - "CHK-BN008-010 refreshed side-by-side design QA: pass."
+      - "Gradle Wrapper download and sandbox loopback were environment-blocked; cached local Gradle 8.13 offline completed the same gate successfully."
+      - "Pixel 10 Pro Fold, maximum-font, and TalkBack runtime: not_run; reserved for Test/Human."
+    blockers: []
+  history:
+    - reported_at: "2026-08-09T22:24:08+09:00"
+      event: "bn008_specification_started"
+      role: "specification"
+      actor: "codex"
+      summary: >-
+        Started SPEC-020 for a Mobile-only threshold editor layout change.
+        The 5..100 range, one-percent adjustment, Mobile persistence, and
+        explicit Save boundary remain unchanged.
+    - reported_at: "2026-08-09T22:31:00+09:00"
+      event: "bn008_specification_completed"
+      role: "specification"
+      actor: "codex"
+      summary: >-
+        Completed SPEC-020 with a responsive Mobile-only layout contract,
+        accessibility semantics, retained draft/Save behavior, and executable
+        unit/UI cases. No data, reconnect, stale, or persistence contract changed.
+    - reported_at: "2026-08-09T22:31:00+09:00"
+      event: "bn008_specification_to_implementation_handoff"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Specification gate passed. IMP-024 starts with a reusable threshold
+        control that places accessible side buttons around a flexible slider
+        and aligns the numeric scale to the slider track region.
+    - reported_at: "2026-08-10T05:12:10+09:00"
+      event: "bn008_implementation_ui_completed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Implemented Material circular side controls using library Add/Remove
+        icons, a flexible 5..100 slider, track-aligned 5/50/100 labels, and
+        unit/Compose UI fixtures. Targeted unit and UI-test compilation pass.
+    - reported_at: "2026-08-10T06:44:43+09:00"
+      event: "bn008_implementation_completed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Completed IMP-024. Mobile debug/release unit tests passed 107/107 each,
+        lint passed with zero errors, Pixel 9a UI fixtures passed 3/3, and the
+        reference-image design QA passed with no P0/P1/P2 mismatch.
+    - reported_at: "2026-08-10T06:44:43+09:00"
+      event: "bn008_implementation_to_review_handoff"
+      role: "review"
+      actor: "unassigned"
+      summary: >-
+        Implementation -> Review gate passed. RV-013 must independently inspect
+        the actual Compose hierarchy, 5/50/100 alignment, accessible 48 dp side
+        controls, one-percent boundaries, explicit Save isolation, and evidence.
+    - reported_at: "2026-08-10T06:48:35+09:00"
+      event: "bn008_dependency_hardening_started"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Returned from unassigned Review to Implementation before RV-013 began.
+        The full material-icons-extended library inflated the debug APK to
+        62,881,822 bytes for two icons. IMP-024 will preserve the visual design
+        while using only the official Add and Remove vector assets.
+    - reported_at: "2026-08-10T07:03:09+09:00"
+      event: "bn008_dependency_hardening_completed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Replaced material-icons-extended with two official vector assets,
+        reduced the debug APK to 31,753,073 bytes, removed dense slider tick
+        dots, and passed debug/release unit, lint, Pixel 9a UI 3/3, screenshot,
+        and refreshed side-by-side design QA evidence.
+    - reported_at: "2026-08-10T07:03:09+09:00"
+      event: "bn008_hardened_implementation_to_review_handoff"
+      role: "review"
+      actor: "unassigned"
+      summary: >-
+        Implementation -> Review gate passed again after dependency hardening.
+        RV-013 should review the actual final sources, integer slider behavior,
+        official icon provenance, retained Save boundary, runtime screenshot,
+        and complete automated evidence.
+
+handoff:
+  from_role: "implementation"
+  to_role: "review"
+  gate_result: "passed"
+  summary: >-
+    IMP-024 implements FR-075 and AC-026 with official Material Add/Remove vector
+    assets, 48 dp flanking controls, a flexible whole-percent 5..100 slider, and
+    aligned 5/50/100 labels. The dependency-hardened Mobile unit, lint, Pixel 9a
+    UI runtime, screenshot, APK-size, and design QA evidence passed.
+  unresolved_items: []
+  first_action: >-
+    Independently review the final Compose implementation, vector provenance,
+    tests, screenshot, design-qa.md, and retained explicit Save boundary without
+    modifying files.
+
+next_actions:
+  - "Assign an independent Review actor and complete RV-013."
+  - "After Review passes, execute Test phase including Pixel 10 Pro Fold and accessibility coverage."
+
+updated_at: "2026-08-10T07:03:09+09:00"
+updated_by: "codex"

@@ -24,7 +24,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,8 +38,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.magicitengineer.batterynotifierandroidmobileapp.application.settings.ThresholdSettingsState
 import com.magicitengineer.batterynotifierandroidmobileapp.data.datastore.MobileAppContainer
@@ -51,6 +48,7 @@ import com.magicitengineer.batterynotifierandroidmobileapp.presentation.ManualSy
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.MonitoringCommandUiState
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.NotificationPermissionUiState
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.ThresholdSaveUiState
+import com.magicitengineer.batterynotifierandroidmobileapp.presentation.ThresholdEditor
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.notificationPermissionUiState
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.batteryAlertNotificationsEnabled
 import com.magicitengineer.batterynotifierandroidmobileapp.platform.notification.AndroidMobileAlertNotificationFactory
@@ -63,7 +61,6 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
     private var notificationsEnabled by mutableStateOf(false)
@@ -372,35 +369,10 @@ private fun SettingsAndSyncScreen(
                 text = stringResource(R.string.threshold_value, draftThreshold),
                 style = MaterialTheme.typography.headlineSmall,
             )
-            Slider(
-                value = draftThreshold.toFloat(),
-                onValueChange = { onThresholdChanged(it.roundToInt()) },
-                valueRange = AlertRule.MIN_THRESHOLD_PERCENT.toFloat()..
-                    AlertRule.MAX_THRESHOLD_PERCENT.toFloat(),
-                steps = THRESHOLD_SLIDER_STEPS,
+            ThresholdEditor(
+                draftThreshold = draftThreshold,
+                onThresholdChanged = onThresholdChanged,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                val decreaseDescription = stringResource(R.string.threshold_decrease_description)
-                val increaseDescription = stringResource(R.string.threshold_increase_description)
-                Button(
-                    modifier = Modifier.semantics {
-                        contentDescription = decreaseDescription
-                    },
-                    enabled = draftThreshold > AlertRule.MIN_THRESHOLD_PERCENT,
-                    onClick = { onThresholdChanged(draftThreshold - 1) },
-                ) {
-                    Text(stringResource(R.string.threshold_decrease_action))
-                }
-                Button(
-                    modifier = Modifier.semantics {
-                        contentDescription = increaseDescription
-                    },
-                    enabled = draftThreshold < AlertRule.MAX_THRESHOLD_PERCENT,
-                    onClick = { onThresholdChanged(draftThreshold + 1) },
-                ) {
-                    Text(stringResource(R.string.threshold_increase_action))
-                }
-            }
             Button(
                 enabled = saveState != ThresholdSaveUiState.SAVING &&
                     draftThreshold != settings.thresholdPercent,
@@ -478,5 +450,3 @@ private fun MonitoringCommandUiState.messageResource(): Int = when (this) {
     MonitoringCommandUiState.STOPPED -> R.string.monitoring_stopped
     MonitoringCommandUiState.START_FAILED -> R.string.monitoring_start_failed
 }
-
-private const val THRESHOLD_SLIDER_STEPS = 94

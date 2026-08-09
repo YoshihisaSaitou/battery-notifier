@@ -1,0 +1,404 @@
+schema_version: 1
+
+work_item:
+  id: "BN-007"
+  slug: "bn-007-app-icon"
+  title: "Create a shared Battery Notifier app icon"
+  scope: >-
+    Define and implement a shared Battery Notifier launcher icon for the Mobile
+    and Wear apps, including adaptive, themed monochrome, round, and legacy
+    launcher presentations.
+
+status: "done"
+current_phase: "human_verification"
+current_role: "human"
+current_actor:
+  type: "human"
+  id: "user"
+
+last_transition:
+  from_phase: "human_verification"
+  to_phase: "human_verification"
+  reason: >-
+    The human reported completing real-device inspection with no issues and
+    approved the current BN-007 icon worktree.
+
+spec_refs:
+  - "docs/product-requirements.md"
+  - "docs/functional-requirements.md"
+  - "docs/screen-specification-and-navigation.md"
+  - "docs/app-icon-specification.md"
+  - "docs/test-plan-and-cases.md"
+
+affected_components:
+  - "BatteryNotifierAndroidMobileApp"
+  - "BatteryNotifierAndroidWearApp"
+  - "docs"
+
+phase_tasks:
+  specification:
+    status: "complete"
+    tasks:
+      - id: "SPEC-007-01"
+        title: "Define icon concept, color, safe-zone, and themed-icon contract"
+        status: "complete"
+      - id: "SPEC-007-02"
+        title: "Define launcher-resource and visual acceptance criteria"
+        status: "complete"
+  implementation:
+    status: "complete_review_fix"
+    tasks:
+      - id: "IMP-007-01"
+        title: "Create and inspect a visual icon concept"
+        status: "complete"
+      - id: "IMP-007-02"
+        title: "Replace Mobile and Wear adaptive and legacy launcher assets"
+        status: "complete_review_fix"
+  review:
+    status: "complete"
+    tasks:
+      - id: "RV-007-01"
+        title: "Review icon geometry, resource coverage, and Mobile/Wear consistency"
+        status: "complete"
+  test:
+    status: "complete"
+    tasks:
+      - id: "TEST-007-01"
+        title: "Execute TC-E091 through TC-E093 and record visual evidence limits"
+        status: "complete"
+  human_verification:
+    status: "completed_approved"
+    tasks:
+      - id: "HV-007-01"
+        title: "Confirm normal and round icons on Pixel 10 Pro Fold and Pixel Watch 4"
+        status: "complete_human_attestation"
+        evidence_note: >-
+          Human reported real-device inspection with no issues. Specific device
+          models and OS builds were not provided and are not inferred.
+      - id: "HV-007-02"
+        title: "Confirm themed monochrome icons with system theming enabled"
+        status: "complete_human_attestation"
+        evidence_note: >-
+          Included in the human's comprehensive real-device no-issue report;
+          the exact launcher/OS configuration was not provided.
+      - id: "HV-007-03"
+        title: "Approve the Battery Notifier visual identity"
+        status: "complete_approved"
+
+decisions_needed: []
+
+decisions:
+  - id: "DEC-007-01"
+    status: "resolved"
+    decision: >-
+      Use one shared visual identity for Mobile and Wear so users recognize the
+      companion apps as one product.
+    rationale: >-
+      Both apps belong to one Battery Notifier experience and currently use the
+      same template artwork.
+    decided_by: "codex"
+    decided_at: "2026-08-09T20:34:27+09:00"
+  - id: "DEC-007-02"
+    status: "resolved"
+    decision: >-
+      Use a deep navy background, a white vertical battery with mint charge
+      level, and an amber notification badge; provide a simplified monochrome
+      silhouette for themed launchers.
+    rationale: >-
+      The palette has strong contrast and separates monitoring from notification
+      while the central battery remains recognizable at small sizes.
+    decided_by: "codex"
+    decided_at: "2026-08-09T20:35:26+09:00"
+  - id: "DEC-007-03"
+    status: "approved"
+    decision: >-
+      Accept the Battery Notifier app icon after human real-device inspection
+      reported no issues.
+    rationale: >-
+      Human verification is the final authority for actual launcher appearance.
+    decided_by: "user"
+    decided_at: "2026-08-09T21:53:33+09:00"
+
+blockers: []
+
+risks:
+  - id: "RISK-007-01"
+    description: >-
+      Fine detail can be clipped by OEM launcher masks or become illegible at
+      legacy mipmap sizes.
+    mitigation: >-
+      Keep the identifying mark inside the 66 x 66 dp adaptive-icon safe zone,
+      use a strong silhouette, and inspect generated sizes and round masks.
+    disposition: "closed_human_verified"
+
+findings:
+  - id: "RV-007-F01"
+    severity: "Medium"
+    status: "closed"
+    location: >-
+      Mobile/Wear ic_battery_notifier_launcher_foreground.xml notification badge
+      path and docs/assets/app-icon-master.svg
+    violated_requirement: "AIS-001 section 3; RISK-007-01"
+    reproducible_scenario: >-
+      The foreground badge is centered at x=78 dp with radius 12 dp, so its
+      right edge is x=90 dp while the central 66 dp safe zone ends at x=87 dp.
+    required_outcome: >-
+      Move or resize the badge and bell so all identifying geometry remains at
+      x<=87 dp, regenerate every legacy asset, and re-run resource/build checks.
+    fix_summary: >-
+      Badge center/radius changed from 78/12 dp to 75/11 dp, giving a right edge
+      of x=86 dp; bell geometry shifted left; all vector, preview, and WebP assets
+      were regenerated.
+    verification: >-
+      CHK-007-05 through CHK-007-07 pass. Review confirmed all identifying
+      geometry is inside the safe zone and Mobile/Wear resources agree.
+
+evidence:
+  - id: "EVID-007-01"
+    type: "inspection"
+    result: "observed"
+    summary: >-
+      Mobile and Wear currently contain the same Android Studio template
+      foreground Android robot and green grid background.
+  - id: "EVID-007-02"
+    type: "official_documentation"
+    result: "verified"
+    summary: >-
+      Android adaptive-icon guidance was checked on 2026-08-09: use 108 x 108 dp
+      layers, keep the logo within the 66 x 66 dp safe zone, use clean edges,
+      and provide a monochrome layer for themed icons.
+    source: "https://developer.android.com/develop/ui/compose/system/icon_design_adaptive"
+  - id: "EVID-007-03"
+    type: "specification"
+    result: "complete"
+    summary: >-
+      AIS-001, FR-074, AC-025, and TC-E091 through TC-E093 define the concept,
+      resource variants, safe zone, themed presentation, and visual checks.
+  - id: "EVID-007-04"
+    type: "generated_concept"
+    result: "inspected"
+    summary: >-
+      Built-in image generation produced the battery-plus-notification visual
+      direction. The final assets were redrawn as flat deterministic vectors to
+      remove the generated concept's gradients and shadows.
+    artifact: "docs/assets/app-icon-concept.png"
+  - id: "EVID-007-05"
+    type: "implementation"
+    result: "complete"
+    summary: >-
+      Added shared 108 dp adaptive background, foreground, and monochrome vector
+      resources; regenerated normal and round legacy WebP assets at mdpi through
+      xxxhdpi for both apps.
+    artifacts:
+      - "docs/assets/app-icon-master.svg"
+      - "docs/assets/app-icon-master.png"
+      - "docs/assets/app-icon-preview.png"
+      - "docs/assets/app-icon-round-preview.png"
+      - "docs/assets/app-icon-monochrome-preview.png"
+      - "docs/assets/app-icon-test-sheet.png"
+  - id: "EVID-007-06"
+    type: "human_verification"
+    result: "approved"
+    recorded_at: "2026-08-09T21:53:33+09:00"
+    recorded_by: "codex"
+    approval_actor: "user"
+    build_identity: >-
+      Current BN-007 worktree; Mobile application ID
+      com.magicitengineer.batterynotifier versionCode 2 versionName 1.0 and
+      Wear application ID com.magicitengineer.batterynotifier versionCode 3
+      versionName 1.0. Exact installed artifact and signing variant not provided.
+    device_details: "Not provided; no device model, identifier, or OS build inferred."
+    summary: >-
+      Human stated that the app icon was checked on real hardware and no issues
+      were found. This is user-provided Human verification, not agent-observed
+      device logs or screenshots.
+    battery_impact: "Not applicable to this icon-only work item; no measurement claimed."
+    notification_latency: "Not applicable to this icon-only work item; no measurement claimed."
+
+test_results:
+  - id: "CHK-007-01"
+    command: "XML parse plus Pillow legacy dimension and byte-identity check"
+    result: "pass"
+    summary: >-
+      All six new vector drawables parsed; all 20 legacy WebP files have the
+      expected 48/72/96/144/192 px sizes; Mobile/Wear legacy pairs are byte-identical.
+  - id: "CHK-007-02"
+    command: >-
+      gradle.bat -p BatteryNotifierAndroidMobileApp test lint
+      '-Pkotlin.compiler.execution.strategy=in-process' --no-daemon
+    result: "pass"
+    summary: "BUILD SUCCESSFUL in 8m 5s; 73 actionable tasks."
+  - id: "CHK-007-03"
+    command: >-
+      gradle.bat -p BatteryNotifierAndroidWearApp test lint
+      '-Pkotlin.compiler.execution.strategy=in-process' --no-daemon
+    result: "pass"
+    summary: "BUILD SUCCESSFUL in 11m 24s; 73 actionable tasks."
+  - id: "CHK-007-04"
+    command: "git diff --check"
+    result: "pass"
+    summary: "No whitespace errors; repository-wide existing CRLF conversion warnings only."
+  - id: "CHK-007-05"
+    command: >-
+      Mobile processDebugResources processReleaseResources lintDebug after
+      RV-007-F01 correction
+    result: "pass"
+    summary: "BUILD SUCCESSFUL in 6m 14s; 48 actionable tasks."
+  - id: "CHK-007-06"
+    command: >-
+      Wear processDebugResources processReleaseResources lintDebug after
+      RV-007-F01 correction
+    result: "pass"
+    summary: "BUILD SUCCESSFUL in 8m 58s; 48 actionable tasks."
+  - id: "CHK-007-07"
+    command: "Post-fix safe-zone, vector-semantic, dimensions, and paired-byte check"
+    result: "pass"
+    summary: >-
+      Badge right edge is x=86 dp; Mobile/Wear vector semantics match; all 20
+      legacy assets have expected sizes and matching Mobile/Wear bytes.
+  - id: "TC-E091"
+    result: "pass"
+    environment: "Local final-asset mask preview; no device installation"
+    expected: >-
+      Battery body and notification badge remain visible under circle,
+      rounded-square, and squircle masks for both apps.
+    actual: >-
+      The final master was rendered through all three masks with no clipping;
+      shared Mobile/Wear vector semantics were independently compared.
+    evidence: "docs/assets/app-icon-test-sheet.png"
+  - id: "TC-E092"
+    result: "pass"
+    environment: "Local monochrome tint preview; actual system launcher reserved for Human"
+    expected: "Dedicated monochrome layer remains recognizable after launcher tinting."
+    actual: >-
+      Both adaptive XML files reference the dedicated monochrome drawable, and
+      the tinted preview preserves the battery and notification silhouettes.
+    evidence: "docs/assets/app-icon-monochrome-preview.png"
+  - id: "TC-E093"
+    result: "pass"
+    environment: "Local decoded WebP inspection at mdpi through xxxhdpi"
+    expected: "Normal and round legacy assets remain identifiable at 48 px."
+    actual: >-
+      All 20 WebP files decoded at expected dimensions, Mobile/Wear pairs match,
+      and both mdpi 48 px forms remain identifiable in the test sheet.
+    evidence: "docs/assets/app-icon-test-sheet.png"
+
+loop_control:
+  same_cause_failure_limit: 3
+  phase_return_limit: 5
+  current_failure_signature: null
+  consecutive_same_cause_failures: 0
+  total_phase_returns: 1
+  attempts:
+    - id: "ATTEMPT-007-01"
+      finding: "RV-007-F01"
+      command: >-
+        Correct badge geometry, regenerate assets, and rerun Mobile/Wear
+        processDebugResources processReleaseResources lintDebug
+      failure_signature: "badge right edge x=90 dp exceeds safe-zone edge x=87 dp"
+      root_cause_hypothesis: >-
+        The concept geometry was visually inspected but its badge radius was not
+        numerically checked against the adaptive-icon safe zone.
+      corrective_change: >-
+        Moved badge center left by 3 dp, reduced radius by 1 dp, shifted bell,
+        and regenerated every derived raster asset.
+      result: "pass"
+  termination_reason: null
+  resume_condition: null
+
+handoff:
+  summary: >-
+    BN-007 is complete. Specification, implementation, review, and test gates
+    passed; the human reported real-device inspection with no issues and approved
+    the current icon worktree. Unprovided device/build details remain unclaimed.
+  next_role: null
+  first_action: null
+  gate_result: "passed"
+
+next_actions: []
+
+progress_reporting:
+  format_version: 1
+  current:
+    timestamp: "2026-08-09T21:53:33+09:00"
+    work_item: "BN-007"
+    role: "human"
+    phase: "human_verification"
+    actor: "user"
+    status: "done"
+    completed:
+      - "Inspected the existing Mobile and Wear launcher resources."
+      - "Confirmed the current assets are Android Studio template artwork."
+      - "Verified current Android adaptive-icon safe-zone and monochrome-layer guidance."
+      - "Defined AIS-001, FR-074, AC-025, and TC-E091 through TC-E093."
+      - "Passed the specification gate and handed BN-007 to implementation."
+      - "Generated and inspected the visual direction with the imagegen skill."
+      - "Implemented Mobile/Wear adaptive, monochrome, round, and five-density legacy assets."
+      - "Mobile and Wear test/lint gates completed successfully."
+      - "TC-E091 through TC-E093 passed with final-asset preview evidence."
+      - "Human reported real-device inspection with no issues and approved BN-007."
+    in_progress: []
+    next: []
+    checks:
+      - "git status --short: clean before BN-007 changes."
+      - "Vector XML and legacy asset validation: pass."
+      - "Mobile test lint: BUILD SUCCESSFUL."
+      - "Wear test lint: BUILD SUCCESSFUL."
+      - "TC-E091: Pass."
+      - "TC-E092: Pass for dedicated monochrome layer/tint preview; actual launcher pending Human."
+      - "TC-E093: Pass."
+      - "Human verification: approved based on the user's real-device no-issue report."
+    blockers: []
+  history:
+    - timestamp: "2026-08-09T20:34:27+09:00"
+      event: "specification_started"
+      role: "specification"
+      summary: >-
+        Created BN-007 after confirming both apps still use template launcher
+        artwork and verified current adaptive-icon constraints.
+    - timestamp: "2026-08-09T20:35:26+09:00"
+      event: "specification_to_implementation_handoff"
+      role: "specification"
+      summary: >-
+        Completed AIS-001 and associated requirement, acceptance, and test IDs;
+        specification gate passed with no open decision or blocker.
+    - timestamp: "2026-08-09T21:11:53+09:00"
+      event: "implementation_to_review_handoff"
+      role: "implementation"
+      summary: >-
+        Completed all icon assets and previews; both affected Gradle projects
+        passed test and lint after environment-only sandbox blocks were bypassed.
+    - timestamp: "2026-08-09T21:14:22+09:00"
+      event: "review_return_to_implementation"
+      role: "review"
+      summary: >-
+        Opened RV-007-F01 Medium because the notification badge exceeded the
+        specified 66 dp safe zone; phase return count is now 1 of 5.
+    - timestamp: "2026-08-09T21:35:58+09:00"
+      event: "review_fix_ready_for_verification"
+      role: "implementation"
+      summary: >-
+        Corrected RV-007-F01 in one attempt; badge right edge is x=86 dp and
+        post-fix Mobile/Wear resource and lint checks pass.
+    - timestamp: "2026-08-09T21:37:26+09:00"
+      event: "review_to_test_handoff"
+      role: "review"
+      summary: >-
+        Closed RV-007-F01 after fix verification; Review gate passed with no
+        open Critical, High, or Medium finding.
+    - timestamp: "2026-08-09T21:39:56+09:00"
+      event: "test_to_human_handoff"
+      role: "test"
+      summary: >-
+        TC-E091 through TC-E093 passed using final-asset previews and decoded
+        resources; actual system launcher presentation remains Human verification.
+    - timestamp: "2026-08-09T21:53:33+09:00"
+      event: "human_verification_approved"
+      role: "human"
+      summary: >-
+        User reported real-device inspection with no issues. Recorded this as
+        Human verification and completed BN-007 without inventing device details,
+        OS builds, screenshots, or measurements.
+
+updated_at: "2026-08-09T21:53:33+09:00"
+updated_by: "codex"

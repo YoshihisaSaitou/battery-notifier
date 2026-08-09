@@ -142,6 +142,7 @@ flowchart TD
 ## 6. 共通UIルール
 
 - ComposeとMaterial 3を使用する。WearはWear Composeコンポーネントを優先する。
+- MobileとWearのランチャーアイコンは[app-icon-specification.md](app-icon-specification.md)の共通図柄を使用する。
 - 最小タップ領域、コントラスト、TalkBack、フォント拡大を確認する。
 - エラーは復旧操作と組にし、内部例外文をそのまま表示しない。
 - 相対時刻は日英の複数形を含めリソース化する。

@@ -215,6 +215,9 @@
 | TC-E088 | Wear切断中に満充電通知を切替、再接続、その後ユーザーが再操作 | 再接続だけではMobile設定不変。再操作後にphone-stateへ収束 |
 | TC-E089 | Wear期待値OFF中にMobileをONへ変更後、Wearが切替要求 | Mobile有効値を維持して現在のphone-stateを再送し、設定、sequence、満充電eventを重複させない |
 | TC-E090 | Mobileのスマートフォン電池同期欄を日英で表示し、「今すぐ同期」を押して送信完了を遅延させる | ボタン付近に通常は自動同期され、この操作は自動同期されない場合または最新状態への手動更新に使う説明を日英で表示する。押下後は直ちにボタンが無効化され、進捗表示、同期中操作文言、専用状態文言が500ms以上かつ完了まで表示される。処理中に「今すぐ同期 / Sync now」「同期できます。 / Ready to sync.」を表示せず、結果確定後だけ結果表示へ移る |
+| TC-E091 | Mobile/WearのAdaptive Iconを円・角丸四角・スクワークルmaskでpreview | すべてのmaskでバッテリー本体と通知バッジが欠けず、両アプリが同一図柄である |
+| TC-E092 | Android 13以降でthemed iconを有効化し、Mobile/Wearのmonochrome表示を確認 | launcherのtintで単色表示され、バッテリーと通知バッジのシルエットを判別できる |
+| TC-E093 | mdpiからxxxhdpiまでの通常・round legacy iconを48px相当を含む表示で確認 | テンプレート図柄が残らず、文字や細部の潰れがなく、Battery Notifier図柄を識別できる |
 
 ## 8. 非機能テスト
 

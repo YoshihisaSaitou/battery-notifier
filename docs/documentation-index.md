@@ -1,6 +1,6 @@
 # Battery Notifier ドキュメント索引
 
-最終更新: 2026-07-21
+最終更新: 2026-08-09
 文書状態: Draft
 
 ## 目的
@@ -30,6 +30,7 @@
 | [notification-bridge-specification.md](notification-bridge-specification.md) | MobileからWatchへの通知イベント連携、重複防止 |
 | [complication-specification.md](complication-specification.md) | ウォッチフェイス用コンプリケーション |
 | [screen-specification-and-navigation.md](screen-specification-and-navigation.md) | Mobile/Wear画面仕様、画面遷移図 |
+| [app-icon-specification.md](app-icon-specification.md) | Mobile/Wear共通ランチャーアイコンの図柄、色、Adaptive Icon契約 |
 | [system-architecture-design.md](system-architecture-design.md) | 簡易DDD、レイヤ、モジュール構成 |
 | [data-design.md](data-design.md) | ドメインモデル、DataStore、同期データ形式 |
 | [localization-specification.md](localization-specification.md) | 日本語・英語対応 |

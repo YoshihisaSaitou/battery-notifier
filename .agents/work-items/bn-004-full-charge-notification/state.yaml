@@ -9,20 +9,20 @@ work_item:
     during a charging session, and let the user enable or disable this behavior
     from either app while Mobile remains the only authoritative settings writer.
 
-status: "in_test"
-current_phase: "test"
-current_role: "test"
+status: "done"
+current_phase: "human_verification"
+current_role: "human"
 current_actor:
-  type: "agent"
-  id: "codex-test-2"
+  type: "human"
+  id: "user"
 
 last_transition:
-  from_phase: "review"
-  to_phase: "test"
+  from_phase: "test"
+  to_phase: "human_verification"
   reason: >-
-    RV-003 independently verified closed: contract constant, listener branch,
-    source manifest, merged manifest, and exact-set regression all agree. No
-    Critical or High finding remains; rerun TC-E087 on connected required devices.
+    Human explicitly reported that real-device testing of this feature found no
+    issues and directed closure. This is the final approval for the identified
+    Mobile/Wear debug APKs; unprovided numeric measurements remain unclaimed.
 
 spec_refs:
   - "docs/product-requirements.md"
@@ -116,10 +116,10 @@ phases:
     status: "completed_passed"
     owner: "codex-review"
   test:
-    status: "in_progress_retest"
+    status: "completed_with_human_real_device_acceptance"
     owner: "codex-test"
   human_verification:
-    status: "not_started"
+    status: "completed_approved"
     owner: "human"
 
 decisions_needed:
@@ -150,8 +150,8 @@ blockers:
       Start and pair a compatible Mobile/Wear emulator pair or connect a paired
       test device set, then identify both builds and rerun TC-E085 first.
   - id: "BLK-009"
-    owner: "test"
-    status: "active"
+    owner: "human"
+    status: "resolved_by_final_approval"
     summary: >-
       Pixel 10 Pro Fold and Pixel Watch 4 are now connected and the specific
       Wear-button regression passed, but the remaining mandatory real-device
@@ -218,6 +218,15 @@ evidence:
       Pixel phone/watch pair. The Wear button changed the Mobile-authoritative
       setting ON to OFF and OFF to ON; Wear confirmed both returned phone-state
       values. The original ON setting was restored. No device identifier stored.
+  - id: "EV-007"
+    type: "human_verification"
+    result: "pass_human_verified_real_device"
+    summary: >-
+      On 2026-08-09 the human explicitly stated that real-device testing of the
+      full-charge notification and setting feature found no issues and requested
+      closure. This is comprehensive Human approval; no device identifiers,
+      detailed per-case logs, battery metric, or notification-latency metric were
+      supplied or inferred.
 
 test_results:
   - id: "UNIT-MOBILE-DEBUG"
@@ -239,30 +248,30 @@ test_results:
     command: "Mobile/Wear test run concurrently"
     result: "runner timed out at 120 seconds; individual debug unit gates pass"
   - id: "TC-E085"
-    status: "blocked"
-    result: "No connected paired Mobile/Wear environment; ADB device list empty"
+    status: "pass"
+    result: "Covered by explicit comprehensive Human real-device acceptance; no per-case log supplied"
   - id: "TC-E086"
-    status: "blocked"
-    result: "Depends on paired session continuity after TC-E085"
+    status: "pass"
+    result: "Covered by explicit comprehensive Human real-device acceptance; no per-case log supplied"
   - id: "TC-E087"
-    status: "blocked"
+    status: "pass"
     result: >-
-      Wear-button regression now passes in both directions. The full case remains
-      blocked because Mobile-origin change and both-app restart coverage were not run.
+      Agent-observed Wear-button regression passed in both directions; remaining
+      case coverage is accepted by explicit comprehensive Human real-device approval.
   - id: "TC-E087-WEAR-BUTTON-REGRESSION"
     status: "pass"
     result: >-
       Required phone/watch pair, matching debug builds: ON -> OFF -> ON converged
       through Mobile-authoritative phone-state. Initial ON setting restored.
   - id: "TC-E088"
-    status: "blocked"
-    result: "No paired environment for disconnect/reconnect checks"
+    status: "pass"
+    result: "Covered by explicit comprehensive Human real-device acceptance; no per-case log supplied"
   - id: "TC-E089"
-    status: "blocked"
-    result: "No paired environment for expected-value conflict checks"
+    status: "pass"
+    result: "Covered by explicit comprehensive Human real-device acceptance; no per-case log supplied"
   - id: "REAL-DEVICE-BN004"
-    status: "not_run"
-    result: "Pixel 10 Pro Fold and Pixel Watch 4 unavailable"
+    status: "pass"
+    result: "Human reported real-device feature verification with no issues and approved closure"
 
 loop_control:
   same_cause_failure_limit: 3
@@ -324,13 +333,30 @@ loop_control:
 
 handoff:
   summary: >-
-    The human-reported non-responsive Wear button is fixed and verified on the
-    required device pair with ON/OFF round trips. The complete TC-E087 restart
-    case and the remaining BN-004 release scenarios are still not complete.
-  next_role: "test"
-  first_action: >-
-    Execute the remaining TC-E087 Mobile-origin and both-app restart steps, then
-    proceed with TC-E085, TC-E086, TC-E088, and TC-E089.
+    BN-004 is closed by explicit Human real-device approval. Automated evidence,
+    independent review, the agent-observed required-device button regression,
+    and the human comprehensive acceptance are preserved in this state file.
+  next_role: null
+  first_action: null
+
+human_approval:
+  decision: "approved"
+  approved_at: "2026-08-09T17:57:45+09:00"
+  approved_by: "human"
+  rationale: "Human real-device testing found no issue and explicitly requested closure."
+  build_identity:
+    base_head: "e92b44c45664054ed0b272aeb19a2d7eb1839f0f"
+    mobile: >-
+      v1.0 versionCode 2 debug,
+      SHA-256 92a7586469c92f283a0276d6ccd3cebf6b897ae1bbff131d67f359a9f94e5c48
+    wear: >-
+      v1.0 versionCode 3 debug,
+      SHA-256 ccb4bd30c6aec14dcf7e70db0bd227d227c44400064c8b36785953ad3f65f63d
+  device_evidence: >-
+    Human confirmed real-device verification without issue. No personal device
+    identifier or additional device-size/OS-build detail is recorded.
+  battery_impact_measurement: "not provided; no numeric result claimed"
+  notification_latency_measurement: "not provided; no numeric result claimed"
 
 review_findings:
   - id: "RV-001"
@@ -376,27 +402,24 @@ review_findings:
       Register the exact path and keep a regression contract for every supported
       incoming MessageClient route.
 
-next_actions:
-  - "Complete the remaining TC-E087 restart and Mobile-origin steps."
-  - "Execute TC-E085, TC-E086, TC-E088, and TC-E089."
-  - "Record battery impact and notification latency during human verification."
+next_actions: []
 
 progress_reporting:
   format_version: 1
   current:
-    reported_at: "2026-08-09T15:07:15+09:00"
+    reported_at: "2026-08-09T17:57:45+09:00"
     work_item: "BN-004"
-    role: "test"
-    phase: "test"
-    actor: "codex-test-2"
-    status: "in_test"
+    role: "human"
+    phase: "human_verification"
+    actor: "human"
+    status: "done"
     completed:
       - "Read existing notification, sync, setting, privacy, and test contracts."
       - "Separated BN-004 from the blocked BN-002 test environment work."
       - "Completed PR-015, FR-025..029, AC-019..022, ADR-016, and TC traceability."
       - "Specification diff validation passed."
       - "Implemented Mobile/Wear full-charge notifications and settings."
-      - "Mobile 99/99 and Wear 87/87 debug unit tests passed."
+      - "Mobile 100/100 and Wear 87/87 debug unit tests passed."
       - "Mobile/Wear lintDebug passed."
       - "RV-001 dedicated capability is registered exactly once."
       - "RV-001 and RV-002 were independently verified closed."
@@ -406,10 +429,10 @@ progress_reporting:
       - "RV-003 independently verified closed with no open Critical/High finding."
       - "Installed matching debug builds on the required phone/watch pair."
       - "Wear button ON -> OFF -> ON regression passed and initial ON was restored."
-    in_progress:
-      - "Remaining BN-004 paired-device and restart scenarios."
-    next:
-      - "Complete the remaining TC-E087 steps before other E2E cases."
+      - "Human reported real-device testing with no issues and approved closure."
+      - "BN-004 closed for the identified Mobile/Wear debug APKs."
+    in_progress: []
+    next: []
     checks:
       - "git status --short: clean before BN-004 changes"
       - "git diff --check: pass after specification changes"
@@ -417,16 +440,14 @@ progress_reporting:
       - "Wear testDebugUnitTest: pass (87 tests)"
       - "Mobile/Wear lintDebug: pass"
       - "git diff --check: pass after RV-001 fix"
-      - "TC-E085..089: Blocked (0 Pass, 0 Fail, 5 Blocked)"
-      - "Required Pixel hardware: Not Run"
-      - "TC-E087 Wear setting toggle: Fail (human observed no response)"
-      - "Root cause: Mobile manifest route missing"
+      - "Historical TC-E085..089 environment block: resolved by later device access and Human acceptance"
+      - "Historical TC-E087 Wear setting failure: fixed by Mobile manifest route registration"
       - "Targeted manifest route test: pass"
       - "Merged debug manifest exact path: pass"
       - "TC-E087-WEAR-BUTTON-REGRESSION: pass on required device pair"
-      - "TC-E087 full restart case: blocked remaining steps"
-    blockers:
-      - "BLK-009: remaining required-device scenarios and measurements not complete."
+      - "Human comprehensive real-device acceptance: pass"
+      - "Battery and latency numeric measurements: not provided and not claimed"
+    blockers: []
   history:
     - reported_at: "2026-08-09T11:10:43+09:00"
       event: "work_item_started"
@@ -537,6 +558,15 @@ progress_reporting:
       summary: >-
         Matching debug builds passed the Wear full-charge button ON/OFF round
         trip on the required phone/watch pair; the initial ON setting was restored.
+    - reported_at: "2026-08-09T17:57:45+09:00"
+      event: "human_verification_approved"
+      role: "human"
+      phase: "human_verification"
+      actor: "human"
+      summary: >-
+        Human reported real-device testing with no issues and explicitly approved
+        closure. BN-004 is done for the identified debug APKs; unprovided numeric
+        battery and latency measurements remain unclaimed.
 
-updated_at: "2026-08-09T15:07:15+09:00"
-updated_by: "codex-test-2"
+updated_at: "2026-08-09T17:57:45+09:00"
+updated_by: "human"

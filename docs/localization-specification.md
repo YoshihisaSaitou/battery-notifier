@@ -83,7 +83,8 @@ retry_full_charge_setting_change
 | Sync | 同期 | Sync |
 | 手動同期の用途 | 電池状態は通常、自動でウォッチへ同期されます。「今すぐ同期」は、自動同期されない場合や最新の状態に更新したい場合に使用します。 | Battery state normally syncs to the watch automatically. Use Sync now if automatic sync does not occur or you want to refresh the latest state. |
 | 手動同期中 | スマートフォンの電池状態を同期しています。 | Syncing the phone battery state. |
-| 未確定 | まだ保存されていません | Not saved yet |
+| Mobileしきい値未保存 | しきい値を変更しました。「しきい値を保存」を選ぶと反映されます。 | Threshold changed. Select Save threshold to apply it. |
+| Wear未確定 | まだ保存されていません | Not saved yet |
 | 競合 | スマートフォンで設定が変更されました | Setting changed on phone |
 | 満充電通知 | 満充電になったら通知 | Notify when fully charged |
 | 満充電 | 充電が完了しました | Fully charged |
@@ -95,7 +96,7 @@ BN-004の満充電イベントおよび設定要求payloadにも完成済み文�
 - 日本語は簡潔な「です・ます」調を基本とする。
 - 英語はsentence caseを使用する。
 - `%`は数値formatで扱い、Locale依存の不要な小数を表示しない。
-- Mobile通知しきい値の目盛りラベルは範囲を示す整数`5`、`50`、`100`とし、操作ボタンの読み上げには既存の日英リソースを使用する。
+- Mobile通知しきい値のスライダー直下には数値目盛りを表示せず、操作ボタンの読み上げには既存の日英リソースを使用する。
 - 時刻は端末の12/24時間設定、日付はLocaleへ従う。
 - 「接続なし」と「同期が古い」を同じ文言にしない。
 

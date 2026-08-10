@@ -6,25 +6,24 @@ work_item:
   title: "Mobile threshold slider layout"
   scope: >-
     Update the Mobile notification-threshold editor so the decrease and
-    increase controls flank the slider, with visible numeric scale labels
-    beneath the track, while preserving the 5..100 percent range, one-percent
-    adjustment, draft-only editing, and explicit Save behavior.
+    increase controls flank the slider without numeric labels beneath the
+    track, while preserving the 5..100 percent range, one-percent adjustment,
+    draft-only editing, and explicit Save behavior.
 
-status: "in_review"
-current_phase: "review"
-current_role: "review"
+status: "done"
+current_phase: "human_verification"
+current_role: "human"
 current_actor:
-  type: "unassigned"
-  id: null
+  type: "human"
+  id: "human-user"
 
 last_transition:
-  from_phase: "implementation"
-  to_phase: "review"
+  from_phase: "test"
+  to_phase: "human_verification"
   reason: >-
-    IMP-024 dependency hardening completed before RV-013 began. The full
-    material-icons-extended dependency was replaced with two official Material
-    vector assets, dense slider tick dots were removed while retaining integer
-    values, and all affected automated, runtime, and visual checks passed.
+    The human explicitly reported that real-device verification found no problem
+    and directed BN-008 to close. This user attestation is recorded separately
+    from agent automated/emulator evidence and constitutes final Human approval.
 
 spec_refs:
   - "docs/product-requirements.md#4-プロダクト要件"
@@ -46,37 +45,173 @@ phase_tasks:
       summary: >-
         Define the flanking minus/plus controls, numeric scale labels, range,
         accessibility semantics, responsive behavior, and acceptance tests.
+    - id: "SPEC-021"
+      status: "completed"
+      summary: >-
+        Remove the numeric scale-label requirement while retaining the control
+        row, range, current-value display, accessibility, and Save boundary.
   implementation:
     - id: "IMP-024"
       status: "completed"
       summary: >-
         Implement the Mobile threshold control layout and automated UI coverage,
         including a lightweight official Material icon integration.
+    - id: "IMP-025"
+      status: "completed"
+      summary: >-
+        Remove the scale-label row and update the Compose UI fixture without
+        changing threshold editing or persistence behavior.
+    - id: "IMP-026"
+      status: "completed"
+      summary: >-
+        Fix RV-013-001 discrete slider semantics without restoring numeric
+        labels, and RV-013-002 unsaved-draft status text with regression tests.
   review:
     - id: "RV-013"
-      status: "pending"
+      status: "completed"
       summary: >-
-        Independently review the Mobile UI, accessibility, and retained Save boundary.
+        Independent review completed with Critical 0, High 0, Medium 2, Low 0;
+        both Medium findings are open and require implementation plus re-review.
+    - id: "RV-014"
+      status: "completed"
+      summary: >-
+        Independent re-review completed with Critical 0, High 0, Medium 0,
+        Low 1. RV-013-001 and RV-013-002 are verified fixed; RV-014-001 records
+        a non-blocking stale UNSAVED message after a concurrent saved-value update.
   test:
     - id: "TST-006"
-      status: "pending"
+      status: "completed_by_human_real_device_attestation"
       summary: >-
-        Run Mobile unit, lint, Compose UI, and applicable emulator checks.
+        Existing automated evidence includes debug/release unit 108/108, lint
+        with zero errors, Pixel 9a editor and screen-boundary runs, and APK
+        assembly. A combined final connected XML was not retained; the human
+        reported real-device verification had no problem and approved closure.
   human_verification:
     - id: "HUM-008"
-      status: "pending"
+      status: "completed_approved"
       summary: >-
-        Verify the layout and interaction on Pixel 10 Pro Fold form factors.
+        Human real-device verification reported no problem and final closure was
+        explicitly approved. Exact device/build environment details and separate
+        measurements not supplied by the human are not inferred.
 
 decisions_needed: []
 blockers: []
+human_verification:
+  status: "completed_approved"
+  owner: "human"
+  tasks:
+    - id: "HUM-008"
+      title: "Verify the Mobile threshold slider layout on a physical device"
+      status: "approved_by_human_real_device_attestation"
+    - id: "HUM-008-APPROVAL"
+      title: "Record final approval or required changes"
+      status: "approved"
+  approval:
+    decision: "approved"
+    approver: "human-user"
+    build_identity: >-
+      Current BN-008 worktree based on HEAD
+      f065ccc0d3414cea86559c2b8fac2fe48265d7e3; Mobile
+      com.magicitengineer.batterynotifier versionCode 2/versionName 1.0.
+    devices: >-
+      Physical-device verification was reported by the human. Exact model, form
+      factor, OS build, connection mode, permission state, and device identifiers
+      were not provided and are not inferred.
+    observed_result: >-
+      Human reported no problem during real-device verification and explicitly
+      directed that BN-008 be closed.
+    battery_impact: >-
+      No separate numeric comparison was provided or claimed for this UI-only
+      feature closure.
+    notification_latency: >-
+      No separate sample series or percentile was provided or claimed for this
+      UI-only feature closure.
+    decided_at: "2026-08-10T11:00:25+09:00"
+    rationale: >-
+      Explicit human real-device acceptance and closure instruction are the final
+      product-owner decision. Agent evidence and Not Run details remain distinct
+      and are not relabeled as Human or agent Pass.
+review_findings:
+  - id: "RV-013-001"
+    severity: "Medium"
+    status: "verified_fixed"
+    location: "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/presentation/ThresholdEditor.kt:52"
+    requirement_refs:
+      - "PR-001"
+      - "AC-026"
+      - "TC-E094"
+    scenario: >-
+      Removing steps=94 leaves the Compose Slider at its default steps=0.
+      onValueChange roundToInt keeps the displayed draft integral but does not
+      expose 96 discrete values or one-percent steps through Slider semantics.
+    required_outcome: >-
+      Restore steps=94 or equivalent discrete accessibility semantics without
+      restoring numeric labels, and verify TalkBack/semantics one-percent actions.
+  - id: "RV-013-002"
+    severity: "Medium"
+    status: "verified_fixed"
+    location: "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/MainActivity.kt:116"
+    requirement_refs:
+      - "M-004"
+      - "AC-026"
+    scenario: >-
+      With saved threshold 20, pressing increase produces an unsaved draft 21
+      and resets saveState to IDLE, whose English/Japanese message claims the
+      displayed threshold is saved although persistence remains 20.
+    required_outcome: >-
+      Add an explicit unsaved-draft state and localized text, then verify the
+      actual 20 -> 21 -> Save transition and persistence/sync call boundary.
+  - id: "RV-014-001"
+    severity: "Low"
+    status: "accepted_risk_by_human_final_approval"
+    location: "BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/MainActivity.kt:92"
+    requirement_refs:
+      - "M-004"
+      - "AC-026"
+    scenario: >-
+      Start with saved=20 and draft=21/UNSAVED, then let a sibling writer path
+      update settings.thresholdPercent to 21 or 25. rememberSaveable reinitializes
+      the draft for the new saved key, but saveState is not derived again, so the
+      Save button can be disabled while the stale UNSAVED message remains visible.
+    required_outcome: >-
+      Reconcile saveState whenever the persisted threshold changes and add a
+      regression fixture covering an external saved-value update during an
+      unsaved Mobile draft. No incorrect persistence was observed.
+implementation_impact_analysis:
+  authoritative_writer: >-
+    ThresholdSettingsController remains the only writer for the Mobile
+    threshold; editor changes update an in-memory draft only, and explicit Save
+    invokes repository persistence before sync coordination.
+  transition_matrix:
+    - state: "saved=20, draft=20, IDLE"
+      action: "increase or slider edit to 21"
+      result: "saved=20, draft=21, UNSAVED; no persistence or sync call"
+    - state: "saved=20, draft=21, UNSAVED"
+      action: "edit back to 20"
+      result: "saved=20, draft=20, IDLE; no persistence or sync call"
+    - state: "saved=20, draft=21, UNSAVED"
+      action: "explicit Save"
+      result: >-
+        SAVING, then the existing controller persists 21 and coordinates sync;
+        completion maps to SAVED, SAVED_SYNC_PENDING, SAVED_SYNC_FAILED, or
+        INVALID_THRESHOLD.
+    - state: "draft at 5 or 100"
+      action: "slider semantics or side-button adjustment"
+      result: >-
+        one-percent discrete values remain clamped to 5..100; persistence and
+        sync remain absent until explicit Save.
+  sibling_paths_inspected:
+    - "MainActivity editor callback and explicit Save callback"
+    - "ThresholdSettingsController repository-first save and sync result mapping"
+    - "ThresholdEditor slider, decrease button, and increase button paths"
+    - "English and Japanese threshold status resources"
 risks:
   - id: "RSK-018"
     summary: >-
-      Three numeric labels and two side controls can crowd compact or enlarged-font layouts.
+      Without endpoint labels, the slider range may be less visually discoverable.
     mitigation: >-
-      Keep controls at accessible touch size, give the slider flexible width, and verify
-      compact, expanded, Japanese, English, and maximum-font rendering.
+      Retain the existing current-value display, 5..100 semantics, one-percent
+      side controls, and disabled boundary states; verify with TalkBack in Human testing.
 
 evidence:
   - id: "REF-BN008-001"
@@ -84,8 +219,70 @@ evidence:
     summary: >-
       Reference shows a circular minus button, central slider, circular plus button,
       and numeric scale labels below the slider.
+  - id: "HUM-BN008-002"
+    type: "human_design_direction"
+    summary: >-
+      On 2026-08-10 the human explicitly requested removing the scale labels
+      beneath the Mobile notification-threshold slider.
+  - id: "HUM-BN008-003"
+    type: "human_verification"
+    summary: >-
+      On 2026-08-10 the human reported that physical-device verification found
+      no problem and explicitly approved closing BN-008. Exact device and runtime
+      details were not supplied and are not inferred.
 
 test_results:
+  - id: "CHK-BN008-021"
+    command: >-
+      Independent source/spec/fixture/evidence review of HEAD f065ccc0 plus the
+      complete BN-008 working-tree diff
+    status: "pass"
+    result: >-
+      RV-013-001 and RV-013-002 are verified fixed. Review totals are Critical 0,
+      High 0, Medium 0, Low 1 (RV-014-001 open non-blocking). Saved XML proves the
+      final Pixel 9a screen boundary 1/1; the earlier Editor 4/4 XML was overwritten
+      by the later targeted run and must be regenerated and retained in TST-006.
+  - id: "CHK-BN008-016"
+    command: >-
+      Pixel 9a API 36 connectedDebugAndroidTest for
+      ThresholdEditorInstrumentedTest and ThresholdSettingsScreenInstrumentedTest
+    status: "fail"
+    result: >-
+      ThresholdEditorInstrumentedTest passed 4/4, including discrete steps=94
+      semantics and both endpoint buttons. The screen fixture failed 0/1 because
+      it clicked the Save button's child Text node, leaving the callback count at
+      zero. Production persistence was not invoked by the fixture.
+  - id: "CHK-BN008-017"
+    command: >-
+      Local Gradle 8.13 compileDebugAndroidTestKotlin --offline --no-daemon
+      -Pkotlin.compiler.execution.strategy=in-process
+    status: "pass"
+    result: >-
+      Android-test Kotlin compiled after adding the stable Save Button tag and
+      supported Compose test imports. The fixture-repair attempt recovered.
+  - id: "CHK-BN008-018"
+    command: >-
+      Pixel 9a API 36 connectedDebugAndroidTest for
+      ThresholdSettingsScreenInstrumentedTest
+    status: "pass"
+    result: >-
+      The actual screen hierarchy passed 1/1: saved 20 -> increase to draft 21
+      displayed the localized unsaved message with saveCalls=0 and savedValue=20;
+      explicit Save then called the boundary once with final value 21.
+  - id: "CHK-BN008-019"
+    command: >-
+      Local Gradle 8.13 testDebugUnitTest testReleaseUnitTest lintDebug
+      lintRelease assembleDebug --offline --no-daemon
+      -Pkotlin.compiler.execution.strategy=in-process
+    status: "pass"
+    result: >-
+      Final gate passed in 7m32s. Debug and release unit suites passed 108/108
+      each with zero failures, errors, or skipped tests; debug and release lint
+      each reported zero errors and 25 warnings; debug APK assembly passed.
+  - id: "CHK-BN008-020"
+    command: "git diff --check"
+    status: "pass"
+    result: "No whitespace errors; line-ending conversion warnings only."
   - id: "CHK-BN008-001"
     command: >-
       BatteryNotifierAndroidMobileApp/gradlew.bat testDebugUnitTest
@@ -156,38 +353,105 @@ test_results:
       Final screenshot retained the circular side controls, central slider, and
       aligned 5/50/100 labels. Dense tick dots were removed; design-qa.md has no
       actionable P0/P1/P2 mismatch.
+  - id: "CHK-BN008-011"
+    command: >-
+      Local Gradle 8.13 compileDebugAndroidTestKotlin --offline
+      -Pkotlin.compiler.execution.strategy=in-process
+    status: "pass"
+    result: >-
+      After replacing the unavailable assertDoesNotExist API with the supported
+      collection count assertion, the equivalent Android-test compilation gate
+      passed in 25 seconds. No failed corrective attempt was counted.
+  - id: "CHK-BN008-012"
+    command: >-
+      Local Gradle 8.13 testDebugUnitTest testReleaseUnitTest lintDebug
+      lintRelease assembleDebug --offline
+      -Pkotlin.compiler.execution.strategy=in-process
+    status: "pass"
+    result: >-
+      Debug 107/107 and release 107/107 unit tests passed with zero failures,
+      errors, or skipped tests. Debug and release lint each reported zero errors
+      and 25 warnings. APK assembly passed in 1m18s.
+  - id: "CHK-BN008-013"
+    command: >-
+      Pixel 9a API 36 connectedDebugAndroidTest for
+      ThresholdEditorInstrumentedTest
+    status: "pass"
+    result: >-
+      Layout and label absence, one-percent boundary interaction, and screenshot
+      capture passed 3/3 with zero failed or skipped tests.
+  - id: "CHK-BN008-014"
+    command: >-
+      Open REF-BN008-001 and final 1080x126 Pixel 9a implementation screenshot
+      together, applying HUM-BN008-002 as the selected design override
+    status: "pass"
+    result: >-
+      Final implementation shows only the circular decrease button, flexible
+      slider, and circular increase button. No numeric labels remain, no clipping
+      or overflow is visible, and design-qa.md has final result passed.
+  - id: "CHK-BN008-015"
+    command: "git diff --check"
+    status: "pass"
+    result: "No whitespace error; line-ending conversion warnings only."
 
 loop_control:
   same_cause_failure_limit: 3
   phase_return_limit: 5
   current_failure_signature: null
   consecutive_same_cause_failures: 0
-  total_phase_returns: 0
-  attempts: []
+  total_phase_returns: 1
+  attempts:
+    - attempt: 1
+      command: >-
+        Pixel 9a connectedDebugAndroidTest for
+        ThresholdSettingsScreenInstrumentedTest
+      failure_signature: "Unresolved reference onNodeWithTag"
+      root_cause_hypothesis: >-
+        The fixture switched from the child Text node to the tagged Button but
+        omitted the Compose test onNodeWithTag import.
+      corrective_change: "Add the missing onNodeWithTag import."
+      result: >-
+        Recovered after the import was added: Android-test compilation passed,
+        then the same Pixel 9a screen fixture passed 1/1.
   termination_reason: null
   resume_condition: null
 
 progress_reporting:
   format_version: 1
   current:
-    reported_at: "2026-08-10T07:03:09+09:00"
+    reported_at: "2026-08-10T11:00:25+09:00"
     work_item: "BN-008"
-    role: "review"
-    phase: "review"
-    actor: "unassigned"
-    status: "in_review"
+    role: "human"
+    phase: "human_verification"
+    actor: "human-user"
+    status: "done"
     completed:
       - "Completed SPEC-020 with FR-075, AC-026, M-004, TC-U037, and TC-E094."
-      - "Implemented the flanking icon buttons, flexible slider, and aligned 5/50/100 scale labels."
+      - "Implemented the flanking icon buttons and flexible slider, then removed the 5/50/100 label row per HUM-BN008-002."
       - "Targeted unit test and Android-test Kotlin compilation passed."
       - "Completed Mobile debug/release unit, lint, Pixel 9a UI runtime, screenshot, and design QA gates."
       - "Replaced material-icons-extended with two official Material vector assets and reduced the debug APK by approximately 49.5 percent."
       - "Removed dense slider tick dots while retaining whole-percent values and one-percent side-button adjustment."
       - "Repeated the complete Mobile and Pixel 9a gates after the final visual polish."
+      - "Completed SPEC-021: FR-075, AC-026, M-004, localization guidance, and TC-E094 now require no numeric labels below the slider."
+      - "Completed IMP-025: removed the label row and proved 5/50/100 are absent in the isolated editor fixture."
+      - "Repeated Mobile unit, lint, APK, Pixel 9a UI 3/3, screenshot, and design QA gates for the label-free layout."
+      - "Completed RV-013 independent review: Critical 0, High 0, Medium 2, Low 0."
+      - "Completed IMP-026: restored steps=94 semantics while suppressing tick drawing and retaining no numeric labels."
+      - "Added localized UNSAVED draft state and actual-screen 20 -> 21 -> Save regression coverage."
+      - "Final Mobile debug/release unit 108/108 each, lint 0 errors, APK assembly, Pixel 9a Editor 4/4, and screen boundary 1/1 passed."
+      - "Completed RV-014: both Medium findings are verified fixed; Critical 0, High 0, Medium 0, Low 1."
+      - "Human reported physical-device verification found no problem and explicitly approved closure."
+      - "HUM-008 completed_approved; BN-008 is closed."
     in_progress: []
-    next:
-      - "Assign an independent Review actor for RV-013."
+    next: []
     checks:
+      - "CHK-BN008-016 Pixel 9a: Editor 4/4 pass; screen fixture 0/1 fail due to child Text click target."
+      - "Screen fixture corrective rerun: fail at compile due to missing onNodeWithTag import; same-cause attempt 1/3."
+      - "CHK-BN008-017 Android-test compilation: pass; fixture-repair attempt recovered."
+      - "CHK-BN008-018 Pixel 9a screen boundary: pass, 1/1."
+      - "CHK-BN008-019 final Mobile gate: pass; unit 108/108 per variant, lint 0 errors, APK assembled."
+      - "CHK-BN008-020 diff check: pass."
       - "Repository worktree was clean before BN-008 started."
       - "CHK-BN008-001 targeted unit test: pass."
       - "CHK-BN008-002 Compose UI-test compilation: pass."
@@ -201,6 +465,20 @@ progress_reporting:
       - "CHK-BN008-010 refreshed side-by-side design QA: pass."
       - "Gradle Wrapper download and sandbox loopback were environment-blocked; cached local Gradle 8.13 offline completed the same gate successfully."
       - "Pixel 10 Pro Fold, maximum-font, and TalkBack runtime: not_run; reserved for Test/Human."
+      - "IMP-025 initial compileDebugAndroidTestKotlin: fail; this Compose test API does not expose assertDoesNotExist in the current dependency version. Corrective rerun pending; counted failed corrective attempts: 0."
+      - "IMP-025 corrective compileDebugAndroidTestKotlin rerun: pass after using the supported collection count assertion; no failed corrective attempt was counted."
+      - "CHK-BN008-012 final Mobile unit/lint/APK gate: pass."
+      - "CHK-BN008-013 Pixel 9a label-free UI runtime: pass, 3/3."
+      - "CHK-BN008-014 refreshed human-override design QA: pass."
+      - "CHK-BN008-015 diff check: pass."
+      - "RV-013 source/spec/fixture review: fail Review -> Test; Medium RV-013-001 and RV-013-002 are open."
+      - "Pixel 10 Pro Fold, Japanese/English maximum font, and real TalkBack runtime remain not_run."
+      - "RV-014 source/spec/fixture/evidence re-review: pass Review -> Test; RV-013-001 and RV-013-002 verified fixed."
+      - "RV-014-001 Low was accepted by explicit Human final approval; the concurrent saved-threshold status risk remains documented."
+      - "Current retained Pixel 9a XML proves the screen fixture 1/1; Editor 4/4 XML was overwritten before closure."
+      - "Human real-device verification: approved; no problem reported."
+      - "Exact physical-device model/build environment and separate battery/latency measurements were not provided and are not inferred."
+      - "The combined final connected XML and Pixel 10 Pro Fold/TalkBack metadata remain historically not_run/not retained; they are not relabeled as Pass."
     blockers: []
   history:
     - reported_at: "2026-08-09T22:24:08+09:00"
@@ -278,25 +556,198 @@ progress_reporting:
         RV-013 should review the actual final sources, integer slider behavior,
         official icon provenance, retained Save boundary, runtime screenshot,
         and complete automated evidence.
+    - reported_at: "2026-08-10T08:21:46+09:00"
+      event: "bn008_scale_labels_removal_requested"
+      role: "specification"
+      actor: "codex"
+      summary: >-
+        The human requested removal of the 5/50/100 labels before RV-013 was
+        assigned. This is a human-directed refinement, not a failed phase gate;
+        total_phase_returns remains zero. SPEC-021 will update the normative
+        documents before IMP-025 changes the UI and test fixture.
+    - reported_at: "2026-08-10T08:23:05+09:00"
+      event: "bn008_scale_labels_specification_completed"
+      role: "specification"
+      actor: "codex"
+      summary: >-
+        SPEC-021 removed the numeric scale-label requirement from FR-075,
+        AC-026, M-004, localization guidance, and TC-E094. The range, current
+        value, one-percent controls, accessibility, draft, Save, and sync
+        contracts remain unchanged.
+    - reported_at: "2026-08-10T08:23:05+09:00"
+      event: "bn008_scale_labels_specification_to_implementation"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Specification -> Implementation gate passed. IMP-025 starts by removing
+        only the label row and changing the UI assertion to require the labels
+        to be absent.
+    - reported_at: "2026-08-10T08:26:43+09:00"
+      event: "bn008_scale_labels_ui_test_compile_failed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        compileDebugAndroidTestKotlin failed because assertDoesNotExist is not
+        available in the current Compose test dependency. Production Kotlin
+        compiled. No corrective rerun has failed, so the same-cause failed
+        attempt count remains zero. The next safe action is to use the supported
+        node-collection count assertion and rerun the same compile gate.
+    - reported_at: "2026-08-10T08:29:14+09:00"
+      event: "bn008_scale_labels_ui_test_compile_recovered"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Replaced the unavailable assertDoesNotExist API with
+        onAllNodesWithText(...).assertCountEquals(0). The equivalent
+        compileDebugAndroidTestKotlin gate passed in 25 seconds; the failure
+        signature cleared and no failed corrective attempt was counted.
+    - reported_at: "2026-08-10T08:37:23+09:00"
+      event: "bn008_scale_labels_implementation_completed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        IMP-025 removed the numeric label row, updated the UI fixture to require
+        absent 5/50/100 nodes, and passed debug/release unit 107/107 each, lint
+        with zero errors, Pixel 9a UI 3/3, screenshot capture, and side-by-side
+        design QA. Pixel 10 Pro Fold and TalkBack remain not_run.
+    - reported_at: "2026-08-10T08:37:23+09:00"
+      event: "bn008_scale_labels_implementation_to_review"
+      role: "review"
+      actor: "unassigned"
+      summary: >-
+        Implementation -> Review gate passed. RV-013 should independently inspect
+        the label-free final Compose tree, explicit Save isolation, accessibility,
+        updated normative documents, UI assertions, and Pixel 9a evidence.
+    - reported_at: "2026-08-10T08:56:13+09:00"
+      event: "bn008_independent_review_started"
+      role: "review"
+      actor: "bn008_independent_review"
+      summary: >-
+        RV-013 started with an actor separate from implementation. Scope is HEAD
+        f065ccc0 plus the current BN-008 working-tree diff. The review will inspect
+        actual Compose wiring, 5/20/100 fixtures, label absence, one-percent and
+        boundary behavior, localized semantics, explicit Save isolation, updated
+        specifications, screenshot evidence, and unrelated-change containment.
+    - reported_at: "2026-08-10T09:02:11+09:00"
+      event: "bn008_independent_review_completed_with_findings"
+      role: "review"
+      actor: "bn008_independent_review"
+      summary: >-
+        RV-013 completed with Critical 0, High 0, Medium 2, Low 0. RV-013-001
+        found continuous Slider semantics after steps removal; RV-013-002 found
+        IDLE copy falsely describing an unsaved draft as saved. Label-free specs,
+        layout order, 48 dp controls, localized button descriptions, current-value
+        display, no persistence call from edit callbacks, Pixel 9a 3/3 XML, final
+        screenshot, and unrelated-change containment were verified.
+    - reported_at: "2026-08-10T09:02:11+09:00"
+      event: "bn008_review_to_implementation_return"
+      role: "implementation"
+      actor: "unassigned"
+      summary: >-
+        Review -> Test gate failed and the work item returned to Implementation.
+        total_phase_returns increased to 1. IMP-026 must fix RV-013-001 and
+        RV-013-002, add regression evidence, and request independent re-review.
+    - reported_at: "2026-08-10T09:06:51+09:00"
+      event: "bn008_review_fixes_started"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Assigned IMP-026 and recorded the transition matrix. The fixes preserve
+        Mobile as the sole settings writer: draft edits expose UNSAVED without
+        persistence or sync, explicit Save retains the repository-first boundary,
+        and the slider restores 96 discrete values without numeric labels.
+    - reported_at: "2026-08-10T09:50:54+09:00"
+      event: "bn008_screen_fixture_click_target_failed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Pixel 9a passed the four ThresholdEditor tests. The new full-screen
+        fixture failed because it targeted the Save button's child Text node;
+        saveCalls remained zero. A stable tag is being added to the Button
+        itself before rerunning the same test. No corrective rerun has failed,
+        so consecutive_same_cause_failures remains zero.
+    - reported_at: "2026-08-10T09:56:16+09:00"
+      event: "bn008_screen_fixture_repair_attempt_one_failed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        The first corrective rerun failed during Android-test compilation
+        because the newly used onNodeWithTag extension was not imported.
+        Same-cause fixture-repair attempt count is 1/3. The missing import is
+        added and compileDebugAndroidTestKotlin will run before device retry.
+    - reported_at: "2026-08-10T10:09:28+09:00"
+      event: "bn008_review_fixes_completed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Completed IMP-026. Slider semantics expose 96 discrete values with
+        steps=94 while the track suppresses tick drawing and numeric labels stay
+        absent. Draft edits now map to localized UNSAVED until they match the
+        persisted value. Unit, lint, APK, Pixel 9a Editor 4/4, and actual-screen
+        20 -> 21 -> Save 1/1 gates passed.
+    - reported_at: "2026-08-10T10:09:28+09:00"
+      event: "bn008_review_fix_handoff"
+      role: "review"
+      actor: "unassigned"
+      summary: >-
+        Implementation -> Review gate passed. An independent reviewer must
+        inspect steps metadata and hidden ticks, localized UNSAVED mapping,
+        editor-only zero-write behavior, explicit Save final-value boundary,
+        sibling paths, and the recorded Pixel 9a evidence before Test.
+    - reported_at: "2026-08-10T10:17:34+09:00"
+      event: "bn008_independent_re_review_started"
+      role: "review"
+      actor: "bn008_independent_review"
+      summary: >-
+        RV-014 started with the same independent reviewer that identified the
+        original findings and remains separate from IMP-026 implementation.
+        Scope is HEAD f065ccc0 plus the complete current BN-008 working-tree
+        diff, including actual fixture inputs and state transitions.
+    - reported_at: "2026-08-10T10:23:36+09:00"
+      event: "bn008_independent_re_review_completed"
+      role: "review"
+      actor: "bn008_independent_review"
+      summary: >-
+        RV-014 completed with Critical 0, High 0, Medium 0, Low 1. steps=94,
+        hidden tick drawing, endpoint behavior, 20.6 -> 21 semantics, localized
+        UNSAVED/IDLE transitions, edit-only zero-write behavior, and explicit
+        Save value 21 were verified against actual source and fixture inputs.
+        RV-013-001 and RV-013-002 are verified fixed. RV-014-001 records a
+        non-blocking stale UNSAVED message after an external saved-value update.
+    - reported_at: "2026-08-10T10:23:36+09:00"
+      event: "bn008_review_to_test_handoff"
+      role: "test"
+      actor: "unassigned"
+      summary: >-
+        Review -> Test gate passed because no Critical or High finding remains.
+        TST-006 must rerun the complete Mobile fixtures in one batch and retain
+        XML evidence; Pixel 10 Pro Fold, maximum-font, and real TalkBack remain
+        not_run. total_phase_returns remains 1.
+    - reported_at: "2026-08-10T11:00:25+09:00"
+      event: "bn008_human_verification_approved"
+      role: "human"
+      actor: "human-user"
+      summary: >-
+        The human reported that physical-device verification found no problem
+        and explicitly directed closure. HUM-008 is completed_approved and
+        BN-008 is done. Exact device/build environment details and numeric
+        battery/latency measurements were not supplied and are not inferred.
+        Historical agent Not Run and overwritten-XML limitations remain recorded
+        separately, and RV-014-001 Low is accepted by final Human approval.
 
 handoff:
-  from_role: "implementation"
-  to_role: "review"
-  gate_result: "passed"
+  from_role: "test"
+  to_role: "human"
+  gate_result: "approved"
   summary: >-
-    IMP-024 implements FR-075 and AC-026 with official Material Add/Remove vector
-    assets, 48 dp flanking controls, a flexible whole-percent 5..100 slider, and
-    aligned 5/50/100 labels. The dependency-hardened Mobile unit, lint, Pixel 9a
-    UI runtime, screenshot, APK-size, and design QA evidence passed.
+    Human real-device verification reported no problem and explicitly approved
+    final closure of the current BN-008 worktree. Agent evidence remains distinct
+    from this Human approval, and missing device metadata is not inferred.
   unresolved_items: []
   first_action: >-
-    Independently review the final Compose implementation, vector provenance,
-    tests, screenshot, design-qa.md, and retained explicit Save boundary without
-    modifying files.
+    None. BN-008 is closed by explicit Human final approval.
 
-next_actions:
-  - "Assign an independent Review actor and complete RV-013."
-  - "After Review passes, execute Test phase including Pixel 10 Pro Fold and accessibility coverage."
+next_actions: []
 
-updated_at: "2026-08-10T07:03:09+09:00"
+updated_at: "2026-08-10T11:00:25+09:00"
 updated_by: "codex"

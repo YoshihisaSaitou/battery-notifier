@@ -37,6 +37,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.magicitengineer.batterynotifierandroidmobileapp.application.settings.ThresholdSettingsState
@@ -56,6 +57,7 @@ import com.magicitengineer.batterynotifierandroidmobileapp.presentation.toManual
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.toPresentation
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.toMonitoringCommandUiState
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.toUiResult
+import com.magicitengineer.batterynotifierandroidmobileapp.presentation.thresholdDraftSaveUiState
 import com.magicitengineer.batterynotifierandroidmobileapp.ui.theme.BatteryNotifierAndroidMobileAppTheme
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
@@ -115,7 +117,10 @@ class MainActivity : ComponentActivity() {
                         notificationPermissionState = notificationPermissionState,
                         onThresholdChanged = { threshold ->
                             draftThreshold = threshold
-                            saveState = ThresholdSaveUiState.IDLE
+                            saveState = thresholdDraftSaveUiState(
+                                savedThreshold = settings.thresholdPercent,
+                                draftThreshold = threshold,
+                            )
                             currentAtOrBelowThreshold = false
                         },
                         onSaveThreshold = {
@@ -251,7 +256,7 @@ private fun LoadingScreen() {
 }
 
 @Composable
-private fun SettingsAndSyncScreen(
+internal fun SettingsAndSyncScreen(
     settings: ThresholdSettingsState,
     draftThreshold: Int,
     saveState: ThresholdSaveUiState,
@@ -374,6 +379,7 @@ private fun SettingsAndSyncScreen(
                 onThresholdChanged = onThresholdChanged,
             )
             Button(
+                modifier = Modifier.testTag(THRESHOLD_SAVE_BUTTON_TEST_TAG),
                 enabled = saveState != ThresholdSaveUiState.SAVING &&
                     draftThreshold != settings.thresholdPercent,
                 onClick = onSaveThreshold,
@@ -433,8 +439,11 @@ private fun SettingsAndSyncScreen(
     }
 }
 
+internal const val THRESHOLD_SAVE_BUTTON_TEST_TAG = "threshold-save-button"
+
 private fun ThresholdSaveUiState.messageResource(): Int = when (this) {
     ThresholdSaveUiState.IDLE -> R.string.threshold_save_idle
+    ThresholdSaveUiState.UNSAVED -> R.string.threshold_unsaved
     ThresholdSaveUiState.SAVING -> R.string.threshold_saving
     ThresholdSaveUiState.SAVED -> R.string.threshold_saved
     ThresholdSaveUiState.SAVED_SYNC_PENDING -> R.string.threshold_saved_sync_pending

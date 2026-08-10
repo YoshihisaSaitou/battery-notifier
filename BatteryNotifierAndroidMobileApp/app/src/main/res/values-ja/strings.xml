@@ -39,6 +39,7 @@
     <string name="threshold_increase_description">しきい値を1パーセント上げる</string>
     <string name="threshold_save_action">しきい値を保存</string>
     <string name="threshold_save_idle">保存済みのしきい値を表示しています。</string>
+    <string name="threshold_unsaved">しきい値を変更しました。「しきい値を保存」を選ぶと反映されます。</string>
     <string name="threshold_saving">保存しています…</string>
     <string name="threshold_saved">しきい値を保存し、ウォッチ同期用に準備しました。</string>
     <string name="threshold_saved_sync_pending">しきい値を保存しました。電池状態を取得できるときに「今すぐ同期」を実行してください。</string>

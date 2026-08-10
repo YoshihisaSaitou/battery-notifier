@@ -16,6 +16,18 @@ import org.junit.Test
 
 class ThresholdSettingsUiStateTest {
     @Test
+    fun changedDraftIsUnsavedUntilItMatchesThePersistedThresholdAgain() {
+        assertEquals(
+            ThresholdSaveUiState.UNSAVED,
+            thresholdDraftSaveUiState(savedThreshold = 20, draftThreshold = 21),
+        )
+        assertEquals(
+            ThresholdSaveUiState.IDLE,
+            thresholdDraftSaveUiState(savedThreshold = 20, draftThreshold = 20),
+        )
+    }
+
+    @Test
     fun acceptedSyncMapsToSavedAndPreservesBelowFlag() {
         val result = saved(SyncItemOutcome.Accepted(sequence = 2L), below = true).toUiResult()
 

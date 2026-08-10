@@ -6,11 +6,21 @@ import com.magicitengineer.batterynotifierandroidmobileapp.application.sync.Sync
 
 enum class ThresholdSaveUiState {
     IDLE,
+    UNSAVED,
     SAVING,
     SAVED,
     SAVED_SYNC_PENDING,
     SAVED_SYNC_FAILED,
     INVALID_THRESHOLD,
+}
+
+fun thresholdDraftSaveUiState(
+    savedThreshold: Int,
+    draftThreshold: Int,
+): ThresholdSaveUiState = if (draftThreshold == savedThreshold) {
+    ThresholdSaveUiState.IDLE
+} else {
+    ThresholdSaveUiState.UNSAVED
 }
 
 data class ThresholdSaveUiResult(

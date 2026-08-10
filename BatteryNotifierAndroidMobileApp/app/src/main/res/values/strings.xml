@@ -40,6 +40,7 @@
     <string name="threshold_increase_description">Increase threshold by one percent</string>
     <string name="threshold_save_action">Save threshold</string>
     <string name="threshold_save_idle">The saved threshold is shown above.</string>
+    <string name="threshold_unsaved">Threshold changed. Select Save threshold to apply it.</string>
     <string name="threshold_saving">Saving…</string>
     <string name="threshold_saved">Threshold saved and ready for watch sync.</string>
     <string name="threshold_saved_sync_pending">Threshold saved. Use Sync now when the battery state is available.</string>

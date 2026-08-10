@@ -1,9 +1,9 @@
 # 互換性マトリクス
 
 文書ID: CMX-001  
-版: 0.1  
+版: 0.2
 状態: Draft  
-基準日: 2026-07-20
+基準日: 2026-08-10
 
 ## 1. 対応方針
 
@@ -40,7 +40,7 @@ Pixel Watch 4は発売時Wear OS 6.0で、41mm/45mmがある。2026年のOS更�
 | 端末 | 構成 | 必須試験 |
 |---|---|---|
 | Google Pixel 10 Pro Fold | 外側6.4インチ、内側8インチ、Android 16以降 | 折りたたみ/展開、分割画面、監視FGS、通知、再起動 |
-| Google Pixel Watch 4 41mm | Wear OS 6以降 | 小画面、フォント最大、Tile、通知、SHORT_TEXT/RANGED_VALUE |
+| Google Pixel Watch 4 41mm | Wear OS 6以降 | 小画面、フォント最大、Tile、通知、SHORT_TEXT/RANGED_VALUE/LONG_TEXT |
 | Google Pixel Watch 4 45mm | Wear OS 6以降 | レイアウト、Tile、通知、Complication |
 | 上記Mobile + Watch | Bluetooth、Wi-Fi/クラウド経路、切断 | 通常同期、切断、再接続、両端末再起動、期限切れイベント |
 
@@ -73,9 +73,13 @@ Pixel Watch 4は発売時Wear OS 6.0で、41mm/45mmがある。2026年のOS更�
 |---|---|
 | SHORT_TEXTスロット | 対応 |
 | RANGED_VALUEスロット | 対応 |
-| コンプリケーション対応だが上記型なし | 非対応型としてNoDataまたはpicker非表示 |
+| LONG_TEXTスロット | 対応 |
+| WFF v1～5の上記互換スロット | 同じ百分率・状態別単色アイコン・content descriptionフィールドを提供 |
+| コンプリケーション対応だが上記3型なし | 非対応型としてNoDataまたはpicker非表示 |
 | コンプリケーション非対応 | 表示不可。仕様上正常 |
-| サードパーティ製フェイス | 対応型の実装品質に依存。代表1種を参考試験 |
+| サードパーティ製フェイス | 対応型の任意フィールド採否・配置・tintはフェイス実装に依存。同一表示は保証せず、代表1種を参考試験 |
+
+WFF互換性はデータソースが上記3型の仕様化されたフィールドを提供する範囲を指す。アプリがすべてのウォッチフェイスへ表示を強制することや、第三者フェイスを含む全フェイスで同じ配置・色・アイコン表示になることは対象外とする。
 
 ## 8. 配布・署名互換性
 

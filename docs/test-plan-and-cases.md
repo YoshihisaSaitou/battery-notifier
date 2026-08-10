@@ -1,9 +1,9 @@
 # テスト計画書・テストケース
 
 文書ID: TPC-001  
-版: 0.1  
+版: 0.2
 状態: Draft  
-最終更新: 2026-08-09
+最終更新: 2026-08-10
 
 ## 1. 目的
 
@@ -113,6 +113,8 @@
 | TC-U036 | Mobile手動同期表示 | `IDLE`、`SYNCING`、成功、各エラー状態を表示モデルへ変換 | `SYNCING`だけ操作無効、進捗表示、同期中操作文言、専用状態文言となり、Idleの操作・状態文言を使用しない |
 | TC-U037 | Mobileしきい値増減境界 | current=5/20/100、減少・増加操作 | 1操作ごとに範囲内で-1/+1となり、5未満・100超へ進まず、操作だけでは保存処理を呼ばない |
 | TC-U038 | Mobileしきい値下書き状態 | saved=20でdraftを20→21→20と変更 | 21では未保存、20へ戻すと保存済み表示へ戻り、編集だけでは永続化・同期しない |
+| TC-U039 | コンプリケーション状態アイコン | 21%非充電、20%非充電、0%非充電、20%充電、100%充電 | `battery_full`、`battery_alert`、`battery_alert`、`battery_charging_full`、`battery_charging_full`を選択し、百分率は入力値を維持する |
+| TC-U040 | コンプリケーション型データ | 通常、充電、低残量、Staleを`SHORT_TEXT`、`RANGED_VALUE`、`LONG_TEXT`で構築 | 全型が百分率text、状態別monochromatic image、content descriptionを保持し、Staleのdescriptionは動的な更新経過を維持する |
 
 ## 7. 統合・E2Eテストケース
 
@@ -221,6 +223,8 @@
 | TC-E092 | Android 13以降でthemed iconを有効化し、Mobile/Wearのmonochrome表示を確認 | launcherのtintで単色表示され、バッテリーと通知バッジのシルエットを判別できる |
 | TC-E093 | mdpiからxxxhdpiまでの通常・round legacy iconを48px相当を含む表示で確認 | テンプレート図柄が残らず、文字や細部の潰れがなく、Battery Notifier図柄を識別できる |
 | TC-E094 | Pixel 10 Pro Foldの外側/内側/分割画面でMobile通知しきい値欄を日英・最大フォント・TalkBackで表示し、5/20/100から左右ボタンとスライダーを操作 | 減少ボタン・スライダー・増加ボタンが同じ行に並び、スライダー直下に数値目盛りが表示されない。各ボタンは48dp以上で意味順に読み上げられ、全操作が1%刻みで範囲外へ進まない。20→21は未保存と表示され、保存前の永続化・同期は0件、保存後は最終値21だけが1件反映される |
+| TC-E095 | WFF v1～5の検証用フェイスで`SHORT_TEXT`、`RANGED_VALUE`、`LONG_TEXT`スロットへ通常、充電中、低残量、Stale、No Dataを要求 | 対応型が仕様どおりの百分率、状態別単色アイコン、content descriptionを受け取り、各WFFの定義した配置とtintで描画される。第三者フェイスでの同一配置は合否対象外 |
+| TC-E096 | Pixel Watch 4 41/45mmで対応WFFフェイスへコンプリケーションを設定し、通常表示/AOD、日英、TalkBackで21%非充電、20%非充電、20%充電を確認 | 通常、低残量、充電中のGoogle公式Material Symbolと百分率を識別でき、20%充電では充電中が優先される。対象がスマートフォンであることを読み上げ、tintとambient表示で欠損しない |
 
 ## 8. 非機能テスト
 

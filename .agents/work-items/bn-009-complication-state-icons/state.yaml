@@ -1,0 +1,436 @@
+schema_version: 1
+
+work_item:
+  id: "BN-009"
+  slug: "bn-009-complication-state-icons"
+  title: "Complication battery state icons and WFF compatibility"
+  scope: >-
+    Provide the phone battery percentage with official Google Material Symbols
+    for normal, charging, and low-battery states in compatible Watch Face Format
+    v1 through v5 complication slots. Charging takes precedence at 20 percent
+    or below. The watch face remains responsible for final rendering.
+
+status: "awaiting_human"
+current_phase: "human_verification"
+current_role: "human"
+current_actor:
+  type: "human"
+  id: "human-user"
+
+last_transition:
+  from_phase: "test"
+  to_phase: "human_verification"
+  reason: >-
+    TST-007 accepted the automated contract evidence with no product failure
+    and separated unavailable WFF runtime and Pixel Watch 4 cases as Not Run.
+
+spec_refs:
+  - "docs/product-requirements.md"
+  - "docs/functional-requirements.md"
+  - "docs/complication-specification.md"
+  - "docs/wear-os-display-specification.md"
+  - "docs/localization-specification.md"
+  - "docs/test-plan-and-cases.md"
+  - "docs/compatibility-matrix.md"
+
+affected_components:
+  - "Wear complication data source and manifest"
+  - "Wear complication monochromatic drawable resources"
+  - "Wear complication JVM tests"
+  - "Normative complication and test specifications"
+
+phase_tasks:
+  specification:
+    - id: "SPEC-022"
+      status: "completed"
+      summary: >-
+        Record compatible WFF v1..5 scope, SHORT_TEXT/RANGED_VALUE/LONG_TEXT
+        data fields, official Material Symbols, state precedence, freshness,
+        accessibility, and acceptance criteria.
+    - id: "SPEC-023"
+      status: "completed"
+      summary: >-
+        Align the compatibility matrix with approved LONG_TEXT and WFF v1..5
+        compatible-slot scope without changing product behavior.
+  implementation:
+    - id: "IMP-027"
+      status: "completed"
+      summary: >-
+        Add the three monochromatic Material Symbol vectors, state selection,
+        LONG_TEXT support, and automated regression coverage.
+    - id: "IMP-028"
+      status: "completed"
+      summary: >-
+        Verify the compatibility-matrix correction requires no production or
+        test change and that code/docs remain aligned.
+  review:
+    - id: "RV-015"
+      status: "completed"
+      summary: >-
+        Review specification alignment, icon provenance and geometry, all state
+        boundaries, complication fields, accessibility, and unrelated scope.
+  test:
+    - id: "TST-007"
+      status: "completed"
+      summary: >-
+        Run targeted and full Wear unit tests and lint; record WFF/runtime and
+        Pixel Watch cases as Not Run unless actually executed.
+  human_verification:
+    - id: "HUM-009"
+      status: "pending"
+      summary: >-
+        Inspect compatible WFF slots on Pixel Watch 4 41mm and 45mm in active
+        and ambient modes and decide final acceptance.
+
+decisions_needed: []
+approved_decisions:
+  - id: "DEC-BN009-001"
+    decision: >-
+      Package official Google Material Symbols as app Vector Drawables and pass
+      them as complication monochromatic images.
+    approved_by: "human-user"
+    approved_at: "2026-08-10T18:59:02+09:00"
+  - id: "DEC-BN009-002"
+    decision: >-
+      Charging takes precedence over the low-battery icon when the phone is at
+      or below 20 percent while charging.
+    approved_by: "human-user"
+    approved_at: "2026-08-10T18:59:02+09:00"
+  - id: "DEC-BN009-003"
+    decision: >-
+      WFF compatibility means v1 through v5 slots accepting a supported
+      complication type; identical rendering on every third-party face is out
+      of scope.
+    approved_by: "human-user"
+    approved_at: "2026-08-10T18:59:02+09:00"
+
+blockers: []
+risks:
+  - id: "RSK-019"
+    summary: >-
+      A watch face can omit optional image or text fields or render them in a
+      different arrangement even when the data source supplies both.
+    mitigation: >-
+      Guarantee the returned data contract, test representative WFF fixtures,
+      and keep identical third-party rendering explicitly out of scope.
+
+evidence:
+  - id: "HUM-BN009-001"
+    type: "human_approval"
+    summary: >-
+      Human approved all three proposed specification decisions on 2026-08-10.
+  - id: "REF-BN009-002"
+    type: "official_asset_provenance"
+    summary: >-
+      Material Symbols Rounded battery_full, battery_alert, and
+      battery_charging_full 24px Android vectors were retrieved from the
+      google/material-design-icons repository. Path geometry is retained;
+      only the monochromatic fill token is fixed for complication tinting.
+  - id: "IMP-BN009-003"
+    type: "implementation_impact_analysis"
+    summary: >-
+      No persisted state, Data Layer contract, writer, permission, application
+      ID, or signing behavior changed. Production requests create a resource-
+      backed MonochromaticImage before building SHORT_TEXT, RANGED_VALUE, or
+      LONG_TEXT data. No-data requests still return NoDataComplicationData.
+    state_matrix:
+      - "charging=true, level=0..100 -> battery_charging_full"
+      - "charging=false, level=0..20 -> battery_alert"
+      - "charging=false, level=21..100 -> battery_full"
+      - "stale/delayed changes text and description, not icon selection"
+      - "no valid data -> NoDataComplicationData without a state icon"
+    sibling_paths_inspected:
+      - "active request and preview/default request path"
+      - "timeline entry construction"
+      - "SHORT_TEXT, RANGED_VALUE, and LONG_TEXT builders"
+      - "manifest supported-type declaration"
+      - "Fresh, Delayed, Stale, clock-warning, and monitoring-off descriptions"
+  - id: "REV-BN009-004"
+    type: "independent_review"
+    summary: >-
+      Reviewed the complete BN-009 working-tree scope independently of test
+      totals. All production calls supply a resource-backed monochromatic image;
+      charging is evaluated before the fixed low boundary; No Data and existing
+      freshness/accessibility paths remain intact. Manifest and vector XML
+      contracts match the specification. No review finding was opened.
+  - id: "BLD-BN009-005"
+    type: "test_build_identity"
+    summary: >-
+      Uncommitted BN-009 Wear working tree; applicationId
+      com.magicitengineer.batterynotifier, versionCode 3, versionName 1.0,
+      minSdk 30, targetSdk 36, debug signing configuration. No personal device
+      or signing identifier was recorded.
+
+test_results:
+  - id: "CHK-BN009-001"
+    command: >-
+      gradlew.bat testDebugUnitTest --tests '*MainComplicationDataTest'
+      --rerun-tasks '-Pkotlin.compiler.execution.strategy=in-process'
+    status: "fail"
+    result: >-
+      Production Kotlin compiled, but 4/6 JVM tests failed before assertions
+      because MonochromaticImage.PLACEHOLDER initializes Android
+      Icon.createWithResource, which is not mocked in local JVM tests.
+    failure_signature: >-
+      ExceptionInInitializerError: Method createWithResource in
+      android.graphics.drawable.Icon not mocked.
+  - id: "CHK-BN009-002"
+    command: >-
+      cached Gradle 8.13 --offline testDebugUnitTest --tests
+      '*MainComplicationDataTest' --rerun-tasks
+      '-Pkotlin.compiler.execution.strategy=in-process'
+    status: "pass"
+    result: >-
+      6 tests, 0 skipped, 0 failures, 0 errors. The fixture keeps Android Icon
+      creation out of JVM tests while production compilation verifies the
+      resource-backed MonochromaticImage path.
+  - id: "CHK-BN009-003"
+    command: >-
+      cached Gradle 8.13 --offline test
+      '-Pkotlin.compiler.execution.strategy=in-process'
+    status: "pass"
+    result: >-
+      Wear debug 89 tests and release 89 tests; 0 skipped, 0 failures, and
+      0 errors in both variants.
+  - id: "CHK-BN009-004"
+    command: >-
+      cached Gradle 8.13 --offline lint
+      '-Pkotlin.compiler.execution.strategy=in-process'
+    status: "pass"
+    result: "Wear lint completed with 0 errors and 31 warnings."
+  - id: "CHK-BN009-005"
+    command: >-
+      cached Gradle 8.13 --offline testDebugUnitTest --tests
+      '*MainComplicationDataTest' after an indentation-only edit
+    status: "blocked"
+    result: >-
+      The command produced no output before the 124-second execution timeout.
+      Its two child Java processes were stopped. This did not replace or
+      invalidate CHK-BN009-002/003 because the only intervening source change
+      was whitespace and the prior full gate compiled and tested the same code.
+  - id: "CHK-BN009-006"
+    command: >-
+      rg LONG_TEXT/WFF/third-party terms across compatibility, normative specs,
+      test plan, manifest, and MainComplicationService; git diff --check
+    status: "pass"
+    result: >-
+      Compatibility statements match all three implemented types and the WFF
+      scope. The only newly reported whitespace was removed before handoff.
+  - id: "TC-U039"
+    requirements: "AC-027, FR-051, FR-055"
+    status: "pass"
+    result: >-
+      MainComplicationDataTest verified 21 non-charging -> battery_full,
+      20/0 non-charging -> battery_alert, and 20/100 charging ->
+      battery_charging_full. Charging precedence and the inclusive low boundary
+      passed.
+  - id: "TC-U040"
+    requirements: "AC-027, AC-028, FR-050, FR-057, FR-058"
+    status: "pass"
+    result: >-
+      Compiled production branches set the supplied MonochromaticImage for
+      SHORT_TEXT, RANGED_VALUE, and LONG_TEXT. JVM tests passed percentage,
+      title/status, and dynamic stale-description contracts; pure resource
+      mapping was tested separately. Actual platform icon rendering remains in
+      TC-E095/TC-E096 and is not inferred from this pass.
+  - id: "TC-E095"
+    requirements: "AC-028, FR-056"
+    status: "not_run"
+    result: >-
+      No WFF v1..5 runtime verification face/fixture was present in the
+      repository or available test environment. Requires compatible WFF
+      fixtures exposing SHORT_TEXT, RANGED_VALUE, and LONG_TEXT slots.
+  - id: "TC-E096"
+    requirements: "AC-027, AC-028, PR-008"
+    status: "not_run"
+    result: >-
+      adb was not available on PATH and no Pixel Watch 4 41mm/45mm device
+      evidence was supplied. Requires active/AOD, Japanese/English, TalkBack,
+      and 21%/20%/charging checks on the identified build.
+review_findings:
+  - id: "TST-BN009-F01"
+    severity: "Medium"
+    status: "verified"
+    location: "docs/compatibility-matrix.md section 7"
+    violated_requirement: "FR-050 and FR-056"
+    scenario: >-
+      A tester following the compatibility matrix would treat LONG_TEXT as
+      unsupported and would not apply the approved WFF v1..5 boundary.
+    required_outcome: >-
+      Add LONG_TEXT and define compatibility as supported fields in WFF v1..5
+      slots while excluding identical third-party rendering.
+    verification_evidence: >-
+      Compatibility matrix version 0.2 section 7 lists all three types, WFF
+      v1..5 field-level compatibility, unsupported-slot behavior, and the
+      third-party rendering exclusion; git diff --check passed.
+
+loop_control:
+  same_cause_failure_limit: 3
+  phase_return_limit: 5
+  current_failure_signature: null
+  consecutive_same_cause_failures: 0
+  total_phase_returns: 1
+  attempts: []
+  termination_reason: null
+  resume_condition: null
+
+progress_reporting:
+  format_version: 1
+  current:
+    reported_at: "2026-08-10T19:46:19+09:00"
+    work_item: "BN-009"
+    role: "human"
+    phase: "human_verification"
+    actor: "human-user"
+    status: "awaiting_human"
+    completed:
+      - "Recorded the three human-approved product decisions."
+      - "Read the applicable specifications, implementation, and tests."
+      - "Completed SPEC-022 with FR-050..058, AC-027..028, TC-U039..040, and TC-E095..096."
+      - "Implemented three Material Symbols vectors, deterministic state selection, and LONG_TEXT support."
+      - "MainComplicationDataTest passed 6/6 after correcting the JVM-only fixture boundary."
+      - "Wear debug/release unit tests passed 89/89 per variant and lint completed with 0 errors."
+      - "Removed the Gradle-created untracked .kotlin directory."
+      - "RV-015 reviewed the complete diff and recorded zero findings at every severity."
+      - "SPEC-023/IMP-028 aligned compatibility-matrix section 7 without production behavior changes."
+      - "TST-BN009-F01 was independently verified and closed."
+      - "TST-007 classified TC-U039 and TC-U040 Pass, TC-E095 and TC-E096 Not Run, with no Fail."
+    in_progress:
+      - "Await human execution of compatible WFF and Pixel Watch 4 scenarios."
+    next_actions:
+      - "Install the identified build on Pixel Watch 4 41mm and 45mm."
+      - "Run TC-E095 and TC-E096 in active/AOD, Japanese/English, and TalkBack modes."
+      - "Approve or return the work item with observations and exact build identity."
+    checks:
+      - "Initial git status: clean."
+      - "Targeted MainComplicationDataTest: Pass 6/6."
+      - "Wear unit test: Pass, debug 89/89 and release 89/89."
+      - "Wear lint: Pass, 0 errors and 31 warnings."
+      - "Post-format targeted rerun: Blocked by command timeout; semantic test evidence unchanged."
+      - "RV-015: Pass recommendation; findings Critical 0, High 0, Medium 0, Low 0."
+      - "CHK-BN009-006: Pass; compatibility/document/code alignment confirmed."
+      - "TST-BN009-F01 fix verification: Pass."
+      - "TC-U039: Pass."
+      - "TC-U040: Pass; platform rendering excluded from this unit/contract result."
+      - "TC-E095: Not Run; no WFF runtime fixtures."
+      - "TC-E096: Not Run; no adb/Pixel Watch 4 device evidence."
+    blockers:
+      - "Human verification requires WFF v1..5 compatible fixtures and Pixel Watch 4 41mm/45mm access."
+  history:
+    - reported_at: "2026-08-10T18:59:02+09:00"
+      event: "bn009_specification_started"
+      role: "specification"
+      actor: "codex"
+      summary: >-
+        BN-009 started after explicit human approval of packaged official
+        Material Symbols, charging precedence, and compatible WFF v1..5 scope.
+    - reported_at: "2026-08-10T19:01:45+09:00"
+      event: "bn009_specification_to_implementation"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        SPEC-022 completed and the Specification -> Implementation gate passed.
+        IMP-027 starts with the three official vector assets, deterministic
+        charging/low/normal selection, LONG_TEXT support, and data-field tests.
+    - reported_at: "2026-08-10T19:18:41+09:00"
+      event: "bn009_targeted_jvm_fixture_failed"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        MainComplicationDataTest compiled production code but failed 4/6 because
+        MonochromaticImage.PLACEHOLDER invokes an unmocked Android Icon API in a
+        local JVM. This is a test-environment boundary, not a production mapping
+        failure. No failed corrective rerun occurred, so the active same-cause
+        counter remains zero.
+    - reported_at: "2026-08-10T19:26:33+09:00"
+      event: "bn009_targeted_tests_recovered"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        Kept Android Icon creation in the production service and tested the pure
+        state-to-resource mapping in JVM. The same targeted gate then passed 6/6,
+        clearing the failure signature without consuming a failed corrective
+        attempt.
+    - reported_at: "2026-08-10T19:38:57+09:00"
+      event: "bn009_implementation_to_review"
+      role: "review"
+      actor: "codex"
+      summary: >-
+        IMP-027 completed. Targeted tests passed 6/6, full debug/release unit
+        tests passed 89/89 per variant, and lint completed with zero errors.
+        A whitespace-only post-gate rerun timed out without output and is
+        recorded as an environment block. RV-015 begins from the complete
+        working-tree diff and exact automated evidence.
+    - reported_at: "2026-08-10T19:40:39+09:00"
+      event: "bn009_review_to_test"
+      role: "test"
+      actor: "codex"
+      summary: >-
+        RV-015 reviewed state precedence, all three builder branches, production
+        image injection, preview/timeline/no-data paths, accessibility behavior,
+        manifest declarations, asset geometry/provenance, tests, and scope.
+        Findings were Critical 0, High 0, Medium 0, Low 0; Test begins.
+    - reported_at: "2026-08-10T19:42:09+09:00"
+      event: "bn009_test_to_specification"
+      role: "specification"
+      actor: "codex"
+      summary: >-
+        Test input review found TST-BN009-F01 (Medium): compatibility-matrix
+        section 7 still listed only SHORT_TEXT/RANGED_VALUE and did not state
+        the WFF v1..5 compatible-slot boundary. This is phase return 1/5 and
+        has no corrective failure attempt yet.
+    - reported_at: "2026-08-10T19:43:12+09:00"
+      event: "bn009_specification_fix_to_implementation"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        SPEC-023 added LONG_TEXT, WFF v1..5 compatible-slot semantics, and the
+        third-party rendering exclusion to compatibility-matrix section 7.
+        TST-BN009-F01 is fixed pending review; IMP-028 checks implementation
+        alignment and confirms whether any code change is required.
+    - reported_at: "2026-08-10T19:44:05+09:00"
+      event: "bn009_spec_fix_implementation_to_review"
+      role: "review"
+      actor: "codex"
+      summary: >-
+        IMP-028 confirmed compatibility-matrix section 7 now matches manifest
+        SUPPORTED_TYPES, SHORT_TEXT/RANGED_VALUE/LONG_TEXT builders, normative
+        specifications, and test cases. No production or test change was needed;
+        TST-BN009-F01 is ready for narrow fix verification.
+    - reported_at: "2026-08-10T19:44:43+09:00"
+      event: "bn009_spec_fix_review_to_test"
+      role: "test"
+      actor: "codex"
+      summary: >-
+        Narrow review verified TST-BN009-F01. Compatibility matrix version 0.2
+        now matches all sibling requirements, tests, manifest types, and builder
+        branches; diff check passed and no finding remains. TST-007 resumes.
+    - reported_at: "2026-08-10T19:46:19+09:00"
+      event: "bn009_test_to_human"
+      role: "human"
+      actor: "human-user"
+      summary: >-
+        TST-007 completed with TC-U039/U040 Pass, TC-E095/E096 Not Run, and no
+        product failure. The environment had no adb command/device and no WFF
+        runtime fixture. Human verification must inspect Pixel Watch 4 41/45mm,
+        compatible WFF v1..5 slots, active/AOD, Japanese/English, and TalkBack.
+
+handoff:
+  from_role: "test"
+  to_role: "human"
+  gate_result: "approved"
+  summary: >-
+    Automated contract and affected Wear project gates pass with no unresolved
+    code/spec finding. Required platform rendering and physical-device judgment
+    remain explicitly unexecuted.
+  unresolved_items:
+    - "TC-E095 WFF v1..5 runtime rendering is Not Run."
+    - "TC-E096 Pixel Watch 4 41mm/45mm real-device verification is Not Run."
+  first_action: "Install the identified Wear build and execute TC-E095/TC-E096 beginning with 21% non-charging in an active compatible slot."
+
+next_actions:
+  - "Human: execute TC-E095 and TC-E096 on the identified build."
+  - "Human: record devices/sizes, WFF fixtures, active/AOD, locale, TalkBack, observations, and approval decision."
+
+updated_at: "2026-08-10T19:46:19+09:00"
+updated_by: "codex"

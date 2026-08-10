@@ -1,9 +1,9 @@
 # プロダクト要件定義書
 
 文書ID: PRD-001  
-版: 0.1  
+版: 0.2
 状態: Draft  
-最終更新: 2026-08-09
+最終更新: 2026-08-10
 
 ## 1. プロダクト概要
 
@@ -30,7 +30,7 @@ Battery Notifierは、Androidスマートフォンの電池残量を常時監視
 | PR-002 | Mobile電池残量がしきい値を上から下へ跨いだとき通知する | Must |
 | PR-003 | Mobile電池残量・充電状態・更新時刻をWearで確認できる | Must |
 | PR-004 | しきい値到達イベントをWearへ送り、Wear側で通知できる | Must |
-| PR-005 | 対応ウォッチフェイスのコンプリケーションへMobile電池残量を提供する | Must |
+| PR-005 | Watch Face Format v1～5で、`SHORT_TEXT`、`RANGED_VALUE`、`LONG_TEXT`のいずれかを受け付ける対応コンプリケーションスロットへMobile電池残量と状態別アイコンを提供する | Must |
 | PR-006 | 日本語と英語に対応する | Must |
 | PR-007 | Google Pixel 10 Pro Foldで、折りたたみ・展開・マルチウィンドウを含め正常動作する | Must |
 | PR-008 | Google Pixel Watch 4の41mm/45mmで正常動作する | Must |

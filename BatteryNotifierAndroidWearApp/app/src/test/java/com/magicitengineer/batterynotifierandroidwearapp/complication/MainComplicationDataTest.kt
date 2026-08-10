@@ -1,8 +1,11 @@
 package com.magicitengineer.batterynotifierandroidwearapp.complication
 
 import androidx.wear.watchface.complications.data.ComplicationType
+import androidx.wear.watchface.complications.data.LongTextComplicationData
 import androidx.wear.watchface.complications.data.RangedValueComplicationData
 import androidx.wear.watchface.complications.data.ShortTextComplicationData
+import com.magicitengineer.batterynotifierandroidwearapp.R
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertFalse
@@ -49,6 +52,38 @@ class MainComplicationDataTest {
     }
 
     @Test
+    fun `long text includes percentage and visible status fields`() {
+        val data = buildBatteryComplicationData(
+            ComplicationType.LONG_TEXT,
+            68,
+            "68%",
+            "Phone battery 68%, Charging",
+            "Charging",
+        )
+
+        assertTrue(data is LongTextComplicationData)
+        assertNotNull((data as LongTextComplicationData).title)
+    }
+
+    @Test
+    fun `icon selection uses fixed low boundary and charging precedence`() {
+        val fixtures = listOf(
+            Triple(21, false, R.drawable.ic_complication_battery_full_24),
+            Triple(20, false, R.drawable.ic_complication_battery_alert_24),
+            Triple(0, false, R.drawable.ic_complication_battery_alert_24),
+            Triple(20, true, R.drawable.ic_complication_battery_charging_full_24),
+            Triple(100, true, R.drawable.ic_complication_battery_charging_full_24),
+        )
+
+        fixtures.forEach { (level, isCharging, expectedDrawable) ->
+            assertEquals(
+                expectedDrawable,
+                batteryComplicationIconRes(level, isCharging),
+            )
+        }
+    }
+
+    @Test
     fun `relative age text changes at six ten and sixty minutes`() {
         val receivedAt = 1_000_000L
         val text = relativeAgeComplicationText(receivedAt, "Updated ^1 ago")
@@ -85,10 +120,18 @@ class MainComplicationDataTest {
                 description,
                 visibleStatus = description,
             ) as RangedValueComplicationData,
+            buildBatteryComplicationData(
+                ComplicationType.LONG_TEXT,
+                68,
+                "68%!",
+                description,
+                visibleStatus = description,
+            ) as LongTextComplicationData,
         ).map { data ->
             when (data) {
                 is ShortTextComplicationData -> data.contentDescription
                 is RangedValueComplicationData -> data.contentDescription
+                is LongTextComplicationData -> data.contentDescription
                 else -> null
             }
         }

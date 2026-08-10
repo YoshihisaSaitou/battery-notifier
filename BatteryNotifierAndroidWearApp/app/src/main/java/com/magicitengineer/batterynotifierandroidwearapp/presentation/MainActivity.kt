@@ -486,6 +486,7 @@ private fun BatteryStateList(
                 Button(
                     onClick = onFullChargeNotificationToggle,
                     enabled = fullChargeWriterAvailable,
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(
                         stringResource(
@@ -517,6 +518,7 @@ private fun BatteryStateList(
                     Button(
                         onClick = onThresholdSave,
                         enabled = thresholdWriterAvailable,
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(stringResource(R.string.save_threshold))
                     }
@@ -527,7 +529,10 @@ private fun BatteryStateList(
                     }
                 }
                 item {
-                    Button(onClick = onThresholdCancel) {
+                    Button(
+                        onClick = onThresholdCancel,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
                         Text(stringResource(R.string.cancel_threshold_change))
                     }
                 }
@@ -539,12 +544,18 @@ private fun BatteryStateList(
                     ThresholdChangeStatus.SEND_FAILED,
                     ThresholdChangeStatus.APPLIED_WAITING_STATE -> {
                         item {
-                            Button(onClick = onThresholdRetry) {
+                            Button(
+                                onClick = onThresholdRetry,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
                                 Text(stringResource(R.string.retry_threshold_change))
                             }
                         }
                         item {
-                            Button(onClick = onThresholdCancel) {
+                            Button(
+                                onClick = onThresholdCancel,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
                                 Text(stringResource(R.string.cancel_threshold_change))
                             }
                         }
@@ -555,7 +566,10 @@ private fun BatteryStateList(
                     ThresholdChangeStatus.CONFLICT,
                     ThresholdChangeStatus.REJECTED -> {
                         item {
-                            Button(onClick = onThresholdEdit) {
+                            Button(
+                                onClick = onThresholdEdit,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
                                 Text(stringResource(R.string.change_threshold))
                             }
                         }
@@ -583,6 +597,7 @@ private fun BatteryStateList(
                 Button(
                     onClick = onNotificationRetry,
                     enabled = !notificationRetryInProgress,
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(
                         text = stringResource(
@@ -613,7 +628,10 @@ private fun BatteryStateList(
         if (notificationPermissionState != NotificationPermissionUiState.ENABLED) {
             item { StateText(stringResource(R.string.notification_permission_description)) }
             item {
-                Button(onClick = onNotificationPermissionAction) {
+                Button(
+                    onClick = onNotificationPermissionAction,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
                     Text(
                         text = stringResource(
                             if (
@@ -637,6 +655,7 @@ private fun BatteryStateList(
                 Button(
                     onClick = onRetry,
                     enabled = retryUiState != RetryUiState.SENDING,
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(
                         text = stringResource(

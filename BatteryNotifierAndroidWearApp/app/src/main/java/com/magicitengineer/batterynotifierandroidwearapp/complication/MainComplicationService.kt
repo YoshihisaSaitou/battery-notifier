@@ -2,10 +2,13 @@ package com.magicitengineer.batterynotifierandroidwearapp.complication
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.graphics.drawable.Icon
 import androidx.wear.watchface.complications.data.ComplicationData
 import androidx.wear.watchface.complications.data.ComplicationText
 import androidx.wear.watchface.complications.data.ComplicationType
 import androidx.wear.watchface.complications.data.CountUpTimeReference
+import androidx.wear.watchface.complications.data.LongTextComplicationData
+import androidx.wear.watchface.complications.data.MonochromaticImage
 import androidx.wear.watchface.complications.data.NoDataComplicationData
 import androidx.wear.watchface.complications.data.PlainComplicationText
 import androidx.wear.watchface.complications.data.RangedValueComplicationData
@@ -27,12 +30,24 @@ import kotlinx.coroutines.flow.first
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
+internal const val COMPLICATION_LOW_BATTERY_PERCENT = 20
+
+internal fun batteryComplicationIconRes(
+    level: Int,
+    isCharging: Boolean,
+): Int = when {
+    isCharging -> R.drawable.ic_complication_battery_charging_full_24
+    level <= COMPLICATION_LOW_BATTERY_PERCENT -> R.drawable.ic_complication_battery_alert_24
+    else -> R.drawable.ic_complication_battery_full_24
+}
+
 internal fun buildBatteryComplicationData(
     type: ComplicationType,
     level: Int,
     shortTextValue: String,
     descriptionValue: String,
     visibleStatusValue: String,
+    monochromaticImage: MonochromaticImage? = null,
     tapAction: PendingIntent? = null,
 ): ComplicationData? = buildBatteryComplicationData(
     type = type,
@@ -40,6 +55,7 @@ internal fun buildBatteryComplicationData(
     shortTextValue = shortTextValue,
     description = PlainComplicationText.Builder(descriptionValue).build(),
     visibleStatus = PlainComplicationText.Builder(visibleStatusValue).build(),
+    monochromaticImage = monochromaticImage,
     tapAction = tapAction,
 )
 
@@ -49,6 +65,7 @@ internal fun buildBatteryComplicationData(
     shortTextValue: String,
     description: ComplicationText,
     visibleStatus: ComplicationText,
+    monochromaticImage: MonochromaticImage? = null,
     tapAction: PendingIntent? = null,
 ): ComplicationData? {
     val shortText = PlainComplicationText.Builder(shortTextValue).build()
@@ -57,6 +74,7 @@ internal fun buildBatteryComplicationData(
             text = shortText,
             contentDescription = description,
         ).setTitle(visibleStatus).apply {
+            if (monochromaticImage != null) setMonochromaticImage(monochromaticImage)
             if (tapAction != null) setTapAction(tapAction)
         }.build()
 
@@ -65,7 +83,18 @@ internal fun buildBatteryComplicationData(
             min = 0f,
             max = 100f,
             contentDescription = description,
-        ).setText(shortText).setTitle(visibleStatus).apply {
+        ).setText(shortText)
+            .setTitle(visibleStatus)
+            .apply {
+                if (monochromaticImage != null) setMonochromaticImage(monochromaticImage)
+                if (tapAction != null) setTapAction(tapAction)
+            }.build()
+
+        ComplicationType.LONG_TEXT -> LongTextComplicationData.Builder(
+            text = shortText,
+            contentDescription = description,
+        ).setTitle(visibleStatus).apply {
+            if (monochromaticImage != null) setMonochromaticImage(monochromaticImage)
             if (tapAction != null) setTapAction(tapAction)
         }.build()
 
@@ -123,6 +152,12 @@ class MainComplicationService : SuspendingTimelineComplicationDataSourceService(
                 level,
             )
         val description = buildDescription(displayState, level)
+        val monochromaticImage = createMonochromaticImage(
+            batteryComplicationIconRes(
+                level = level,
+                isCharging = displayState.isCharging,
+            ),
+        )
         val visibleStatus = when {
                 displayState.clockWarning -> getString(R.string.clock_warning)
                 displayState.freshness == Freshness.STALE -> getString(R.string.stale_data)
@@ -149,8 +184,16 @@ class MainComplicationService : SuspendingTimelineComplicationDataSourceService(
             shortTextValue = shortTextValue,
             description = description,
             visibleStatus = visibleStatusText,
+            monochromaticImage = monochromaticImage,
             tapAction = mainActivityAction(),
         )
+    }
+
+    private fun createMonochromaticImage(drawableRes: Int): MonochromaticImage {
+        val icon = Icon.createWithResource(this, drawableRes)
+        return MonochromaticImage.Builder(icon)
+            .setAmbientImage(icon)
+            .build()
     }
 
     private fun buildDescription(

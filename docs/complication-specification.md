@@ -1,7 +1,7 @@
 # コンプリケーション仕様書
 
 文書ID: CPS-001  
-版: 0.3
+版: 0.5
 状態: Approved
 最終更新: 2026-08-11
 
@@ -21,6 +21,7 @@
 
 - `SuspendingComplicationDataSourceService`を使用する。
 - Manifestでserviceをexportし、`com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER`で保護する。
+- アプリアイコンのmonochrome layerと同じpath geometryを、24dp・単色白の`@drawable/ic_complication_provider_app_24`として用意する。Manifestのprovider serviceへこのresourceを`android:icon`として設定し、システムのコンプリケーション追加・データソース選択一覧にBattery Notifierと同じシルエットを表示する。フルカラーadaptive launcher resourceは直接指定しない。この固定picker iconは、選択後のスロットへ返す状態別`MonochromaticImage`とは独立する。
 - provider icon、label、supported typesを宣言する。
 - complication request時はWear DataStoreの保存済み正常値だけを読み、Data Layer通信の完了を待たない。
 
@@ -94,6 +95,7 @@
 - RANGED_VALUE、SHORT_TEXT、LONG_TEXTのスロットで正しい値と状態別アイコンを返す。
 - 21%/20%の非充電境界と、20%以下で充電中の充電優先を確認する。
 - 全対応型で充電中の表示用titleがなく、content descriptionでは充電中と読み上げられることを確認する。
+- システムのデータソース選択一覧でBattery Notifierのlabelとアプリアイコンと同じシルエットの単色アイコンが表示されることを確認する。
 - WFF v1～5の検証用フェイスで対応型のデータフィールドを参照できることを確認する。
 - データ未受信、Stale、充電中、監視停止を確認する。
 - 値更新後にウォッチフェイスが更新され、タップでW-001が開く。

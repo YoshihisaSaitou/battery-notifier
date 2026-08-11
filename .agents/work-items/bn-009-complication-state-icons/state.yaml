@@ -21,8 +21,9 @@ last_transition:
   from_phase: "test"
   to_phase: "human_verification"
   reason: >-
-    TST-008 passed the updated automated contract and full Wear gates. WFF and
-    Pixel Watch rendering remain explicitly assigned to Human verification.
+    TST-010 passed the automated picker resource, source/merged manifest, unit,
+    and lint gates. Runtime WFF and Pixel Watch picker checks remain Not Run and
+    are explicitly assigned to Human verification.
 
 spec_refs:
   - "docs/product-requirements.md"
@@ -57,6 +58,16 @@ phase_tasks:
       summary: >-
         Specify that Fresh charging data has no visible charging title while
         retaining the charging icon, percentage, and accessible description.
+    - id: "SPEC-025"
+      status: "completed"
+      summary: >-
+        Define a neutral battery_full provider service icon for the system
+        complication chooser, separate from runtime state icons.
+    - id: "SPEC-026"
+      status: "completed"
+      summary: >-
+        Replace the picker icon contract with a 24dp single-color white vector
+        derived from the app launcher monochrome silhouette.
   implementation:
     - id: "IMP-027"
       status: "completed"
@@ -73,6 +84,16 @@ phase_tasks:
       summary: >-
         Make the visible status optional in all three complication builders and
         omit it for Fresh charging without changing content descriptions.
+    - id: "IMP-030"
+      status: "completed"
+      summary: >-
+        Declare the existing battery_full vector as android:icon on the
+        MainComplicationService and add a manifest contract regression test.
+    - id: "IMP-031"
+      status: "completed"
+      summary: >-
+        Add the dedicated app-identity picker vector, update the provider
+        manifest reference, and strengthen the manifest/vector contract test.
   review:
     - id: "RV-015"
       status: "completed"
@@ -84,6 +105,16 @@ phase_tasks:
       summary: >-
         Review title omission across all three types and preservation of stale,
         delayed, monitoring-off, clock-warning, and accessibility behavior.
+    - id: "RV-017"
+      status: "completed"
+      summary: >-
+        Review provider service icon declaration, asset suitability, merged
+        manifest behavior, and separation from runtime state icons.
+    - id: "RV-018"
+      status: "completed"
+      summary: >-
+        Review app-icon silhouette parity, white single-color vector geometry,
+        provider-only wiring, and unchanged launcher/runtime icons.
   test:
     - id: "TST-007"
       status: "completed"
@@ -95,6 +126,16 @@ phase_tasks:
       summary: >-
         Verify no visible charging title is returned for all supported types,
         while charging remains present in the content description.
+    - id: "TST-009"
+      status: "completed"
+      summary: >-
+        Verify the source/merged manifest exposes the picker icon and rerun the
+        affected Wear unit/lint gates.
+    - id: "TST-010"
+      status: "completed"
+      summary: >-
+        Verify the exact picker resource, 24dp white vector contract, merged
+        manifest, full Wear unit/lint gates, and separate device evidence.
   human_verification:
     - id: "HUM-009"
       status: "pending"
@@ -129,6 +170,13 @@ approved_decisions:
       charging icon, percentage, and charging state in content descriptions.
     approved_by: "human-user"
     approved_at: "2026-08-11T17:58:23+09:00"
+  - id: "DEC-BN009-005"
+    decision: >-
+      Use a dedicated 24dp single-color white Vector Drawable with the same path
+      silhouette as the application monochrome icon for the complication picker.
+      Do not use the full-color adaptive launcher resource directly.
+    approved_by: "human-user"
+    approved_at: "2026-08-11T19:29:21+09:00"
 
 blockers: []
 risks:
@@ -191,6 +239,80 @@ evidence:
     summary: >-
       Human requested on 2026-08-11 that the complication slot not display the
       charging string. The request changes presentation only.
+  - id: "HUM-BN009-010"
+    type: "human_change_request"
+    summary: >-
+      Human reported on 2026-08-11 that the watch-face complication add list
+      does not display an icon and requested that it be shown.
+  - id: "REF-BN009-011"
+    type: "official_platform_reference"
+    summary: >-
+      Android Developers Expose data to complications, verified 2026-08-11,
+      states that the data source service icon represents the provider and is
+      shown in the complication picker. The service currently lacks android:icon.
+    url: "https://developer.android.com/training/wearables/complications/exposing-data"
+  - id: "HUM-BN009-015"
+    type: "human_approval"
+    summary: >-
+      Human approved the proposed app-identity picker specification on
+      2026-08-11: dedicated 24dp white vector, same launcher silhouette, with
+      launcher and runtime state icons unchanged.
+  - id: "IMP-BN009-012"
+    type: "implementation_impact_analysis"
+    summary: >-
+      MainComplicationService now declares the existing neutral battery_full
+      vector as android:icon. Source and merged debug manifests retain the exact
+      resource. Runtime SHORT_TEXT/RANGED_VALUE/LONG_TEXT state icons, payloads,
+      permissions, exported state, lifecycle, and persistence are unchanged.
+    sibling_paths_inspected:
+      - "application icon remains @mipmap/ic_launcher"
+      - "tile preview remains @drawable/tile_preview"
+      - "provider label and BIND_COMPLICATION_PROVIDER permission remain"
+      - "SUPPORTED_TYPES remains SHORT_TEXT,RANGED_VALUE,LONG_TEXT"
+      - "runtime normal/low/charging MonochromaticImage selection remains separate"
+  - id: "IMP-BN009-016"
+    type: "implementation_impact_analysis"
+    summary: >-
+      The provider icon now references ic_complication_provider_app_24, a 24dp
+      white Vector Drawable with the exact launcher-monochrome 108x108 path.
+      The adaptive launcher resources, launcher monochrome source, Tile preview,
+      runtime state images, provider label/permission/types, and data behavior
+      are unchanged.
+    sibling_paths_inspected:
+      - "application android:icon remains @mipmap/ic_launcher"
+      - "ic_battery_notifier_launcher_monochrome.xml remains unchanged"
+      - "Tile preview remains @drawable/tile_preview"
+      - "runtime battery_full/battery_alert/battery_charging_full resources remain unchanged"
+      - "source and merged provider manifests reference only the dedicated picker resource"
+  - id: "REV-BN009-017"
+    type: "independent_review"
+    summary: >-
+      RV-018 verified that the picker resource is 24dp by 24dp, uses a 108 by
+      108 viewport, has a single #FFFFFFFF path identical to the launcher
+      monochrome path, and is referenced only by MainComplicationService.
+      The application launcher, Tile preview, and runtime normal/low/charging
+      icons remain unchanged. Findings: Critical 0, High 0, Medium 0, Low 0.
+  - id: "BLD-BN009-018"
+    type: "test_build_identity"
+    summary: >-
+      Base commit 9b080d6 plus the listed BN-009 app-identity picker working-tree
+      changes; applicationId com.magicitengineer.batterynotifier, versionCode 3,
+      versionName 1.0, debug signing configuration. No personal device or
+      signing identifier was recorded.
+  - id: "REV-BN009-013"
+    type: "independent_review"
+    summary: >-
+      RV-017 verified that only MainComplicationService gains the neutral
+      battery_full provider icon. The application launcher, Tile preview,
+      runtime state selection, label, permission, and supported types remain
+      correct. Source and merged manifest evidence agree. Findings: Critical 0,
+      High 0, Medium 0, Low 0.
+  - id: "BLD-BN009-014"
+    type: "test_build_identity"
+    summary: >-
+      Base commit 9b080d6 plus the listed BN-009 picker-icon working-tree
+      changes; applicationId com.magicitengineer.batterynotifier, versionCode 3,
+      versionName 1.0, debug signing configuration.
   - id: "IMP-BN009-007"
     type: "implementation_impact_analysis"
     summary: >-
@@ -348,6 +470,83 @@ test_results:
       charging presentation, retained non-null charging content descriptions,
       and preserved delayed visible status. Targeted tests passed 7/7; debug and
       release suites passed 90/90 per variant; lint had zero errors.
+  - id: "CHK-BN009-011"
+    command: >-
+      testDebugUnitTest --tests '*ComplicationManifestContractTest' and inspect
+      app/build/intermediates/merged_manifests/debug/processDebugManifest/AndroidManifest.xml
+    status: "pass"
+    result: >-
+      The contract test passed. Source and merged manifests declare
+      android:icon=@drawable/ic_complication_battery_full_24 on the exact
+      MainComplicationService with the expected label, permission, and types.
+  - id: "CHK-BN009-012"
+    command: "cached Gradle 8.13 --offline testDebugUnitTest"
+    status: "pass"
+    result: "Debug unit tests: 91 tests, 0 skipped, 0 failures, 0 errors."
+  - id: "CHK-BN009-013"
+    command: "cached Gradle 8.13 --offline testReleaseUnitTest"
+    status: "pass"
+    result: "Release unit tests: 91 tests, 0 skipped, 0 failures, 0 errors."
+  - id: "CHK-BN009-014"
+    command: "cached Gradle 8.13 --offline lint"
+    status: "pass"
+    result: "Wear lint completed with 0 errors and 22 warnings."
+  - id: "CHK-BN009-015"
+    command: "targeted ComplicationManifestContractTest, first run"
+    status: "blocked"
+    result: >-
+      The command timed out after 304 seconds without updating its report.
+      Two current Java processes and one stale prior Gradle/Kotlin daemon were
+      stopped. No product assertion failed.
+  - id: "CHK-BN009-016"
+    command: >-
+      cached Gradle 8.13 --offline testDebugUnitTest --tests
+      '*ComplicationManifestContractTest'
+    status: "pass"
+    result: >-
+      2 tests, 0 skipped, 0 failures, 0 errors. The exact manifest reference,
+      24dp dimensions, white fill, viewport, single path, and launcher path
+      parity passed.
+  - id: "CHK-BN009-017"
+    command: "cached Gradle 8.13 --offline testDebugUnitTest"
+    status: "pass"
+    result: "Debug unit tests: 92 tests, 0 skipped, 0 failures, 0 errors."
+  - id: "CHK-BN009-018"
+    command: "cached Gradle 8.13 --offline testReleaseUnitTest"
+    status: "pass"
+    result: "Release unit tests: 92 tests, 0 skipped, 0 failures, 0 errors."
+  - id: "CHK-BN009-019"
+    command: "cached Gradle 8.13 --offline lint, first run"
+    status: "blocked"
+    result: >-
+      The command timed out after 304 seconds and did not update the lint report.
+      Its two residual Java processes were stopped; no lint issue was reported.
+  - id: "CHK-BN009-020"
+    command: "cached Gradle 8.13 --offline lint, rerun after process cleanup"
+    status: "pass"
+    result: "Wear lint completed with 0 errors and 22 warnings."
+  - id: "TC-U041"
+    requirements: "FR-059, AC-029"
+    status: "pass"
+    result: >-
+      The source-manifest contract test passed and the merged debug manifest
+      retained android:icon=@drawable/ic_complication_provider_app_24 on
+      MainComplicationService with the expected label, permission, and types.
+  - id: "TC-U042"
+    requirements: "FR-059, AC-029"
+    status: "pass"
+    result: >-
+      The dedicated picker vector is exactly 24dp by 24dp with a 108 by 108
+      viewport, one #FFFFFFFF path, and pathData identical to the unchanged
+      launcher monochrome layer.
+  - id: "TC-E097"
+    requirements: "FR-059, AC-029, PR-008"
+    status: "not_run"
+    result: >-
+      adb was not available on PATH and no Pixel Watch 4 picker screenshot or
+      observation was supplied. Requires opening the complication data source
+      chooser on the identified build and confirming the Battery Notifier label
+      and app-identical white silhouette on 41mm/45mm as available.
 review_findings:
   - id: "TST-BN009-F01"
     severity: "Medium"
@@ -378,7 +577,7 @@ loop_control:
 progress_reporting:
   format_version: 1
   current:
-    reported_at: "2026-08-11T18:20:14+09:00"
+    reported_at: "2026-08-11T20:05:43+09:00"
     work_item: "BN-009"
     role: "human"
     phase: "human_verification"
@@ -401,12 +600,21 @@ progress_reporting:
       - "Updated target tests passed 7/7; debug/release unit tests passed 90/90 per variant; lint had 0 errors."
       - "RV-016 independently verified visible/accessibility separation with zero findings."
       - "TST-008 passed the charging-title contract and updated full Wear gates."
+      - "SPEC-025 defined the neutral provider icon and picker/runtime separation."
+      - "IMP-030 declared the provider icon and added an exact Manifest contract test."
+      - "Merged manifest retained the icon; debug/release passed 91/91 each and lint had 0 errors."
+      - "RV-017 independently reviewed the picker icon change with zero findings."
+      - "TST-009 passed TC-U041 and separated TC-E097 as Not Run."
+      - "SPEC-026 defined the exact app-identity picker vector contract."
+      - "IMP-031 added the dedicated 24dp white app-identity picker vector and exact parity test."
+      - "Targeted tests passed 2/2; debug/release passed 92/92 each; lint had 0 errors."
+      - "RV-018 independently verified picker parity and provider-only wiring with zero findings."
+      - "TST-010 passed TC-U041/042, debug/release 92/92 each, and lint with 0 errors."
     in_progress:
-      - "Await Human verification of the updated charging-title build."
+      - "Awaiting Pixel Watch 4 complication picker and WFF runtime verification."
     next_actions:
-      - "Install base 200fed3 plus the BN-009 working-tree changes on Pixel Watch 4."
-      - "Verify no visible charging string in all compatible types while TalkBack announces charging."
-      - "Complete TC-E095/TC-E096 and record approval or requested changes."
+      - "Open the complication data source chooser on Pixel Watch 4 and confirm the Battery Notifier label and app-identical icon."
+      - "Select the source and verify normal, low, and charging runtime icons in compatible WFF slots."
     checks:
       - "Initial git status: clean."
       - "Targeted MainComplicationDataTest: Pass 6/6."
@@ -423,12 +631,25 @@ progress_reporting:
       - "CHK-BN009-007: Pass, MainComplicationDataTest 7/7."
       - "Debug unit: Pass 90/90; release unit: Pass 90/90."
       - "Wear lint: Pass, 0 errors and 22 warnings."
+      - "RV-017: Pass recommendation; findings Critical 0, High 0, Medium 0, Low 0."
       - "Combined test/lint command: Blocked by timeout; separated gates passed."
       - "RV-016: Pass recommendation; findings Critical 0, High 0, Medium 0, Low 0."
       - "TST-008: Pass."
       - "TC-E095/TC-E096: Not Run on the updated build."
-    blockers:
-      - "Human verification still requires compatible WFF fixtures and Pixel Watch 4 41mm/45mm access."
+      - "CHK-BN009-011: Pass; source and merged manifest icon contract."
+      - "Debug unit: Pass 91/91; release unit: Pass 91/91."
+      - "Wear lint: Pass, 0 errors and 22 warnings."
+      - "TC-U041: Pass."
+      - "TC-E097: Not Run; no adb/device picker evidence."
+      - "CHK-BN009-016: Pass, picker manifest/vector contract 2/2."
+      - "Debug unit: Pass 92/92; release unit: Pass 92/92."
+      - "Wear lint: Pass, 0 errors and 22 warnings."
+      - "Initial target/lint runs: Blocked by environment timeouts; cleanup reruns passed."
+      - "RV-018: Pass recommendation; findings Critical 0, High 0, Medium 0, Low 0."
+      - "TC-U041: Pass on the dedicated provider resource reference."
+      - "TC-U042: Pass on 24dp/white/path-parity contract."
+      - "TST-010: Pass for automated scope; TC-E095/096/097 remain Not Run."
+    blockers: []
   history:
     - reported_at: "2026-08-10T18:59:02+09:00"
       event: "bn009_specification_started"
@@ -571,22 +792,109 @@ progress_reporting:
         The updated build omits Fresh charging title for all three types while
         retaining accessible charging descriptions. TC-E095/TC-E096 remain Not
         Run because adb/device and WFF fixtures are unavailable in this environment.
+    - reported_at: "2026-08-11T18:30:40+09:00"
+      event: "bn009_picker_icon_human_to_specification"
+      role: "specification"
+      actor: "codex"
+      summary: >-
+        Human reported a missing complication picker icon. Official Wear OS
+        guidance assigns this icon through android:icon on the data source
+        service. SPEC-025 will use the existing neutral battery_full Material
+        Symbol; runtime normal/low/charging icon selection remains unchanged.
+    - reported_at: "2026-08-11T18:32:12+09:00"
+      event: "bn009_picker_icon_spec_to_implementation"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        SPEC-025 added FR-059, AC-029, TC-U041, and TC-E097. IMP-030 starts by
+        declaring the existing battery_full vector on MainComplicationService
+        and protecting the exact manifest contract with a JVM regression test.
+    - reported_at: "2026-08-11T18:50:47+09:00"
+      event: "bn009_picker_icon_implementation_to_review"
+      role: "review"
+      actor: "codex"
+      summary: >-
+        IMP-030 added android:icon to MainComplicationService and an exact source
+        manifest regression. The merged debug manifest retains the icon. Debug
+        and release suites passed 91/91 each; lint reported zero errors. RV-017
+        begins with picker/runtime separation and unrelated component scope.
+    - reported_at: "2026-08-11T18:51:42+09:00"
+      event: "bn009_picker_icon_review_to_test"
+      role: "test"
+      actor: "codex"
+      summary: >-
+        RV-017 independently verified the exact provider service icon, source
+        and merged manifests, asset geometry/provenance, application and Tile
+        separation, and unchanged runtime state mapping. Findings were zero.
+    - reported_at: "2026-08-11T18:52:21+09:00"
+      event: "bn009_picker_icon_test_to_human"
+      role: "human"
+      actor: "human-user"
+      summary: >-
+        TST-009 passed TC-U041, debug/release 91/91 each, and lint error 0.
+        TC-E097 remains Not Run because no adb/device picker evidence is
+        available. Human must confirm the icon and label in the system chooser.
+    - reported_at: "2026-08-11T19:29:21+09:00"
+      event: "bn009_app_identity_picker_human_to_specification"
+      role: "specification"
+      actor: "codex"
+      summary: >-
+        Human approved replacing the neutral battery_full picker icon with a
+        dedicated 24dp single-color white vector matching the application
+        monochrome silhouette. Launcher and runtime state icons remain unchanged.
+    - reported_at: "2026-08-11T19:31:33+09:00"
+      event: "bn009_app_identity_picker_spec_to_implementation"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        SPEC-026 updated FR-059, AC-029, CPS-001, WDS-001, TC-U041/042, and
+        TC-E097. IMP-031 will add ic_complication_provider_app_24 with the exact
+        launcher monochrome path, white fill, and 24dp provider dimensions.
+    - reported_at: "2026-08-11T20:01:33+09:00"
+      event: "bn009_app_identity_picker_implementation_to_review"
+      role: "review"
+      actor: "codex"
+      summary: >-
+        IMP-031 added the dedicated app-identity picker vector and switched the
+        provider manifest reference. Targeted parity tests passed 2/2, debug and
+        release passed 92/92 each, lint reported zero errors, and the merged
+        manifest retained the new resource. RV-018 begins.
+    - reported_at: "2026-08-11T20:04:33+09:00"
+      event: "bn009_app_identity_picker_review_to_test"
+      role: "test"
+      actor: "codex"
+      summary: >-
+        RV-018 verified exact path parity, white single-color 24dp geometry,
+        source and merged manifest wiring, and unchanged launcher, Tile, and
+        runtime icons. Findings were zero at all severities; TST-010 begins.
+    - reported_at: "2026-08-11T20:05:43+09:00"
+      event: "bn009_app_identity_picker_test_to_human"
+      role: "human"
+      actor: "human-user"
+      summary: >-
+        TST-010 passed TC-U041/042, targeted 2/2, debug/release 92/92 each,
+        lint error 0, merged-manifest inspection, and diff checks. adb and
+        Pixel Watch/WFF fixtures were unavailable, so TC-E095/096/097 remain
+        Not Run and the identified build awaits Human verification.
 
 handoff:
   from_role: "test"
   to_role: "human"
   gate_result: "approved"
   summary: >-
-    The updated automated build omits the visible charging title in all three
-    supported types while retaining icon, percentage, accessibility, and other
-    warning/status titles.
+    The automated picker contract and full Wear gates pass on base 9b080d6 plus
+    the listed working-tree changes. Device rendering has not been inferred.
   unresolved_items:
-    - "TC-E095 and TC-E096 must be rerun against the changed build."
-  first_action: "Install the updated build and verify Fresh charging in an active SHORT_TEXT slot before repeating RANGED_VALUE and LONG_TEXT/AOD/TalkBack checks."
+    - "TC-E095, TC-E096, and TC-E097 require runtime/device evidence."
+  first_action: >-
+    On Pixel Watch 4, open the complication data source chooser, confirm the
+    Battery Notifier label and app-identical icon, then select it and inspect a
+    compatible WFF slot.
 
 next_actions:
-  - "Human: run TC-E095 and TC-E096 on the updated build."
-  - "Human: confirm visible charging text is absent and accessible charging state is retained."
+  - "Run TC-E097 on Pixel Watch 4 41mm and 45mm as available."
+  - "Run TC-E095/096 for compatible WFF slots and normal/low/charging states."
+  - "Record Human approval or return the finding to its owning phase."
 
-updated_at: "2026-08-11T18:20:14+09:00"
+updated_at: "2026-08-11T20:05:43+09:00"
 updated_by: "codex"

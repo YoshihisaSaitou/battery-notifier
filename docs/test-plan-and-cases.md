@@ -1,7 +1,7 @@
 # テスト計画書・テストケース
 
 文書ID: TPC-001  
-版: 0.3
+版: 0.5
 状態: Draft  
 最終更新: 2026-08-11
 
@@ -115,6 +115,8 @@
 | TC-U038 | Mobileしきい値下書き状態 | saved=20でdraftを20→21→20と変更 | 21では未保存、20へ戻すと保存済み表示へ戻り、編集だけでは永続化・同期しない |
 | TC-U039 | コンプリケーション状態アイコン | 21%非充電、20%非充電、0%非充電、20%充電、100%充電 | `battery_full`、`battery_alert`、`battery_alert`、`battery_charging_full`、`battery_charging_full`を選択し、百分率は入力値を維持する |
 | TC-U040 | コンプリケーション型データ | 通常、充電、低残量、Staleを`SHORT_TEXT`、`RANGED_VALUE`、`LONG_TEXT`で構築 | 全型が百分率text、状態別monochromatic image、content descriptionを保持し、Fresh充電中の表示用titleはnull、content descriptionは充電状態を保持する。Staleのdescriptionは動的な更新経過を維持する |
+| TC-U041 | コンプリケーションprovider manifest | Wearのsource manifestを解析 | `MainComplicationService`がlabel、`BIND_COMPLICATION_PROVIDER`、3対応型に加えて`android:icon="@drawable/ic_complication_provider_app_24"`を宣言する |
+| TC-U042 | コンプリケーションprovider vector | provider vectorとlauncher monochrome vectorを解析 | providerは24dp、108×108 viewport、単一path、白fillで、pathDataがlauncher monochrome layerと一致する |
 
 ## 7. 統合・E2Eテストケース
 
@@ -225,6 +227,7 @@
 | TC-E094 | Pixel 10 Pro Foldの外側/内側/分割画面でMobile通知しきい値欄を日英・最大フォント・TalkBackで表示し、5/20/100から左右ボタンとスライダーを操作 | 減少ボタン・スライダー・増加ボタンが同じ行に並び、スライダー直下に数値目盛りが表示されない。各ボタンは48dp以上で意味順に読み上げられ、全操作が1%刻みで範囲外へ進まない。20→21は未保存と表示され、保存前の永続化・同期は0件、保存後は最終値21だけが1件反映される |
 | TC-E095 | WFF v1～5の検証用フェイスで`SHORT_TEXT`、`RANGED_VALUE`、`LONG_TEXT`スロットへ通常、充電中、低残量、Stale、No Dataを要求 | 対応型が仕様どおりの百分率、状態別単色アイコン、content descriptionを受け取り、各WFFの定義した配置とtintで描画される。第三者フェイスでの同一配置は合否対象外 |
 | TC-E096 | Pixel Watch 4 41/45mmで対応WFFフェイスへコンプリケーションを設定し、通常表示/AOD、日英、TalkBackで21%非充電、20%非充電、20%充電を確認 | 通常、低残量、充電中のGoogle公式Material Symbolと百分率を識別でき、20%充電では充電中が優先される。充電中の可視文字列は表示されず、対象がスマートフォンで充電中であることを読み上げ、tintとambient表示で欠損しない |
+| TC-E097 | Pixel Watch 4 41/45mmの対応ウォッチフェイスでコンプリケーション追加画面を開き、データソース一覧からBattery Notifierを探す | Battery Notifierのlabelとアプリアイコンと同じシルエットの単色アイコンが表示され、選択後はスロット内で状態別アイコンと百分率が表示される |
 
 ## 8. 非機能テスト
 

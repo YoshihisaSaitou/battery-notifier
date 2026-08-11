@@ -1,7 +1,7 @@
 # Wear OS表示仕様書
 
 文書ID: WDS-001  
-版: 0.3
+版: 0.5
 状態: Draft  
 最終更新: 2026-08-11
 
@@ -67,6 +67,7 @@
 
 ### コンプリケーション状態アイコン
 
+- ウォッチフェイスのコンプリケーション追加・データソース選択一覧には、アプリアイコンのmonochrome layerと同じシルエットを持つ24dp・単色白Vector Drawableをprovider iconとして表示する。
 - WFF v1～5の互換スロットへ、数値と`%`およびtint可能な単色アイコンを提供する。
 - 充電中は`battery_charging_full`を最優先する。非充電かつ20%以下は`battery_alert`、それ以外は`battery_full`を使用する。
 - 充電中の表示用title文字列は設定せず、アイコンと百分率だけを可視情報として提供する。content descriptionでは充電状態を維持する。

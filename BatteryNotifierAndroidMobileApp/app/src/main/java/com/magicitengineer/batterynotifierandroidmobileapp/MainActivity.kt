@@ -435,6 +435,14 @@ internal fun SettingsAndSyncScreen(
                 Text(text = stringResource(syncPresentation.actionLabelResource))
             }
             Text(text = stringResource(syncPresentation.statusMessageResource))
+
+            HorizontalDivider()
+
+            Text(
+                text = stringResource(R.string.complication_stale_explanation_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(text = stringResource(R.string.complication_stale_explanation_body))
         }
     }
 }

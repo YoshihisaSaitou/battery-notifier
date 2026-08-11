@@ -672,6 +672,12 @@ private fun BatteryStateList(
                 item { StateText(text) }
             }
         }
+        item {
+            StateText(stringResource(R.string.complication_stale_explanation_title))
+        }
+        item {
+            StateText(stringResource(R.string.complication_stale_explanation_body))
+        }
     }
 }
 

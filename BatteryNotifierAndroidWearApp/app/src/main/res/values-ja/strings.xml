@@ -69,4 +69,6 @@
     <string name="full_charge_notification_off">満充電通知はOFFです</string>
     <string name="enable_full_charge_notification">満充電通知をONにする</string>
     <string name="disable_full_charge_notification">満充電通知をOFFにする</string>
+    <string name="complication_stale_explanation_title">ウォッチフェイスの「!」について</string>
+    <string name="complication_stale_explanation_body">ウォッチフェイスの電池残量に「!」が付いている場合、表示中のスマートフォンの電池残量は古い可能性があります。最後の更新から5分を超えたか、スマートフォンとウォッチの時刻にずれがあります。接続と時刻を確認し、必要に応じて「同期を再試行」を実行してください。</string>
 </resources>

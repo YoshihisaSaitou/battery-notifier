@@ -74,4 +74,6 @@
     <string name="full_charge_notification_off">Full-charge notifications are off</string>
     <string name="enable_full_charge_notification">Enable full-charge notifications</string>
     <string name="disable_full_charge_notification">Disable full-charge notifications</string>
+    <string name="complication_stale_explanation_title">About the “!” on the watch face</string>
+    <string name="complication_stale_explanation_body">When “!” appears after the battery percentage on the watch face, the displayed phone battery level may be outdated. This happens when more than five minutes have passed since the last update or the phone and watch clocks differ. Check the connection and clocks, then use Retry sync if needed.</string>
 </resources>

@@ -1,7 +1,7 @@
 # テスト計画書・テストケース
 
 文書ID: TPC-001  
-版: 0.5
+版: 0.6
 状態: Draft  
 最終更新: 2026-08-11
 
@@ -117,6 +117,7 @@
 | TC-U040 | コンプリケーション型データ | 通常、充電、低残量、Staleを`SHORT_TEXT`、`RANGED_VALUE`、`LONG_TEXT`で構築 | 全型が百分率text、状態別monochromatic image、content descriptionを保持し、Fresh充電中の表示用titleはnull、content descriptionは充電状態を保持する。Staleのdescriptionは動的な更新経過を維持する |
 | TC-U041 | コンプリケーションprovider manifest | Wearのsource manifestを解析 | `MainComplicationService`がlabel、`BIND_COMPLICATION_PROVIDER`、3対応型に加えて`android:icon="@drawable/ic_complication_provider_app_24"`を宣言する |
 | TC-U042 | コンプリケーションprovider vector | provider vectorとlauncher monochrome vectorを解析 | providerは24dp、108×108 viewport、単一path、白fillで、pathDataがlauncher monochrome layerと一致する |
+| TC-U043 | Stale記号の画面説明contract | Mobile/Wearの日英resourceと画面sourceを解析 | 両画面が末尾で同一条件（5分超、時刻ずれ、値が古い可能性）を説明し、Mobileは`今すぐ同期 / Sync now`、Wearは`同期を再試行 / Retry sync`へ案内する。Kotlinへ文言を直書きしない |
 
 ## 7. 統合・E2Eテストケース
 
@@ -228,6 +229,7 @@
 | TC-E095 | WFF v1～5の検証用フェイスで`SHORT_TEXT`、`RANGED_VALUE`、`LONG_TEXT`スロットへ通常、充電中、低残量、Stale、No Dataを要求 | 対応型が仕様どおりの百分率、状態別単色アイコン、content descriptionを受け取り、各WFFの定義した配置とtintで描画される。第三者フェイスでの同一配置は合否対象外 |
 | TC-E096 | Pixel Watch 4 41/45mmで対応WFFフェイスへコンプリケーションを設定し、通常表示/AOD、日英、TalkBackで21%非充電、20%非充電、20%充電を確認 | 通常、低残量、充電中のGoogle公式Material Symbolと百分率を識別でき、20%充電では充電中が優先される。充電中の可視文字列は表示されず、対象がスマートフォンで充電中であることを読み上げ、tintとambient表示で欠損しない |
 | TC-E097 | Pixel Watch 4 41/45mmの対応ウォッチフェイスでコンプリケーション追加画面を開き、データソース一覧からBattery Notifierを探す | Battery Notifierのlabelとアプリアイコンと同じシルエットの単色アイコンが表示され、選択後はスロット内で状態別アイコンと百分率が表示される |
+| TC-E098 | Pixel 10 Pro Fold外側/内側/分割画面とPixel Watch 4 41/45mmでMobile/Wear画面末尾までスクロールし、日英・最大フォント・TalkBackでStale記号の説明を確認 | 両端末で説明が常時到達可能かつ欠けず、`!`の意味、5分超・時刻ずれ、接続・時刻確認、各端末の手動同期操作を理解できる順序で読み上げる |
 
 ## 8. 非機能テスト
 

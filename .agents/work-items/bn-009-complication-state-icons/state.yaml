@@ -10,7 +10,7 @@ work_item:
     v1 through v5 complication slots. Charging takes precedence at 20 percent
     or below. The watch face remains responsible for final rendering.
 
-status: "awaiting_human"
+status: "done"
 current_phase: "human_verification"
 current_role: "human"
 current_actor:
@@ -18,12 +18,13 @@ current_actor:
   id: "human-user"
 
 last_transition:
-  from_phase: "test"
+  from_phase: "human_verification"
   to_phase: "human_verification"
   reason: >-
-    TST-010 passed the automated picker resource, source/merged manifest, unit,
-    and lint gates. Runtime WFF and Pixel Watch picker checks remain Not Run and
-    are explicitly assigned to Human verification.
+    Human reported that real-device verification of every feature implemented
+    in this chat found no problem and explicitly requested closure. The approval
+    applies to BLD-BN009-031; unprovided device details and measurements are not
+    inferred.
 
 spec_refs:
   - "docs/product-requirements.md"
@@ -31,6 +32,7 @@ spec_refs:
   - "docs/complication-specification.md"
   - "docs/wear-os-display-specification.md"
   - "docs/localization-specification.md"
+  - "docs/screen-specification-and-navigation.md"
   - "docs/test-plan-and-cases.md"
   - "docs/compatibility-matrix.md"
 
@@ -39,6 +41,8 @@ affected_components:
   - "Wear complication monochromatic drawable resources"
   - "Wear complication JVM tests"
   - "Normative complication and test specifications"
+  - "Mobile settings/sync screen and localized resources"
+  - "Wear main screen and localized resources"
 
 phase_tasks:
   specification:
@@ -68,6 +72,12 @@ phase_tasks:
       summary: >-
         Replace the picker icon contract with a 24dp single-color white vector
         derived from the app launcher monochrome silhouette.
+    - id: "SPEC-027"
+      status: "completed"
+      summary: >-
+        Define a persistent, localized, plain-language explanation at the end
+        of both app screens for the stale exclamation mark, its conditions, and
+        the device-appropriate recovery action.
   implementation:
     - id: "IMP-027"
       status: "completed"
@@ -94,6 +104,11 @@ phase_tasks:
       summary: >-
         Add the dedicated app-identity picker vector, update the provider
         manifest reference, and strengthen the manifest/vector contract test.
+    - id: "IMP-032"
+      status: "completed"
+      summary: >-
+        Add the end-of-screen explanation to Mobile and Wear with synchronized
+        English/Japanese resources and UI regression coverage.
   review:
     - id: "RV-015"
       status: "completed"
@@ -115,6 +130,11 @@ phase_tasks:
       summary: >-
         Review app-icon silhouette parity, white single-color vector geometry,
         provider-only wiring, and unchanged launcher/runtime icons.
+    - id: "RV-019"
+      status: "completed"
+      summary: >-
+        Review wording accuracy, unconditional end placement, localization,
+        accessibility, scrolling, and unrelated behavior preservation.
   test:
     - id: "TST-007"
       status: "completed"
@@ -136,12 +156,22 @@ phase_tasks:
       summary: >-
         Verify the exact picker resource, 24dp white vector contract, merged
         manifest, full Wear unit/lint gates, and separate device evidence.
+    - id: "TST-011"
+      status: "completed"
+      summary: >-
+        Verify both screen explanation contracts, Mobile/Wear automated gates,
+        and separate Pixel device layout/TalkBack evidence.
   human_verification:
     - id: "HUM-009"
-      status: "pending"
+      status: "completed"
       summary: >-
         Inspect compatible WFF slots on Pixel Watch 4 41mm and 45mm in active
         and ambient modes and decide final acceptance.
+    - id: "HUM-010"
+      status: "completed"
+      summary: >-
+        Confirm the explanation is understandable and reachable at the end of
+        Mobile and Wear screens in Japanese/English and with TalkBack.
 
 decisions_needed: []
 approved_decisions:
@@ -177,6 +207,20 @@ approved_decisions:
       Do not use the full-color adaptive launcher resource directly.
     approved_by: "human-user"
     approved_at: "2026-08-11T19:29:21+09:00"
+  - id: "DEC-BN009-006"
+    decision: >-
+      Always place a user-facing explanation of the stale exclamation mark at
+      the end of both Mobile and Wear screens. Explain the over-five-minute and
+      clock-offset conditions and direct users to the local manual sync action.
+    approved_by: "human-user"
+    approved_at: "2026-08-11T20:27:50+09:00"
+  - id: "DEC-BN009-007"
+    decision: >-
+      Accept the real-device result for all features implemented in this chat
+      and close BN-009. Preserve agent-side Not Run results and do not infer
+      unprovided device, OS, screenshot, latency, or battery-impact details.
+    approved_by: "human-user"
+    approved_at: "2026-08-11T21:36:52+09:00"
 
 blockers: []
 risks:
@@ -299,6 +343,51 @@ evidence:
       changes; applicationId com.magicitengineer.batterynotifier, versionCode 3,
       versionName 1.0, debug signing configuration. No personal device or
       signing identifier was recorded.
+  - id: "HUM-BN009-019"
+    type: "human_change_request"
+    summary: >-
+      Human requested on 2026-08-11 that the stale marker conditions and reason
+      be explained in plain language at the end of both smartphone and watch
+      screens.
+  - id: "IMP-BN009-020"
+    type: "implementation_impact_analysis"
+    summary: >-
+      Mobile appends a divider, explanation title, and body after the sync
+      status. Wear appends title and body items after every conditional action
+      in the existing ScalingLazyColumn. Both use synchronized English/Japanese
+      resources; Mobile directs users to Sync now and Wear to Retry sync. No
+      battery, freshness, Data Layer, persistence, permission, or complication
+      payload behavior changed.
+    sibling_paths_inspected:
+      - "Mobile scroll content for every monitoring, permission, threshold, and sync state"
+      - "Wear list branches for No Data, Fresh, Delayed, Stale, permissions, retries, and threshold editing"
+      - "English and Japanese default resources in both apps"
+      - "existing Freshness.STALE and clockWarning calculations remain unchanged"
+  - id: "REV-BN009-030"
+    type: "independent_review"
+    summary: >-
+      RV-019 compared the exact Freshness boundaries and clock rollback rule to
+      all four localized bodies, verified Mobile content follows the final sync
+      status and Wear content follows every conditional list branch, and checked
+      resource-only wording, reading order, and unchanged Data Layer/runtime
+      complication paths. Findings: Critical 0, High 0, Medium 0, Low 0.
+  - id: "BLD-BN009-031"
+    type: "test_build_identity"
+    summary: >-
+      Base commit dff3c8d plus the listed stale-explanation working-tree changes.
+      Mobile: applicationId com.magicitengineer.batterynotifier, versionCode 2,
+      versionName 1.0, minSdk 33, targetSdk 36. Wear: same applicationId,
+      versionCode 3, versionName 1.0, minSdk 30, targetSdk 36. Debug signing was
+      used; no personal device or signing identifier was recorded.
+  - id: "HUM-BN009-032"
+    type: "human_verification"
+    summary: >-
+      On 2026-08-11, the human stated that real-device verification found no
+      problem with the features implemented in this chat and requested closure.
+      This is comprehensive Human acceptance of BLD-BN009-031, not agent-observed
+      device evidence. Device models, OS builds, screenshots, battery-impact
+      measurements, and notification-latency measurements were not provided and
+      are not inferred.
   - id: "REV-BN009-013"
     type: "independent_review"
     summary: >-
@@ -547,6 +636,71 @@ test_results:
       observation was supplied. Requires opening the complication data source
       chooser on the identified build and confirming the Battery Notifier label
       and app-identical white silhouette on 41mm/45mm as available.
+  - id: "CHK-BN009-021"
+    command: "parallel Mobile/Wear targeted StaleMarkerExplanationContractTest"
+    status: "blocked"
+    result: >-
+      Both commands timed out after 304 seconds while sharing the Gradle cache.
+      No test report was produced. Four test Java processes and one stale prior
+      Gradle daemon were identified and stopped before sequential reruns.
+  - id: "CHK-BN009-022"
+    command: "Mobile targeted StaleMarkerExplanationContractTest, first sequential run"
+    status: "fail"
+    result: >-
+      1 test failed because the new test expected the digit 5 in the English
+      body while the approved wording uses "five minutes". Production output
+      matched the specification; the locale-specific test expectation was fixed.
+  - id: "CHK-BN009-023"
+    command: "Mobile targeted StaleMarkerExplanationContractTest after expectation fix"
+    status: "pass"
+    result: "1 test, 0 skipped, 0 failures, 0 errors."
+  - id: "CHK-BN009-024"
+    command: "Wear targeted StaleMarkerExplanationContractTest"
+    status: "pass"
+    result: "1 test, 0 skipped, 0 failures, 0 errors."
+  - id: "CHK-BN009-025"
+    command: "Mobile cached Gradle 8.13 --offline test"
+    status: "pass"
+    result: >-
+      Debug 109 tests and release 109 tests; 0 skipped, 0 failures, and 0 errors
+      in both variants.
+  - id: "CHK-BN009-026"
+    command: "Mobile cached Gradle 8.13 --offline lint"
+    status: "pass"
+    result: "Mobile lint completed with 0 errors and 23 warnings."
+  - id: "CHK-BN009-027"
+    command: "Wear cached Gradle 8.13 --offline test"
+    status: "blocked"
+    result: >-
+      The combined Debug/Release task timed out after 424 seconds. Its updated
+      Debug XML report contained 93 tests with no skipped/failures/errors; the
+      Release report was still the prior 92-test report. Residual processes were
+      stopped and Release was run separately.
+  - id: "CHK-BN009-028"
+    command: "Wear cached Gradle 8.13 --offline testReleaseUnitTest"
+    status: "pass"
+    result: >-
+      Release 93 tests, 0 skipped, 0 failures, 0 errors. Together with the
+      updated Debug report from CHK-BN009-027, both variants passed 93/93.
+  - id: "CHK-BN009-029"
+    command: "Wear cached Gradle 8.13 --offline lint"
+    status: "pass"
+    result: "Wear lint completed with 0 errors and 22 warnings."
+  - id: "TC-U043"
+    requirements: "FR-031, FR-057, FR-070, FR-071, FR-076, AC-030"
+    status: "pass"
+    result: >-
+      Mobile and Wear contract tests each passed 1/1. All four localized bodies
+      contain the stale marker, over-five-minute condition, and local manual
+      sync action; source contracts place title/body after the prior final
+      content and keep user text in resources.
+  - id: "TC-E098"
+    requirements: "PR-006, PR-007, PR-008, PR-010, FR-076, AC-030"
+    status: "not_run"
+    result: >-
+      adb was not available and no Pixel 10 Pro Fold or Pixel Watch 4 evidence
+      was supplied. Requires end-of-screen reachability, clipping, Japanese/
+      English, maximum font, and TalkBack checks on the identified build.
 review_findings:
   - id: "TST-BN009-F01"
     severity: "Medium"
@@ -577,12 +731,12 @@ loop_control:
 progress_reporting:
   format_version: 1
   current:
-    reported_at: "2026-08-11T20:05:43+09:00"
+    reported_at: "2026-08-11T21:36:52+09:00"
     work_item: "BN-009"
     role: "human"
     phase: "human_verification"
     actor: "human-user"
-    status: "awaiting_human"
+    status: "done"
     completed:
       - "Recorded the three human-approved product decisions."
       - "Read the applicable specifications, implementation, and tests."
@@ -610,11 +764,15 @@ progress_reporting:
       - "Targeted tests passed 2/2; debug/release passed 92/92 each; lint had 0 errors."
       - "RV-018 independently verified picker parity and provider-only wiring with zero findings."
       - "TST-010 passed TC-U041/042, debug/release 92/92 each, and lint with 0 errors."
-    in_progress:
-      - "Awaiting Pixel Watch 4 complication picker and WFF runtime verification."
-    next_actions:
-      - "Open the complication data source chooser on Pixel Watch 4 and confirm the Battery Notifier label and app-identical icon."
-      - "Select the source and verify normal, low, and charging runtime icons in compatible WFF slots."
+      - "SPEC-027 defined FR-076, AC-030, TC-U043, and TC-E098 for the Mobile/Wear stale-marker explanation."
+      - "IMP-032 appended localized stale-marker explanations to both screen ends and added contract tests."
+      - "Mobile debug/release passed 109/109 each; Wear debug/release passed 93/93 each; both lint gates had 0 errors."
+      - "RV-019 independently reviewed the complete explanation change with zero findings."
+      - "TST-011 passed TC-U043 and all Mobile/Wear automated gates; TC-E098 is Not Run."
+      - "Human reported no problem in real-device verification for all features implemented in this chat."
+      - "Human approved BLD-BN009-031 and requested closure."
+    in_progress: []
+    next_actions: []
     checks:
       - "Initial git status: clean."
       - "Targeted MainComplicationDataTest: Pass 6/6."
@@ -649,6 +807,16 @@ progress_reporting:
       - "TC-U041: Pass on the dedicated provider resource reference."
       - "TC-U042: Pass on 24dp/white/path-parity contract."
       - "TST-010: Pass for automated scope; TC-E095/096/097 remain Not Run."
+      - "Initial parallel targeted tests: Blocked by Gradle-cache contention timeout."
+      - "Initial Mobile targeted test: Fail from a locale-specific test expectation; corrected rerun Pass 1/1."
+      - "Wear targeted explanation contract: Pass 1/1."
+      - "Mobile unit: Pass, debug/release 109/109; lint: Pass, 0 errors and 23 warnings."
+      - "Wear unit: Pass, debug/release 93/93 after separated Release rerun; lint: Pass, 0 errors and 22 warnings."
+      - "RV-019: Pass recommendation; findings Critical 0, High 0, Medium 0, Low 0."
+      - "TC-U043: Pass, Mobile 1/1 and Wear 1/1."
+      - "TC-E098: Not Run; adb and required devices unavailable."
+      - "TST-011: Automated scope Pass; device scope remains explicitly pending."
+      - "Human verification: Approved by user attestation; detailed device and measurement evidence was not provided."
     blockers: []
   history:
     - reported_at: "2026-08-10T18:59:02+09:00"
@@ -876,25 +1044,70 @@ progress_reporting:
         lint error 0, merged-manifest inspection, and diff checks. adb and
         Pixel Watch/WFF fixtures were unavailable, so TC-E095/096/097 remain
         Not Run and the identified build awaits Human verification.
+    - reported_at: "2026-08-11T20:27:50+09:00"
+      event: "bn009_stale_explanation_human_to_specification"
+      role: "specification"
+      actor: "codex"
+      summary: >-
+        Human requested a user-understandable explanation of the complication
+        stale marker at the end of both smartphone and watch screens. This is a
+        requested presentation change, not a failure-driven phase return.
+    - reported_at: "2026-08-11T20:29:39+09:00"
+      event: "bn009_stale_explanation_specification_to_implementation"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        SPEC-027 added FR-076, AC-030, TC-U043, and TC-E098 across the functional,
+        complication, screen, Wear display, localization, and test specifications.
+        IMP-032 starts with localized end-of-screen content in both apps.
+    - reported_at: "2026-08-11T21:25:51+09:00"
+      event: "bn009_stale_explanation_implementation_to_review"
+      role: "review"
+      actor: "codex"
+      summary: >-
+        IMP-032 appended the English/Japanese stale-marker explanation after the
+        existing last content in both app screens. Contract tests pass 1/1 per
+        app; Mobile debug/release pass 109/109, Wear 93/93, and both lint gates
+        report zero errors. RV-019 begins from the full UI/resource/spec diff.
+    - reported_at: "2026-08-11T21:27:19+09:00"
+      event: "bn009_stale_explanation_review_to_test"
+      role: "test"
+      actor: "codex"
+      summary: >-
+        RV-019 verified the exact stale conditions, all four localized bodies,
+        unconditional final placement in both scroll containers, reading order,
+        and unchanged sync/complication behavior. Findings were zero; TST-011
+        begins against base dff3c8d plus the working-tree changes.
+    - reported_at: "2026-08-11T21:28:25+09:00"
+      event: "bn009_stale_explanation_test_to_human"
+      role: "human"
+      actor: "human-user"
+      summary: >-
+        TST-011 passed TC-U043, Mobile debug/release 109/109, Wear debug/release
+        93/93, and both lint gates with zero errors. TC-E098 remains Not Run
+        because adb and the required Pixel devices were unavailable. Human must
+        verify end reachability, language, maximum font, and TalkBack.
+    - reported_at: "2026-08-11T21:36:52+09:00"
+      event: "bn009_human_approved_and_closed"
+      role: "human"
+      actor: "human-user"
+      summary: >-
+        Human reported that real-device verification of every feature implemented
+        in this chat found no problem and requested closure. BN-009 is done for
+        BLD-BN009-031. Agent-side TC-E095/096/097/098 Not Run records remain as
+        historical evidence; no unprovided device details or metrics were added.
 
 handoff:
-  from_role: "test"
+  from_role: "human"
   to_role: "human"
   gate_result: "approved"
   summary: >-
-    The automated picker contract and full Wear gates pass on base 9b080d6 plus
-    the listed working-tree changes. Device rendering has not been inferred.
-  unresolved_items:
-    - "TC-E095, TC-E096, and TC-E097 require runtime/device evidence."
-  first_action: >-
-    On Pixel Watch 4, open the complication data source chooser, confirm the
-    Battery Notifier label and app-identical icon, then select it and inspect a
-    compatible WFF slot.
+    Human accepted the real-device result for every feature implemented in this
+    chat and closed BN-009 against BLD-BN009-031.
+  unresolved_items: []
+  first_action: "None; the work item is closed."
 
-next_actions:
-  - "Run TC-E097 on Pixel Watch 4 41mm and 45mm as available."
-  - "Run TC-E095/096 for compatible WFF slots and normal/low/charging states."
-  - "Record Human approval or return the finding to its owning phase."
+next_actions: []
 
-updated_at: "2026-08-11T20:05:43+09:00"
+updated_at: "2026-08-11T21:36:52+09:00"
 updated_by: "codex"

@@ -1,7 +1,7 @@
 # 多言語対応仕様書
 
 文書ID: L10N-001  
-版: 0.3
+版: 0.4
 状態: Draft  
 最終更新: 2026-08-11
 
@@ -88,6 +88,7 @@ retry_full_charge_setting_change
 | 競合 | スマートフォンで設定が変更されました | Setting changed on phone |
 | 満充電通知 | 満充電になったら通知 | Notify when fully charged |
 | 満充電 | 充電が完了しました | Fully charged |
+| Stale記号の説明 | ウォッチフェイスの「!」について。最後の更新から5分超または時刻ずれで、表示値が古い可能性を示す | About the watch-face “!”. It means the displayed value may be outdated after more than five minutes or when the device clocks differ |
 
 BN-002では要求payloadと結果payloadに完成済み文言を含めず、Wearが現在のLocaleで編集、送信中、適用済み、未保存、競合、拒否、再試行の文言を組み立てる。
 
@@ -99,6 +100,7 @@ BN-004の満充電イベントおよび設定要求payloadにも完成済み文�
 - Mobile通知しきい値のスライダー直下には数値目盛りを表示せず、操作ボタンの読み上げには既存の日英リソースを使用する。
 - 時刻は端末の12/24時間設定、日付はLocaleへ従う。
 - 「接続なし」と「同期が古い」を同じ文言にしない。
+- `!`の説明はMobile/Wearとも常時表示し、条件だけでなく接続・時刻確認と各端末の手動同期操作まで一つの説明として伝える。
 
 ## 5. 文字長とレイアウト
 

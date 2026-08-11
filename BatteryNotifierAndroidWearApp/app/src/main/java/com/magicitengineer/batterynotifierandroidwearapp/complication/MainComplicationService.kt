@@ -46,7 +46,7 @@ internal fun buildBatteryComplicationData(
     level: Int,
     shortTextValue: String,
     descriptionValue: String,
-    visibleStatusValue: String,
+    visibleStatusValue: String?,
     monochromaticImage: MonochromaticImage? = null,
     tapAction: PendingIntent? = null,
 ): ComplicationData? = buildBatteryComplicationData(
@@ -54,7 +54,7 @@ internal fun buildBatteryComplicationData(
     level = level,
     shortTextValue = shortTextValue,
     description = PlainComplicationText.Builder(descriptionValue).build(),
-    visibleStatus = PlainComplicationText.Builder(visibleStatusValue).build(),
+    visibleStatus = visibleStatusValue?.let { PlainComplicationText.Builder(it).build() },
     monochromaticImage = monochromaticImage,
     tapAction = tapAction,
 )
@@ -64,7 +64,7 @@ internal fun buildBatteryComplicationData(
     level: Int,
     shortTextValue: String,
     description: ComplicationText,
-    visibleStatus: ComplicationText,
+    visibleStatus: ComplicationText?,
     monochromaticImage: MonochromaticImage? = null,
     tapAction: PendingIntent? = null,
 ): ComplicationData? {
@@ -73,7 +73,8 @@ internal fun buildBatteryComplicationData(
         ComplicationType.SHORT_TEXT -> ShortTextComplicationData.Builder(
             text = shortText,
             contentDescription = description,
-        ).setTitle(visibleStatus).apply {
+        ).apply {
+            if (visibleStatus != null) setTitle(visibleStatus)
             if (monochromaticImage != null) setMonochromaticImage(monochromaticImage)
             if (tapAction != null) setTapAction(tapAction)
         }.build()
@@ -84,8 +85,8 @@ internal fun buildBatteryComplicationData(
             max = 100f,
             contentDescription = description,
         ).setText(shortText)
-            .setTitle(visibleStatus)
             .apply {
+                if (visibleStatus != null) setTitle(visibleStatus)
                 if (monochromaticImage != null) setMonochromaticImage(monochromaticImage)
                 if (tapAction != null) setTapAction(tapAction)
             }.build()
@@ -93,7 +94,8 @@ internal fun buildBatteryComplicationData(
         ComplicationType.LONG_TEXT -> LongTextComplicationData.Builder(
             text = shortText,
             contentDescription = description,
-        ).setTitle(visibleStatus).apply {
+        ).apply {
+            if (visibleStatus != null) setTitle(visibleStatus)
             if (monochromaticImage != null) setMonochromaticImage(monochromaticImage)
             if (tapAction != null) setTapAction(tapAction)
         }.build()
@@ -162,8 +164,8 @@ class MainComplicationService : SuspendingTimelineComplicationDataSourceService(
                 displayState.clockWarning -> getString(R.string.clock_warning)
                 displayState.freshness == Freshness.STALE -> getString(R.string.stale_data)
                 displayState.freshness == Freshness.DELAYED -> null
-                displayState.isCharging -> getString(R.string.charging)
                 !displayState.monitoringEnabled -> getString(R.string.monitoring_off)
+                displayState.isCharging -> null
                 else -> getString(R.string.discharging)
             }
         val visibleStatusText = if (
@@ -176,7 +178,7 @@ class MainComplicationService : SuspendingTimelineComplicationDataSourceService(
                 surroundingText = getString(R.string.complication_updated_age),
             )
         } else {
-            PlainComplicationText.Builder(requireNotNull(visibleStatus)).build()
+            visibleStatus?.let { PlainComplicationText.Builder(it).build() }
         }
         return buildBatteryComplicationData(
             type = type,

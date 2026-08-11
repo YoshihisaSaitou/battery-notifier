@@ -21,8 +21,8 @@ last_transition:
   from_phase: "test"
   to_phase: "human_verification"
   reason: >-
-    TST-007 accepted the automated contract evidence with no product failure
-    and separated unavailable WFF runtime and Pixel Watch 4 cases as Not Run.
+    TST-008 passed the updated automated contract and full Wear gates. WFF and
+    Pixel Watch rendering remain explicitly assigned to Human verification.
 
 spec_refs:
   - "docs/product-requirements.md"
@@ -52,6 +52,11 @@ phase_tasks:
       summary: >-
         Align the compatibility matrix with approved LONG_TEXT and WFF v1..5
         compatible-slot scope without changing product behavior.
+    - id: "SPEC-024"
+      status: "completed"
+      summary: >-
+        Specify that Fresh charging data has no visible charging title while
+        retaining the charging icon, percentage, and accessible description.
   implementation:
     - id: "IMP-027"
       status: "completed"
@@ -63,18 +68,33 @@ phase_tasks:
       summary: >-
         Verify the compatibility-matrix correction requires no production or
         test change and that code/docs remain aligned.
+    - id: "IMP-029"
+      status: "completed"
+      summary: >-
+        Make the visible status optional in all three complication builders and
+        omit it for Fresh charging without changing content descriptions.
   review:
     - id: "RV-015"
       status: "completed"
       summary: >-
         Review specification alignment, icon provenance and geometry, all state
         boundaries, complication fields, accessibility, and unrelated scope.
+    - id: "RV-016"
+      status: "completed"
+      summary: >-
+        Review title omission across all three types and preservation of stale,
+        delayed, monitoring-off, clock-warning, and accessibility behavior.
   test:
     - id: "TST-007"
       status: "completed"
       summary: >-
         Run targeted and full Wear unit tests and lint; record WFF/runtime and
         Pixel Watch cases as Not Run unless actually executed.
+    - id: "TST-008"
+      status: "completed"
+      summary: >-
+        Verify no visible charging title is returned for all supported types,
+        while charging remains present in the content description.
   human_verification:
     - id: "HUM-009"
       status: "pending"
@@ -103,6 +123,12 @@ approved_decisions:
       of scope.
     approved_by: "human-user"
     approved_at: "2026-08-10T18:59:02+09:00"
+  - id: "DEC-BN009-004"
+    decision: >-
+      Do not display the charging status string in complication slots. Keep the
+      charging icon, percentage, and charging state in content descriptions.
+    approved_by: "human-user"
+    approved_at: "2026-08-11T17:58:23+09:00"
 
 blockers: []
 risks:
@@ -160,6 +186,45 @@ evidence:
       com.magicitengineer.batterynotifier, versionCode 3, versionName 1.0,
       minSdk 30, targetSdk 36, debug signing configuration. No personal device
       or signing identifier was recorded.
+  - id: "HUM-BN009-006"
+    type: "human_change_request"
+    summary: >-
+      Human requested on 2026-08-11 that the complication slot not display the
+      charging string. The request changes presentation only.
+  - id: "IMP-BN009-007"
+    type: "implementation_impact_analysis"
+    summary: >-
+      Visible status is now optional in SHORT_TEXT, RANGED_VALUE, and LONG_TEXT.
+      Fresh charging omits title, while localized charging remains in the
+      content description and the charging icon remains unchanged. No stored
+      state, Data Layer payload, permission, lifecycle, or application ID changed.
+    display_matrix:
+      - "Fresh charging, monitoring on -> title null; charging icon and accessible charging description"
+      - "Fresh charging, monitoring off -> monitoring-off title; charging remains in content description"
+      - "Delayed -> relative-age title"
+      - "Stale -> stale title"
+      - "Clock warning -> clock-warning title"
+      - "Fresh non-charging -> discharging title"
+    sibling_paths_inspected:
+      - "SHORT_TEXT, RANGED_VALUE, and LONG_TEXT builder branches"
+      - "Fresh, Delayed, Stale, clock-warning, and monitoring-off selection"
+      - "content description charging localization"
+      - "preview, default, and timeline construction through createComplicationData"
+  - id: "REV-BN009-008"
+    type: "independent_review"
+    summary: >-
+      RV-016 verified that R.string.charging is no longer reachable from the
+      visible-title selection and remains only in the content-description path.
+      All three builders conditionally set title; delayed, stale, clock-warning,
+      monitoring-off, and discharging titles remain. Findings: Critical 0,
+      High 0, Medium 0, Low 0.
+  - id: "BLD-BN009-009"
+    type: "test_build_identity"
+    summary: >-
+      Base commit 200fed3 plus the listed BN-009 charging-title working-tree
+      changes; applicationId com.magicitengineer.batterynotifier, versionCode 3,
+      versionName 1.0, debug signing configuration. This build supersedes the
+      prior Human verification candidate.
 
 test_results:
   - id: "CHK-BN009-001"
@@ -247,6 +312,42 @@ test_results:
       adb was not available on PATH and no Pixel Watch 4 41mm/45mm device
       evidence was supplied. Requires active/AOD, Japanese/English, TalkBack,
       and 21%/20%/charging checks on the identified build.
+  - id: "CHK-BN009-007"
+    command: >-
+      cached Gradle 8.13 --offline testDebugUnitTest --tests
+      '*MainComplicationDataTest'
+    status: "pass"
+    result: >-
+      7 tests, 0 skipped, 0 failures, 0 errors. All three supported types omit
+      the title when visibleStatus is null, retain content descriptions, and
+      preserve delayed visible status.
+  - id: "CHK-BN009-008"
+    command: "cached Gradle 8.13 --offline test lint"
+    status: "blocked"
+    result: >-
+      The combined command timed out after 365 seconds without final console
+      output. Debug unit reports had completed with 90 tests and no failures;
+      the two residual Java processes were stopped. Release and lint were then
+      rerun separately.
+  - id: "CHK-BN009-009"
+    command: "cached Gradle 8.13 --offline testReleaseUnitTest"
+    status: "pass"
+    result: >-
+      Release unit tests completed with 90 tests, 0 skipped, 0 failures, and
+      0 errors. Debug reports from CHK-BN009-008 likewise contain 90 tests with
+      0 skipped, failures, or errors.
+  - id: "CHK-BN009-010"
+    command: "cached Gradle 8.13 --offline lint"
+    status: "pass"
+    result: "Wear lint completed with 0 errors and 22 warnings."
+  - id: "TST-008"
+    requirements: "FR-050, FR-051, FR-058, AC-027, TC-U040"
+    status: "pass"
+    result: >-
+      All three supported data types returned null title when given the Fresh
+      charging presentation, retained non-null charging content descriptions,
+      and preserved delayed visible status. Targeted tests passed 7/7; debug and
+      release suites passed 90/90 per variant; lint had zero errors.
 review_findings:
   - id: "TST-BN009-F01"
     severity: "Medium"
@@ -277,7 +378,7 @@ loop_control:
 progress_reporting:
   format_version: 1
   current:
-    reported_at: "2026-08-10T19:46:19+09:00"
+    reported_at: "2026-08-11T18:20:14+09:00"
     work_item: "BN-009"
     role: "human"
     phase: "human_verification"
@@ -295,12 +396,17 @@ progress_reporting:
       - "SPEC-023/IMP-028 aligned compatibility-matrix section 7 without production behavior changes."
       - "TST-BN009-F01 was independently verified and closed."
       - "TST-007 classified TC-U039 and TC-U040 Pass, TC-E095 and TC-E096 Not Run, with no Fail."
+      - "SPEC-024 defined charging-title omission with icon and accessibility preservation."
+      - "IMP-029 implemented optional titles for all three types and omitted Fresh charging titles."
+      - "Updated target tests passed 7/7; debug/release unit tests passed 90/90 per variant; lint had 0 errors."
+      - "RV-016 independently verified visible/accessibility separation with zero findings."
+      - "TST-008 passed the charging-title contract and updated full Wear gates."
     in_progress:
-      - "Await human execution of compatible WFF and Pixel Watch 4 scenarios."
+      - "Await Human verification of the updated charging-title build."
     next_actions:
-      - "Install the identified build on Pixel Watch 4 41mm and 45mm."
-      - "Run TC-E095 and TC-E096 in active/AOD, Japanese/English, and TalkBack modes."
-      - "Approve or return the work item with observations and exact build identity."
+      - "Install base 200fed3 plus the BN-009 working-tree changes on Pixel Watch 4."
+      - "Verify no visible charging string in all compatible types while TalkBack announces charging."
+      - "Complete TC-E095/TC-E096 and record approval or requested changes."
     checks:
       - "Initial git status: clean."
       - "Targeted MainComplicationDataTest: Pass 6/6."
@@ -314,8 +420,15 @@ progress_reporting:
       - "TC-U040: Pass; platform rendering excluded from this unit/contract result."
       - "TC-E095: Not Run; no WFF runtime fixtures."
       - "TC-E096: Not Run; no adb/Pixel Watch 4 device evidence."
+      - "CHK-BN009-007: Pass, MainComplicationDataTest 7/7."
+      - "Debug unit: Pass 90/90; release unit: Pass 90/90."
+      - "Wear lint: Pass, 0 errors and 22 warnings."
+      - "Combined test/lint command: Blocked by timeout; separated gates passed."
+      - "RV-016: Pass recommendation; findings Critical 0, High 0, Medium 0, Low 0."
+      - "TST-008: Pass."
+      - "TC-E095/TC-E096: Not Run on the updated build."
     blockers:
-      - "Human verification requires WFF v1..5 compatible fixtures and Pixel Watch 4 41mm/45mm access."
+      - "Human verification still requires compatible WFF fixtures and Pixel Watch 4 41mm/45mm access."
   history:
     - reported_at: "2026-08-10T18:59:02+09:00"
       event: "bn009_specification_started"
@@ -414,23 +527,66 @@ progress_reporting:
         product failure. The environment had no adb command/device and no WFF
         runtime fixture. Human verification must inspect Pixel Watch 4 41/45mm,
         compatible WFF v1..5 slots, active/AOD, Japanese/English, and TalkBack.
+    - reported_at: "2026-08-11T17:58:23+09:00"
+      event: "bn009_human_change_to_specification"
+      role: "specification"
+      actor: "codex"
+      summary: >-
+        Human requested removal of the visible charging string before device
+        verification. SPEC-024 will preserve the charging icon, percentage, and
+        accessibility description. This is a requested presentation change,
+        not a failure-driven phase return, so total_phase_returns remains one.
+    - reported_at: "2026-08-11T18:00:10+09:00"
+      event: "bn009_charging_title_spec_to_implementation"
+      role: "implementation"
+      actor: "codex"
+      summary: >-
+        SPEC-024 updated FRS-001, CPS-001, WDS-001, L10N-001, and TPC-001.
+        IMP-029 starts with optional titles in all three builders, Fresh charging
+        title omission, and preserved localized charging content descriptions.
+    - reported_at: "2026-08-11T18:18:03+09:00"
+      event: "bn009_charging_title_implementation_to_review"
+      role: "review"
+      actor: "codex"
+      summary: >-
+        IMP-029 completed optional titles in SHORT_TEXT, RANGED_VALUE, and
+        LONG_TEXT. Fresh charging omits title; warning, stale, delayed,
+        monitoring-off, discharging, icon, and content-description paths remain.
+        Targeted tests passed 7/7, debug/release passed 90/90 each, and lint had
+        zero errors. RV-016 begins from the complete changed working tree.
+    - reported_at: "2026-08-11T18:19:23+09:00"
+      event: "bn009_charging_title_review_to_test"
+      role: "test"
+      actor: "codex"
+      summary: >-
+        RV-016 verified the complete title selection, all three builder branches,
+        content-description charging localization, and sibling warning/status
+        paths independently from test totals. Findings were zero at all severities.
+    - reported_at: "2026-08-11T18:20:14+09:00"
+      event: "bn009_charging_title_test_to_human"
+      role: "human"
+      actor: "human-user"
+      summary: >-
+        TST-008 passed: target 7/7, debug/release 90/90 each, lint error 0.
+        The updated build omits Fresh charging title for all three types while
+        retaining accessible charging descriptions. TC-E095/TC-E096 remain Not
+        Run because adb/device and WFF fixtures are unavailable in this environment.
 
 handoff:
   from_role: "test"
   to_role: "human"
   gate_result: "approved"
   summary: >-
-    Automated contract and affected Wear project gates pass with no unresolved
-    code/spec finding. Required platform rendering and physical-device judgment
-    remain explicitly unexecuted.
+    The updated automated build omits the visible charging title in all three
+    supported types while retaining icon, percentage, accessibility, and other
+    warning/status titles.
   unresolved_items:
-    - "TC-E095 WFF v1..5 runtime rendering is Not Run."
-    - "TC-E096 Pixel Watch 4 41mm/45mm real-device verification is Not Run."
-  first_action: "Install the identified Wear build and execute TC-E095/TC-E096 beginning with 21% non-charging in an active compatible slot."
+    - "TC-E095 and TC-E096 must be rerun against the changed build."
+  first_action: "Install the updated build and verify Fresh charging in an active SHORT_TEXT slot before repeating RANGED_VALUE and LONG_TEXT/AOD/TalkBack checks."
 
 next_actions:
-  - "Human: execute TC-E095 and TC-E096 on the identified build."
-  - "Human: record devices/sizes, WFF fixtures, active/AOD, locale, TalkBack, observations, and approval decision."
+  - "Human: run TC-E095 and TC-E096 on the updated build."
+  - "Human: confirm visible charging text is absent and accessible charging state is retained."
 
-updated_at: "2026-08-10T19:46:19+09:00"
+updated_at: "2026-08-11T18:20:14+09:00"
 updated_by: "codex"

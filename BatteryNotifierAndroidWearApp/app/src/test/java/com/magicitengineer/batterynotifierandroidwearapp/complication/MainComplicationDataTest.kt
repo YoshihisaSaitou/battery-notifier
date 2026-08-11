@@ -6,9 +6,9 @@ import androidx.wear.watchface.complications.data.RangedValueComplicationData
 import androidx.wear.watchface.complications.data.ShortTextComplicationData
 import com.magicitengineer.batterynotifierandroidwearapp.R
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -16,14 +16,42 @@ import java.time.Instant
 
 class MainComplicationDataTest {
     @Test
-    fun `short text visibly distinguishes charging and delayed states`() {
-        val charging = buildBatteryComplicationData(
+    fun `charging omits visible title for every supported type`() {
+        val chargingData = listOf(
             ComplicationType.SHORT_TEXT,
-            68,
-            "68%",
-            "Phone battery 68%, Charging",
-            "Charging",
-        ) as ShortTextComplicationData
+            ComplicationType.RANGED_VALUE,
+            ComplicationType.LONG_TEXT,
+        ).map { type ->
+            buildBatteryComplicationData(
+                type,
+                68,
+                "68%",
+                "Phone battery 68%, Charging",
+                null,
+            )
+        }
+
+        chargingData.forEach { data ->
+            when (data) {
+                is ShortTextComplicationData -> {
+                    assertNull(data.title)
+                    assertNotNull(data.contentDescription)
+                }
+                is RangedValueComplicationData -> {
+                    assertNull(data.title)
+                    assertNotNull(data.contentDescription)
+                }
+                is LongTextComplicationData -> {
+                    assertNull(data.title)
+                    assertNotNull(data.contentDescription)
+                }
+                else -> throw AssertionError("Unexpected complication data: $data")
+            }
+        }
+    }
+
+    @Test
+    fun `delayed state remains visible`() {
         val delayed = buildBatteryComplicationData(
             ComplicationType.SHORT_TEXT,
             68,
@@ -32,9 +60,7 @@ class MainComplicationDataTest {
             "Updated 3 min ago",
         ) as ShortTextComplicationData
 
-        assertNotNull(charging.title)
         assertNotNull(delayed.title)
-        assertNotEquals(charging.title, delayed.title)
     }
 
     @Test

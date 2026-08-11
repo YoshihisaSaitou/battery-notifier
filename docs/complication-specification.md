@@ -1,9 +1,9 @@
 # コンプリケーション仕様書
 
 文書ID: CPS-001  
-版: 0.2
+版: 0.3
 状態: Approved
-最終更新: 2026-08-10
+最終更新: 2026-08-11
 
 ## 1. 目的と制約
 
@@ -43,6 +43,7 @@
 | 通常 | 上記以外 | `battery_full` |
 
 - 判定順序は充電中、低残量、通常とし、20%以下で充電中の場合は充電中アイコンを優先する。
+- 充電中の表示用title文字列は設定しない。充電状態はアイコンとcontent descriptionで伝え、TalkBack等の読み上げ情報からは削除しない。
 - 20%はコンプリケーション表示の固定境界であり、ユーザーが変更できる通知しきい値とは独立する。
 - Google公式Material Symbols Roundedの24px geometryをVector DrawableとしてWearアプリへ同梱する。単色コンプリケーション用に色指定だけを固定し、path geometryは変更しない。Material icon library全体への実行時依存は追加しない。
 - `MonochromaticImage`の通常画像とambient画像へ同じburn-in safeな単色vectorを設定し、最終tintはウォッチフェイスへ委ねる。
@@ -52,7 +53,7 @@
 | 状態 | 全対応型のtext | 状態別icon | Content description |
 |---|---|---|---|
 | Fresh通常 | `68%` | `battery_full` | `スマートフォンの電池残量68%`相当 |
-| Fresh充電中 | `68%` | `battery_charging_full` | 残量と充電中を読む |
+| Fresh充電中 | `68%`（充電中titleなし） | `battery_charging_full` | 残量と充電中を読む |
 | Fresh低残量 | `20%` | `battery_alert` | 残量と非充電状態を読む |
 | Delayed | 値を維持 | 充電/低残量/通常判定を維持 | 最終更新が遅れていることを含める |
 | Stale | `68%!` | 充電/低残量/通常判定を維持 | 古い可能性と最終更新時刻を含める |
@@ -92,6 +93,7 @@
 - Pixel Watch 4の41mm/45mmで、少なくともGoogle提供の対応ウォッチフェイス1種ずつに追加できる。
 - RANGED_VALUE、SHORT_TEXT、LONG_TEXTのスロットで正しい値と状態別アイコンを返す。
 - 21%/20%の非充電境界と、20%以下で充電中の充電優先を確認する。
+- 全対応型で充電中の表示用titleがなく、content descriptionでは充電中と読み上げられることを確認する。
 - WFF v1～5の検証用フェイスで対応型のデータフィールドを参照できることを確認する。
 - データ未受信、Stale、充電中、監視停止を確認する。
 - 値更新後にウォッチフェイスが更新され、タップでW-001が開く。

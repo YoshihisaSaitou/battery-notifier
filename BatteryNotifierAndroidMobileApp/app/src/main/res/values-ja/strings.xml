@@ -62,6 +62,8 @@
     <string name="full_charge_notification_description">充電中にスマートフォンが100%になったとき、この端末とペア設定済みウォッチへ1回通知します。</string>
     <string name="full_charge_reached_title">スマートフォンの充電が完了しました</string>
     <string name="full_charge_reached_body">電池残量が100%になりました。</string>
+    <string name="ad_privacy_options">プライバシー設定</string>
+    <string name="ad_privacy_options_description">広告のプライバシー設定を確認・変更します。</string>
     <string name="complication_stale_explanation_title">ウォッチフェイスの「!」について</string>
     <string name="complication_stale_explanation_body">ウォッチフェイスの電池残量に「!」が付いている場合、表示中のスマートフォンの電池残量は古い可能性があります。最後の更新から5分を超えたか、スマートフォンとウォッチの時刻にずれがあります。接続と時刻を確認し、必要に応じて「今すぐ同期」を実行してください。</string>
 </resources>

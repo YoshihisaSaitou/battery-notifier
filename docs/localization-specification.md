@@ -1,9 +1,9 @@
 # 多言語対応仕様書
 
 文書ID: L10N-001  
-版: 0.4
+版: 0.5
 状態: Draft  
-最終更新: 2026-08-11
+最終更新: 2026-08-12
 
 ## 1. 対応言語
 
@@ -59,6 +59,8 @@ threshold_not_saved
 threshold_conflict
 retry_threshold_change
 threshold_slider_description
+ad_privacy_options
+ad_privacy_options_description
 full_charge_notification
 full_charge_notification_description
 full_charge_reached_title
@@ -89,6 +91,8 @@ retry_full_charge_setting_change
 | 満充電通知 | 満充電になったら通知 | Notify when fully charged |
 | 満充電 | 充電が完了しました | Fully charged |
 | Stale記号の説明 | ウォッチフェイスの「!」について。最後の更新から5分超または時刻ずれで、表示値が古い可能性を示す | About the watch-face “!”. It means the displayed value may be outdated after more than five minutes or when the device clocks differ |
+| 広告のプライバシー選択 | プライバシー設定 | Privacy options |
+| 広告のプライバシー説明 | 広告のプライバシー設定を確認・変更します。 | Review or change your ad privacy choices. |
 
 BN-002では要求payloadと結果payloadに完成済み文言を含めず、Wearが現在のLocaleで編集、送信中、適用済み、未保存、競合、拒否、再試行の文言を組み立てる。
 
@@ -101,6 +105,7 @@ BN-004の満充電イベントおよび設定要求payloadにも完成済み文�
 - 時刻は端末の12/24時間設定、日付はLocaleへ従う。
 - 「接続なし」と「同期が古い」を同じ文言にしない。
 - `!`の説明はMobile/Wearとも常時表示し、条件だけでなく接続・時刻確認と各端末の手動同期操作まで一つの説明として伝える。
+- UMPがprivacy options entry pointを必要と判定した場合だけ、アプリ側の日英説明と操作を表示する。Google提供の同意フォーム本文はアプリのstring resourceで再実装しない。
 
 ## 5. 文字長とレイアウト
 
@@ -124,3 +129,4 @@ BN-004の満充電イベントおよび設定要求payloadにも完成済み文�
 - 通知、Tile、コンプリケーション、TalkBack読み上げを日英で確認する。
 - フォント最大、疑似ローカライズ、24時間/12時間表記を確認する。
 - 全Localeでformat引数の型と個数が一致することをLintで確認する。
+- UMPのprivacy options導線を日英・最大フォント・TalkBackで確認し、広告がない状態でも不要な空白や未翻訳のアプリ文言がないことを確認する。

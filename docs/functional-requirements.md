@@ -1,9 +1,9 @@
 # 機能要件仕様書
 
 文書ID: FRS-001  
-版: 0.6
+版: 0.7
 状態: Draft  
-最終更新: 2026-08-11
+最終更新: 2026-08-12
 
 ## 1. 前提
 
@@ -129,18 +129,32 @@
 | FR-075 | Mobileの通知しきい値編集は、左の減少ボタン、中央のスライダー、右の増加ボタンを同じ操作行へ配置し、スライダー直下には数値目盛りを表示しない。スライダーと減少・増加は5～100%を1%刻みで操作・読み上げでき、各ボタンは48dp以上のタップ領域と日英の読み上げラベルを持つ |
 | FR-076 | MobileとWearのメイン画面末尾に、ウォッチフェイスの電池残量へ`!`が付くのは最後の有効な更新から5分を超えた場合または端末間の時刻にずれがある場合で、表示値が古い可能性を示すことを平易な日英文で常時表示する。Mobileでは`今すぐ同期 / Sync now`、Wearでは`同期を再試行 / Retry sync`へ案内する |
 
+### 2.9 Mobile広告と同意
+
+| ID | 要件 |
+|---|---|
+| FR-077 | Mobileの単一画面最下部へGoogle AdMobのanchored adaptive bannerを1枠だけ配置する。バナーはScaffoldのbottom barとしてスクロール内容とシステムnavigation領域を覆わず、現在の利用可能幅から広告サイズを算出する |
+| FR-078 | UMPの同意情報を各Mobile起動時に更新し、必要な同意フォームを表示する。`canRequestAds`がtrueになる前はGoogle Mobile Ads SDKを初期化せず、広告を要求せず、空の広告領域も確保しない。更新またはフォーム処理が失敗した場合も、保存済み同意による`canRequestAds`がfalseなら広告なしで本来機能を継続する |
+| FR-079 | UMPがprivacy options entry pointを必要と判定した場合、Mobile画面に日英の「プライバシー設定 / Privacy options」操作を表示し、ユーザーが選択を再表示・変更できるようにする。変更後は最新の`canRequestAds`を再評価し、falseなら表示中の広告を破棄する |
+| FR-080 | debugビルドはGoogle公式demo application ID `ca-app-pub-3940256099942544~3347511713`とdemo banner ID `ca-app-pub-3940256099942544/9214589741`だけを使用する。releaseビルドはproduction application ID `ca-app-pub-9265284608955761~9984708322`とproduction banner ID `ca-app-pub-9265284608955761/2408053327`を使用する |
+| FR-081 | bannerの生成と`loadAd()`はmain threadで行い、Compositionから外れた広告Viewは`destroy()`する。画面再構成で同じ表示枠から重複要求を作らず、広告の読込失敗はアプリの監視、設定、同期、通知を失敗させない |
+| FR-082 | 広告はMobileだけに表示し、Wear、Tile、コンプリケーション、通知へ表示しない。アプリ独自の分析イベント、広告クリック記録、広告ID・端末IDのDataStore保存、ログ出力、Wear Data Layer送信を追加しない |
+
 ## 3. 非機能要件
 
 | ID | 要件 |
 |---|---|
 | NFR-010 | Mobile/Wearのdomain層はAndroidフレームワークに依存せずJVM単体テスト可能とする |
 | NFR-011 | 電池イベント処理は冪等であり、同じ入力を複数回処理しても結果を重複させない |
-| NFR-012 | 個人データ、広告ID、位置情報、アカウント情報を収集しない |
-| NFR-013 | 外部分析SDKをv1.0へ導入しない |
+| NFR-012 | Battery Notifier自身は個人データ、広告ID、位置情報、アカウント情報を保存・ログ出力・Wear送信しない。MobileのGoogle Mobile Ads SDKが広告配信に用いるデータ処理は、同意状態、GoogleのSDK仕様、ユーザーのOS設定、AdMob設定に従い、プライバシー表示とGoogle Play申告の対象にする |
+| NFR-013 | 外部分析SDKまたはクラッシュ収集SDKをv1.0へ導入しない。承認済み例外はMobileのGoogle Mobile Ads SDKとUMP SDKによる広告配信・同意管理に限定する |
 | NFR-014 | Data Layer payloadは1KB程度を目標とし、100KB上限へ近づけない |
 | NFR-015 | ログに端末識別子を出力せず、イベントIDはランダムUUIDを使用する |
 | NFR-016 | 折りたたみ・展開中のActivity再生成やウィンドウサイズ変更で設定入力を失わない |
 | NFR-017 | Wearの41mm/45mm、フォント拡大で主要情報と操作が欠けない |
+| NFR-018 | 同意が未確定・拒否・取得不能でも、広告以外の全Mobile機能を利用でき、広告要求を開始しない |
+| NFR-019 | debug成果物にproduction広告IDを含めず、release成果物だけが指定production IDを含む。自動・エミュレーター・開発者による確認でproduction広告を読み込んだりクリックしたりしない |
+| NFR-020 | バナー表示中もPixel 10 Pro Foldの外側/内側/分割画面、日英、最大フォント、TalkBackでスクロール内容と主要操作が欠けず、広告領域をコンテンツと誤認させる独自UIを重ねない |
 
 ## 4. 受け入れ条件
 
@@ -176,6 +190,10 @@
 | AC-028 | PR-005, FR-056, FR-057, FR-058 | Given WFF v1～5の検証用フェイスに対応型スロットがある、When `SHORT_TEXT`、`RANGED_VALUE`、`LONG_TEXT`で通常、充電中、低残量、Stale、No Dataを要求、Then 各型が仕様どおりのデータフィールドと日英content descriptionを受け取り、ウォッチフェイス固有の配置・tintで描画できる |
 | AC-029 | PR-005, FR-050, FR-059 | Given 対応ウォッチフェイスのコンプリケーション追加画面、When 対応スロットのデータソース一覧を開く、Then Battery Notifierの名前とアプリアイコンと同じシルエットの単色アイコンが表示され、選択後のスロット内では実際の状態別アイコンが使用される |
 | AC-030 | PR-006, PR-010, FR-031, FR-057, FR-070, FR-071, FR-076 | Given MobileまたはWearのメイン画面を日英で表示、When 画面末尾までスクロール、Then `!`が古い可能性を示すこと、5分超または時刻ずれで付くこと、接続・時刻の確認、および端末に対応する手動同期操作が読み切れる文言で常時表示され、TalkBackでも意味順に読める |
+| AC-031 | PR-016, FR-077, FR-081, NFR-020 | Given 広告要求可能なMobile、When 外側/内側/分割画面で画面を表示・リサイズ、Then 画面幅へ追従するanchored adaptive bannerが最下部に1枠表示され、スクロール内容、主要操作、navigation領域を覆わず、離脱時に広告Viewが破棄される |
+| AC-032 | FR-078, FR-079, NFR-018 | Given 初回または同意更新が必要なMobile、When 起動して同意を許可・拒否・dismiss・通信失敗の各状態にする、Then UMP更新と必要なフォームを先に処理し、`canRequestAds=false`ではSDK初期化・広告要求・広告余白がなく本来機能を利用でき、privacy optionsが必要な場合は日英の再表示操作を利用できる |
+| AC-033 | FR-080, NFR-019 | Given debug/release成果物、When manifestとbanner IDを検査、Then debugはGoogle demo application/banner IDだけ、releaseは指定production application/banner IDだけを保持し、開発中にproduction広告要求を行わない |
+| AC-034 | FR-082, NFR-012, NFR-013 | Given Mobile広告を導入済み、When Mobile/Wearのmanifest、DataStore、Data Layer、ログ契約を検査、Then広告SDKとUMPはMobileだけにあり、広告ID・端末ID・クリックをアプリ独自に保存・送信・記録せず、分析/クラッシュSDKを追加していない |
 
 ## 5. トレーサビリティ
 

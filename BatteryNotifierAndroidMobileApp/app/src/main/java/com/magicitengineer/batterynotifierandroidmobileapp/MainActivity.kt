@@ -53,6 +53,9 @@ import com.magicitengineer.batterynotifierandroidmobileapp.presentation.Threshol
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.notificationPermissionUiState
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.batteryAlertNotificationsEnabled
 import com.magicitengineer.batterynotifierandroidmobileapp.platform.notification.AndroidMobileAlertNotificationFactory
+import com.magicitengineer.batterynotifierandroidmobileapp.platform.ads.GoogleMobileAdsConsentManager
+import com.magicitengineer.batterynotifierandroidmobileapp.platform.ads.MobileAdsConsentState
+import com.magicitengineer.batterynotifierandroidmobileapp.presentation.AdMobBanner
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.toManualSyncUiState
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.toPresentation
 import com.magicitengineer.batterynotifierandroidmobileapp.presentation.toMonitoringCommandUiState
@@ -66,7 +69,11 @@ import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     private var notificationsEnabled by mutableStateOf(false)
+    private var privacyOptionsRequired by mutableStateOf(false)
     private var batteryAlertChannelDisabled = false
+    private val mobileAdsConsentManager by lazy {
+        GoogleMobileAdsConsentManager(this)
+    }
     private val thresholdSettingsController by lazy {
         MobileAppContainer.thresholdSettingsController(this)
     }
@@ -78,10 +85,18 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         refreshNotificationPermissionState()
+        mobileAdsConsentManager.gatherConsent(
+            activity = this,
+            onStateChanged = ::onMobileAdsConsentStateChanged,
+        )
         enableEdgeToEdge()
         setContent {
             BatteryNotifierAndroidMobileAppTheme {
                 val scope = rememberCoroutineScope()
+                val mobileAdsState by (application as BatteryNotifierApplication)
+                    .mobileAdsGate
+                    .state
+                    .collectAsState()
                 val loadedSettings by thresholdSettingsController.state.collectAsState(
                     initial = null
                 )
@@ -176,8 +191,16 @@ class MainActivity : ComponentActivity() {
                                     )
                                 NotificationPermissionUiState.ENABLED,
                                 NotificationPermissionUiState.SETTINGS_REQUIRED ->
-                                    openNotificationSettings()
+                                openNotificationSettings()
                             }
+                        },
+                        showAdBanner = mobileAdsState.showBanner,
+                        showPrivacyOptions = privacyOptionsRequired,
+                        onPrivacyOptions = {
+                            mobileAdsConsentManager.showPrivacyOptions(
+                                activity = this@MainActivity,
+                                onStateChanged = ::onMobileAdsConsentStateChanged,
+                            )
                         },
                     )
                 }
@@ -218,6 +241,12 @@ class MainActivity : ComponentActivity() {
             appNotificationsEnabled = manager.areNotificationsEnabled(),
             batteryAlertChannelEnabled = !batteryAlertChannelDisabled,
         )
+    }
+
+    private fun onMobileAdsConsentStateChanged(state: MobileAdsConsentState) {
+        privacyOptionsRequired = state.privacyOptionsRequired
+        (application as BatteryNotifierApplication)
+            .updateMobileAdsConsent(state.canRequestAds)
     }
 
     private fun openNotificationSettings() {
@@ -270,8 +299,18 @@ internal fun SettingsAndSyncScreen(
     onMonitoringToggle: () -> Unit,
     onFullChargeNotificationToggle: (Boolean) -> Unit,
     onNotificationPermissionAction: () -> Unit,
+    showAdBanner: Boolean = false,
+    showPrivacyOptions: Boolean = false,
+    onPrivacyOptions: () -> Unit = {},
 ) {
-    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        bottomBar = {
+            if (showAdBanner) {
+                AdMobBanner(adUnitId = BuildConfig.ADMOB_BANNER_AD_UNIT_ID)
+            }
+        },
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -438,6 +477,17 @@ internal fun SettingsAndSyncScreen(
 
             HorizontalDivider()
 
+            if (showPrivacyOptions) {
+                Text(text = stringResource(R.string.ad_privacy_options_description))
+                Button(
+                    modifier = Modifier.testTag(PRIVACY_OPTIONS_BUTTON_TEST_TAG),
+                    onClick = onPrivacyOptions,
+                ) {
+                    Text(text = stringResource(R.string.ad_privacy_options))
+                }
+                HorizontalDivider()
+            }
+
             Text(
                 text = stringResource(R.string.complication_stale_explanation_title),
                 style = MaterialTheme.typography.titleMedium,
@@ -448,6 +498,7 @@ internal fun SettingsAndSyncScreen(
 }
 
 internal const val THRESHOLD_SAVE_BUTTON_TEST_TAG = "threshold-save-button"
+internal const val PRIVACY_OPTIONS_BUTTON_TEST_TAG = "privacy-options-button"
 
 private fun ThresholdSaveUiState.messageResource(): Int = when (this) {
     ThresholdSaveUiState.IDLE -> R.string.threshold_save_idle

@@ -1,0 +1,613 @@
+schema_version: 1
+
+work_item:
+  id: "BN-010"
+  slug: "bn-010-mobile-admob-banner"
+  title: "Mobile bottom AdMob banner"
+  scope: >-
+    Add one consent-gated anchored adaptive AdMob banner to the bottom of the
+    Mobile app screen, using Google demo identifiers in debug builds and the
+    human-provided production application and banner ad-unit identifiers only
+    in release builds. Keep Wear unchanged and document privacy, distribution,
+    localization, testing, and lifecycle behavior.
+
+status: "awaiting_human"
+current_phase: "human_verification"
+current_role: "human"
+current_actor:
+  type: "human"
+  id: "human"
+
+last_transition:
+  from_phase: "test"
+  to_phase: "human_verification"
+  reason: >-
+    Automated Test evidence passed for TC-U044..046 and TC-E103, the complete
+    Mobile JVM suites, lint, Android-test compilation, and Debug/Release
+    assembly. A Pixel 10 Pro Fold is connected, but it was not modified or used
+    for Human-owned install, consent, ad-network, visual, locale, font-scale, or
+    TalkBack checks. TC-E099..102 remain explicitly Not Run.
+
+spec_refs:
+  - "docs/product-requirements.md"
+  - "docs/functional-requirements.md"
+  - "docs/permissions-and-privacy-specification.md"
+  - "docs/screen-specification-and-navigation.md"
+  - "docs/localization-specification.md"
+  - "docs/system-architecture-design.md"
+  - "docs/architecture-decision-records.md"
+  - "docs/test-plan-and-cases.md"
+
+affected_components:
+  - "BatteryNotifierAndroidMobileApp build configuration"
+  - "BatteryNotifierAndroidMobileApp manifest"
+  - "BatteryNotifierAndroidMobileApp presentation and AdMob platform adapter"
+  - "Mobile English and Japanese resources"
+  - "docs"
+
+traceability:
+  product_requirements:
+    - "PR-016"
+  functional_requirements:
+    - "FR-077"
+    - "FR-078"
+    - "FR-079"
+    - "FR-080"
+    - "FR-081"
+    - "FR-082"
+  nonfunctional_requirements:
+    - "NFR-018"
+    - "NFR-019"
+    - "NFR-020"
+  acceptance_criteria:
+    - "AC-031"
+    - "AC-032"
+    - "AC-033"
+    - "AC-034"
+  test_cases:
+    - "TC-U044"
+    - "TC-U045"
+    - "TC-U046"
+    - "TC-E099"
+    - "TC-E100"
+    - "TC-E101"
+    - "TC-E102"
+    - "TC-E103"
+  architecture_decisions:
+    - "ADR-017"
+
+transition_matrix:
+  authoritative_writer: >-
+    UMP is authoritative for consent and privacy-options requirement. The
+    process-local MobileAdsGate is authoritative only for SDK initialization
+    progress and derived banner visibility; no BN-010 state is persisted.
+  persistence_boundary: >-
+    None. UMP/Google SDKs own their internal consent storage. Battery Notifier
+    Proto DataStore, Wear Data Layer, and saved instance state do not store ad
+    IDs, consent strings, or initialization state.
+  states:
+    consent: ["cannot_request", "can_request"]
+    initialization: ["not_started", "initializing", "ready", "failed"]
+    banner: ["hidden", "visible"]
+  invariants:
+    - "banner visible iff consent=can_request and initialization=ready"
+    - "initialization starts at most once per application process"
+    - "consent=false never starts SDK initialization and always hides/destroys the banner"
+    - "initialization failure keeps the banner hidden and never blocks battery features"
+    - "Activity recreation observes the application-process gate and does not start a duplicate initialization"
+  transitions:
+    - input: "consent update false or revoked"
+      from: "any initialization state"
+      to: "consent=cannot_request; initialization unchanged; banner=hidden"
+      side_effect: "destroy composed AdView; no MobileAds initialization or ad request"
+    - input: "first consent update true"
+      from: "initialization=not_started"
+      to: "consent=can_request; initialization=initializing; banner=hidden"
+      side_effect: "start MobileAds.initialize exactly once"
+    - input: "duplicate consent update true"
+      from: "initialization=initializing, ready, or failed"
+      to: "initialization unchanged; banner visible only when ready"
+      side_effect: "no duplicate initialization"
+    - input: "MobileAds initialization callback"
+      from: "initialization=initializing"
+      to: "initialization=ready; banner visible only if consent remains can_request"
+      side_effect: "compose one banner, whose factory performs one main-thread loadAd"
+    - input: "MobileAds initialization throws"
+      from: "initialization=initializing"
+      to: "initialization=failed; banner=hidden"
+      side_effect: "no retry in the same process; battery features continue"
+    - input: "Activity/configuration recreation"
+      from: "any process-local gate state"
+      to: "same application gate state; banner re-composed only when derived visible"
+      side_effect: "old AdView destroyed; no duplicate SDK initialization"
+    - input: "process recreation"
+      from: "process terminated"
+      to: "initialization=not_started; banner=hidden until fresh UMP update"
+      side_effect: "perform the launch consent flow again"
+
+phase_tasks:
+  specification:
+    status: "complete"
+    tasks:
+      - "Specify Mobile-only anchored adaptive bottom-banner placement."
+      - "Specify consent gating, privacy-options access, and no-ad fallback."
+      - "Specify debug demo IDs and release production IDs."
+      - "Update privacy, architecture, localization, and test contracts."
+  implementation:
+    status: "complete"
+    tasks:
+      - "Add Google Mobile Ads and UMP dependencies and build-variant IDs."
+      - "Add manifest application ID and Mobile ad/consent integration."
+      - "Add bottom banner and localized privacy-options UI."
+      - "Add deterministic contract and UI tests."
+  review:
+    status: "complete"
+    tasks:
+      - "Independently inspect privacy gating, variant isolation, lifecycle, and layout."
+  test:
+    status: "complete"
+    tasks:
+      - "Run targeted tests, Mobile unit tests, lint, and build variants."
+      - "Record emulator/device cases separately from automated evidence."
+  human_verification:
+    status: "awaiting_human"
+    tasks:
+      - "Verify Pixel 10 Pro Fold layouts and consent/privacy flows."
+      - "Approve AdMob console messages, privacy policy, Data safety, audience, and release use of production IDs."
+
+decisions_needed:
+  - id: "DEC-BN010-001"
+    status: "human_verification_required"
+    decision: >-
+      Before production distribution, the human must confirm the AdMob Privacy
+      & messaging configuration, child-directed/under-age declarations, app
+      privacy policy, Google Play Data safety and ads declarations, and that the
+      supplied production IDs belong to this application.
+
+blockers: []
+
+review_findings:
+  - id: "RV-BN010-001"
+    severity: "medium"
+    status: "verified_fixed"
+    file: >-
+      BatteryNotifierAndroidMobileApp/app/src/main/java/com/magicitengineer/
+      batterynotifierandroidmobileapp/presentation/AdMobBanner.kt:29
+    requirement: "FR-077, AC-031, RISK-BN010-002"
+    scenario: >-
+      MainActivity enables edge-to-edge and supplies AdMobBanner as a custom
+      Scaffold bottomBar. Material Scaffold expects a present bottomBar to
+      handle its own insets, but AdMobBanner only fills width and does not apply
+      navigationBarsPadding or safeDrawing bottom inset. On three-button or
+      gesture navigation configurations, the banner can extend into system
+      navigation/gesture space.
+    required_outcome: >-
+      Apply the relevant bottom system-navigation inset to the custom banner
+      container without adding pre-load empty space, and add an automated source
+      or Compose contract that fails if the inset handling is removed.
+    evidence: >-
+      Code inspection plus Android Material3 Scaffold API documentation reviewed
+      2026-08-12: contentWindowInsets do not handle bottom insets when bottomBar
+      is present because the bottomBar is expected to do so.
+    implementation_fix: >-
+      AdMobBanner applies navigationBarsPadding to AndroidView inside the
+      isLoaded branch. No padding is applied to the unloaded BoxWithConstraints,
+      so FR-078's no-preload-space rule remains intact.
+    implementation_evidence: >-
+      AdMobConfigurationContractTest 4/4; lintDebug XML 0 errors/25 warnings;
+      compileDebugAndroidTestKotlin and assembleDebug Gradle success; search
+      found MainActivity as the only custom bottomBar and AdMobBanner as its
+      inset-owning child; git diff --check passed.
+    review_verification: >-
+      Review confirmed the inset is inside the isLoaded AndroidView modifier,
+      the unloaded container remains zero-height, MainActivity has the only
+      custom bottomBar, and the regression source contract passes 4/4.
+
+risks:
+  - id: "RISK-BN010-001"
+    severity: "high"
+    status: "open"
+    description: >-
+      A production ad request before required consent or with incomplete AdMob
+      console messaging could violate privacy or advertising policy.
+    mitigation: >-
+      Gate SDK initialization and banner requests on UMP canRequestAds, expose
+      privacy options when required, use demo IDs in debug, and keep production
+      release approval with the human.
+  - id: "RISK-BN010-002"
+    severity: "medium"
+    status: "open"
+    description: >-
+      A fixed banner could obscure scroll content or system navigation on fold,
+      split-screen, maximum-font, or edge-to-edge layouts.
+    mitigation: >-
+      Place the banner in Scaffold bottomBar using current-width anchored
+      adaptive sizing and verify content remains scrollable above it.
+  - id: "RISK-BN010-003"
+    severity: "medium"
+    status: "open"
+    description: >-
+      Loading or clicking production ads during development can create invalid
+      traffic and place the AdMob account at risk.
+    mitigation: >-
+      Compile Google demo application and banner IDs into debug builds and the
+      supplied production IDs into release builds only.
+
+evidence:
+  - id: "EV-BN010-001"
+    phase: "specification"
+    kind: "human_instruction"
+    result: "approved"
+    detail: >-
+      Human requested Google AdMob at the bottom of the smartphone screen and
+      supplied application ID ca-app-pub-9265284608955761~9984708322 and banner
+      ad-unit ID ca-app-pub-9265284608955761/2408053327.
+    recorded_at: "2026-08-12T09:17:27+09:00"
+  - id: "EV-BN010-002"
+    phase: "specification"
+    kind: "official_documentation_review"
+    result: "reviewed"
+    detail: >-
+      Google Mobile Ads Android quick start, anchored adaptive banner, UMP, and
+      EU consent guidance were reviewed on 2026-08-12. Current documented
+      dependencies are play-services-ads 25.4.0 and user-messaging-platform
+      4.0.0; debug testing must use demo ads; canRequestAds must gate requests.
+    recorded_at: "2026-08-12T09:17:27+09:00"
+  - id: "EV-BN010-003"
+    phase: "specification"
+    kind: "specification_gate"
+    result: "pass"
+    detail: >-
+      Eight normative documents now define Mobile-only AdMob scope, UMP consent
+      gating, privacy-options access, adaptive bottom layout, debug demo IDs,
+      release production IDs, lifecycle cleanup, privacy boundaries, acceptance
+      criteria, and automated/human test separation. Traceability search passed.
+    recorded_at: "2026-08-12T09:21:18+09:00"
+  - id: "EV-BN010-004"
+    phase: "implementation"
+    kind: "diagnostic_failure"
+    result: "fail"
+    detail: >-
+      Targeted TC-U044..046 compilation failed before tests: play-services-ads
+      25.4.0 contains Kotlin metadata 2.3.0 while the project used Kotlin
+      2.0.21; AdView.adListener is non-null in the current SDK and rejected a
+      null assignment during disposal. The preceding JAVA_HOME and sandbox
+      network failures were environment blockers, not implementation attempts.
+    recorded_at: "2026-08-12T09:29:31+09:00"
+  - id: "EV-BN010-005"
+    phase: "implementation"
+    kind: "targeted_test"
+    result: "pass"
+    detail: >-
+      With Android Studio JBR and no-daemon/single-worker execution,
+      MobileAdsGateTest passed 4/4 and AdMobConfigurationContractTest passed
+      3/3. XML reports contain zero failures, errors, or skipped tests.
+    command: >-
+      .\gradlew.bat --no-daemon --max-workers=1 --console=plain
+      testDebugUnitTest --tests *MobileAdsGateTest --tests
+      *AdMobConfigurationContractTest
+    recorded_at: "2026-08-12T09:42:50+09:00"
+  - id: "EV-BN010-006"
+    phase: "implementation"
+    kind: "mobile_unit_gate"
+    result: "pass"
+    detail: >-
+      Full Mobile JVM suites passed for both variants: Debug 116/116 and
+      Release 116/116, with zero failures, errors, or skipped tests in 25 suites
+      per variant.
+    command: ".\gradlew.bat --no-daemon --max-workers=1 --console=plain test"
+    recorded_at: "2026-08-12T09:49:20+09:00"
+  - id: "EV-BN010-007"
+    phase: "implementation"
+    kind: "mobile_lint_gate"
+    result: "pass"
+    detail: >-
+      Mobile lint completed successfully. lint-results-debug.xml contains zero
+      errors and 25 warnings; warnings are dependency-update, existing API or
+      unused-resource advisories and do not include a BN-010 correctness error.
+    command: ".\gradlew.bat --no-daemon --max-workers=1 --console=plain lint"
+    recorded_at: "2026-08-12T09:54:26+09:00"
+  - id: "EV-BN010-008"
+    phase: "implementation"
+    kind: "android_test_compile_and_assemble"
+    result: "pass"
+    detail: >-
+      compileDebugAndroidTestKotlin and assembleDebug completed successfully;
+      app-debug.apk is 41,949,631 bytes. assembleRelease completed successfully
+      offline; app-release-unsigned.apk is 32,116,618 bytes. The earlier combined
+      and release-only commands timed out and were not used as Pass evidence.
+    commands:
+      - >-
+        .\gradlew.bat --offline --no-daemon --max-workers=1 --console=plain
+        compileDebugAndroidTestKotlin assembleDebug
+      - >-
+        .\gradlew.bat --offline --no-daemon --max-workers=1 --console=plain
+        assembleRelease
+    recorded_at: "2026-08-12T10:12:32+09:00"
+  - id: "EV-BN010-009"
+    phase: "implementation"
+    kind: "variant_artifact_inspection"
+    result: "pass"
+    detail: >-
+      Generated Debug manifest/BuildConfig contain only Google demo IDs;
+      generated Release manifest/BuildConfig contain only the human-supplied
+      production IDs. The merged manifest contains INTERNET,
+      ACCESS_NETWORK_STATE, and AD_ID from the Mobile Ads SDK.
+    recorded_at: "2026-08-12T10:12:32+09:00"
+  - id: "EV-BN010-010"
+    phase: "implementation"
+    kind: "review_fix_verification_handoff"
+    result: "pass"
+    detail: >-
+      RV-BN010-001 implementation applied navigationBarsPadding only after the
+      banner loads. Targeted contract passed 4/4, lintDebug XML has zero errors,
+      androidTest source compilation and Debug assemble succeeded, sibling
+      bottomBar scope was inspected, and diff check passed.
+    recorded_at: "2026-08-12T10:24:13+09:00"
+  - id: "EV-BN010-011"
+    phase: "review"
+    kind: "review_gate"
+    result: "pass"
+    detail: >-
+      Reviewed FR-077..082 and transition-matrix permutations, generated
+      Debug/Release IDs, UMP consent/error flow, application-process
+      initialization, configuration/process recreation, loaded/unloaded AdView
+      lifetime, Mobile-only dependencies, no app tracking/storage/logging,
+      localization, and test assertions. RV-BN010-001 is verified fixed; no open
+      Critical, High, Medium, or Low findings remain.
+    recorded_at: "2026-08-12T10:25:22+09:00"
+  - id: "EV-BN010-012"
+    phase: "test"
+    kind: "test_gate"
+    result: "pass"
+    detail: >-
+      Reconciled current XML, lint, generated manifest/BuildConfig, and APK
+      evidence. TC-U044..046 and TC-E103 pass; Mobile Debug/Release unit suites,
+      lint, Android-test source compilation, and Debug/Release assembly pass.
+      ADB detected a Pixel 10 Pro Fold and a Wear emulator. No device was
+      modified: TC-E099..102 remain Not Run for Human runtime verification.
+    recorded_at: "2026-08-12T10:29:04+09:00"
+
+test_results:
+  - id: "TC-U044"
+    status: "pass"
+    evidence: "AdMobConfigurationContractTest 4/4 including variant, Mobile-only, and loaded-only navigation-inset contracts"
+    recorded_at: "2026-08-12T10:24:13+09:00"
+  - id: "TC-U045"
+    status: "pass"
+    evidence: "MobileAdsGateTest 4/4 including duplicate, revoke/regrant, failure, and late-callback order"
+    recorded_at: "2026-08-12T09:42:50+09:00"
+  - id: "TC-U046"
+    status: "pass"
+    evidence: "AdMobConfigurationContractTest localization and no app tracking/Mobile-only assertions"
+    recorded_at: "2026-08-12T09:42:50+09:00"
+  - id: "MOBILE-UNIT-DEBUG"
+    status: "pass"
+    evidence: "testDebugUnitTest 116/116; 0 failures, 0 errors, 0 skipped"
+    recorded_at: "2026-08-12T09:49:20+09:00"
+  - id: "MOBILE-UNIT-RELEASE"
+    status: "pass"
+    evidence: "testReleaseUnitTest 116/116; 0 failures, 0 errors, 0 skipped"
+    recorded_at: "2026-08-12T09:49:20+09:00"
+  - id: "MOBILE-LINT"
+    status: "pass"
+    evidence: "lint Gradle success; XML 0 errors and 25 warnings"
+    recorded_at: "2026-08-12T09:54:26+09:00"
+  - id: "MOBILE-ANDROIDTEST-COMPILE"
+    status: "pass"
+    evidence: "compileDebugAndroidTestKotlin Gradle success"
+    recorded_at: "2026-08-12T10:12:32+09:00"
+  - id: "MOBILE-ASSEMBLE-DEBUG"
+    status: "pass"
+    evidence: "app/build/outputs/apk/debug/app-debug.apk, 41,949,631 bytes"
+    recorded_at: "2026-08-12T10:12:32+09:00"
+  - id: "MOBILE-ASSEMBLE-RELEASE"
+    status: "pass"
+    evidence: "app/build/outputs/apk/release/app-release-unsigned.apk, 32,116,618 bytes"
+    recorded_at: "2026-08-12T10:12:32+09:00"
+  - id: "TC-E099"
+    status: "not_run"
+    evidence: "Pixel 10 Pro Fold detected by ADB, but no build was installed and no debug demo-ad request or Test Ad visual confirmation was performed"
+    recorded_at: "2026-08-12T10:29:04+09:00"
+  - id: "TC-E100"
+    status: "not_run"
+    evidence: "Requires Human-approved UMP debug geography/test-device consent, decline, dismissal, and unavailable-network runtime scenarios"
+    recorded_at: "2026-08-12T10:29:04+09:00"
+  - id: "TC-E101"
+    status: "not_run"
+    evidence: "Pixel 10 Pro Fold detected but not modified; outer, inner, split-screen, font-scale, Japanese/English, and TalkBack inspection remains Human-owned"
+    recorded_at: "2026-08-12T10:29:04+09:00"
+  - id: "TC-E102"
+    status: "not_run"
+    evidence: "Requires published/configured UMP privacy-options form and Human runtime interaction"
+    recorded_at: "2026-08-12T10:29:04+09:00"
+  - id: "TC-E103"
+    status: "pass"
+    evidence: >-
+      Unsigned Release APK generated; generated manifest/BuildConfig use only
+      production IDs and Mobile-only/no-app-tracking contract test passed
+    recorded_at: "2026-08-12T10:12:32+09:00"
+
+loop_control:
+  same_cause_failure_limit: 3
+  phase_return_limit: 5
+  current_failure_signature: null
+  consecutive_same_cause_failures: 0
+  total_phase_returns: 1
+  attempts:
+    - attempt: 1
+      cause_id: "BN010-KOTLIN-METADATA"
+      check: >-
+        .\gradlew.bat testDebugUnitTest --tests *MobileAdsGateTest --tests
+        *AdMobConfigurationContractTest
+      failure_signature: "Kotlin metadata 2.3.0, expected 2.0.0"
+      root_cause_hypothesis: >-
+        Google Mobile Ads 25.4.0 is compiled for Kotlin 2.3 while the Mobile
+        project still used Kotlin 2.0.21.
+      corrective_change: >-
+        Upgrade the independent Mobile project Kotlin and Compose compiler
+        plugins to official Kotlin 2.3.20, which supports the dependency's
+        metadata and the existing Gradle generation.
+      result: "fail"
+      result_detail: >-
+        Ads metadata compiled successfully, but Kotlin 2.3.20 stopped the build
+        because the project still used the removed kotlinOptions.jvmTarget
+        String DSL. No source compilation or test execution occurred.
+    - attempt: 1
+      cause_id: "BN010-ADLISTENER-NULLABILITY"
+      check: >-
+        .\gradlew.bat testDebugUnitTest --tests *MobileAdsGateTest --tests
+        *AdMobConfigurationContractTest
+      failure_signature: "Null cannot be a value of a non-null type AdListener"
+      root_cause_hypothesis: >-
+        Current SDK annotations expose AdView.adListener as non-null to Kotlin.
+      corrective_change: >-
+        Stop assigning null during disposal; destroy the detached AdView, which
+        is the required lifecycle boundary and releases its listener with it.
+      result: "pass"
+      result_detail: >-
+        The rerun no longer reported the non-null AdListener assignment error.
+    - attempt: 2
+      cause_id: "BN010-KOTLIN-METADATA"
+      check: >-
+        .\gradlew.bat testDebugUnitTest --tests *MobileAdsGateTest --tests
+        *AdMobConfigurationContractTest
+      failure_signature: "Using jvmTarget String is an error; migrate to compilerOptions DSL"
+      root_cause_hypothesis: >-
+        Kotlin 2.3.20 intentionally removed the legacy Android kotlinOptions
+        jvmTarget assignment used by this project.
+      corrective_change: >-
+        Replace only the Mobile module's kotlinOptions block with the typed
+        compilerOptions JvmTarget.JVM_11 DSL, preserving Java 11 bytecode.
+      result: "pass"
+      result_detail: >-
+        Targeted build and tests completed successfully; Kotlin 2.3.20 compiled
+        Ads 25.4.0 and the Mobile sources, and all seven targeted tests passed.
+  termination_reason: null
+  resume_condition: null
+
+handoff:
+  summary: >-
+    Test gate passed with four feature cases Pass and four runtime/device cases
+    Not Run. The Human must configure UMP/AdMob console policy, install the
+    identified Debug APK on the Pixel 10 Pro Fold, use only the SDK test ad,
+    verify consent/privacy and bottom layout behavior, and explicitly approve
+    or return the work item. The unsigned Release APK is build evidence only.
+  next_role: "human"
+  first_action: >-
+    Confirm AdMob console/privacy declarations, then install
+    BatteryNotifierAndroidMobileApp/app/build/outputs/apk/debug/app-debug.apk on
+    the Pixel 10 Pro Fold and execute TC-E099 before the remaining runtime cases.
+
+next_actions:
+  - "Human: confirm AdMob Privacy & messaging, audience flags, privacy policy, and Google Play ads/Data safety declarations."
+  - "Human: execute TC-E099..102 on Pixel 10 Pro Fold using Debug demo IDs; do not click a production ad."
+  - "Human: record build identity, layouts/locales/accessibility observations, policy decision, and explicit approval or rejection."
+
+progress_reporting:
+  format_version: 1
+  current:
+    timestamp: "2026-08-12T10:29:04+09:00"
+    work_item: "BN-010"
+    role: "human"
+    phase: "human_verification"
+    actor: "human"
+    status: "awaiting_human"
+    completed:
+      - "Created the BN-010 work item and recorded the human-approved Mobile-only AdMob scope."
+      - "Reviewed current official Google Mobile Ads, banner, UMP, and EU consent guidance."
+      - "Completed PR-016, FR-077..082, NFR-018..020, AC-031..034, ADR-017, and TC-U044..TC-E103 across all referenced specifications."
+      - "Implemented build variants, Ads/UMP dependencies, consent/init gate, platform consent manager, adaptive bottom banner, and localized privacy-options UI."
+      - "Passed TC-U044..046 targeted tests: 7/7 with zero failures, errors, or skips."
+      - "Passed complete Mobile JVM suites: Debug 116/116 and Release 116/116."
+      - "Passed Mobile lint with zero errors (25 advisory warnings)."
+      - "Passed androidTest source compilation and Debug/Release APK assembly; verified generated variant IDs and merged SDK permissions."
+      - "Fixed RV-BN010-001 with loaded-only navigationBarsPadding and passed its 4/4 contract plus affected gates."
+      - "Verified RV-BN010-001 fixed and passed Review with zero open findings."
+      - "Passed the Test gate: TC-U044..046 and TC-E103 Pass; TC-E099..102 remain explicitly Not Run."
+      - "Detected Pixel 10 Pro Fold and Wear emulator via ADB without modifying either device."
+    in_progress: []
+    next:
+      - "Human confirms AdMob/UMP policy setup and executes TC-E099..102 on Pixel 10 Pro Fold with the Debug demo-ad build."
+    checks:
+      - "Official Google documentation review: reviewed."
+      - "Specification traceability search: pass."
+      - "Implementation transition matrix recorded before production-code changes."
+      - "Targeted TC-U044..046: pass, 7/7."
+      - "Mobile JVM test: pass, Debug 116/116 and Release 116/116."
+      - "Mobile lint: pass, 0 errors and 25 warnings."
+      - "compileDebugAndroidTestKotlin: pass."
+      - "assembleDebug: pass."
+      - "assembleRelease: pass."
+      - "TC-E099..102: not_run; runtime/device evidence required."
+      - "Test gate: pass; Human handoff ready."
+    blockers:
+      - "Human runtime/device and distribution-policy approval are pending."
+  history:
+    - timestamp: "2026-08-12T09:17:27+09:00"
+      event: "specification_started"
+      role: "specification"
+      actor: "codex"
+      result: >-
+        New Mobile AdMob external-service scope recorded with consent, debug-ID,
+        release-compliance, layout, and privacy boundaries.
+    - timestamp: "2026-08-12T09:21:18+09:00"
+      event: "specification_to_implementation_handoff"
+      role: "specification"
+      actor: "codex"
+      result: >-
+        Specification gate passed with eight updated documents and complete
+        requirement, ADR, acceptance, and test traceability. Implementation is
+        authorized; production distribution compliance remains a Human gate.
+    - timestamp: "2026-08-12T09:42:50+09:00"
+      event: "targeted_implementation_tests_passed"
+      role: "implementation"
+      actor: "codex"
+      result: >-
+        Build-variant, Mobile-only/privacy, and transition-matrix tests passed
+        7/7 after upgrading Mobile Kotlin to 2.3.20 and migrating jvmTarget to
+        compilerOptions. Prior environment timeouts are not Pass evidence.
+    - timestamp: "2026-08-12T10:12:32+09:00"
+      event: "implementation_to_review_handoff"
+      role: "implementation"
+      actor: "codex"
+      result: >-
+        Implementation complete with unit, lint, androidTest compilation,
+        Debug/Release assembly, and generated-variant evidence. TC-E099..102
+        remain Not Run and production compliance remains a Human gate.
+    - timestamp: "2026-08-12T10:14:56+09:00"
+      event: "review_to_implementation_return"
+      role: "review"
+      actor: "codex"
+      result: >-
+        RV-BN010-001 Medium opened for missing navigation-system-bar inset on
+        the edge-to-edge custom bottomBar. Critical/High findings: 0; total
+        phase returns: 1/5.
+    - timestamp: "2026-08-12T10:24:13+09:00"
+      event: "implementation_to_review_fix_handoff"
+      role: "implementation"
+      actor: "codex"
+      result: >-
+        RV-BN010-001 fixed with loaded-only navigationBarsPadding. Targeted
+        contract 4/4, lintDebug zero errors, androidTest compilation, Debug
+        assembly, sibling-path inspection, and diff check passed.
+    - timestamp: "2026-08-12T10:25:22+09:00"
+      event: "review_to_test_handoff"
+      role: "review"
+      actor: "codex"
+      result: >-
+        Review gate passed. RV-BN010-001 verified fixed; open Critical/High/
+        Medium/Low findings are all zero. Runtime/device cases remain Not Run.
+    - timestamp: "2026-08-12T10:29:04+09:00"
+      event: "test_to_human_handoff"
+      role: "test"
+      actor: "codex"
+      result: >-
+        Test gate passed. TC-U044..046 and TC-E103 Pass; TC-E099..102 are Not
+        Run. A Pixel 10 Pro Fold and Wear emulator were detected but not
+        modified. Human owns console policy, installation, network/consent,
+        visual/accessibility checks, and final approval.
+
+last_updated:
+  timestamp: "2026-08-12T10:29:04+09:00"
+  actor: "codex"

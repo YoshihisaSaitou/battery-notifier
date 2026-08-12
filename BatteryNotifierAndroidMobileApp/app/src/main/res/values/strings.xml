@@ -63,6 +63,8 @@
     <string name="full_charge_notification_description">Notify this phone and the paired watch once when the phone reaches 100% in a charging session.</string>
     <string name="full_charge_reached_title">Phone is fully charged</string>
     <string name="full_charge_reached_body">Battery level reached 100%.</string>
+    <string name="ad_privacy_options">Privacy options</string>
+    <string name="ad_privacy_options_description">Review or change your ad privacy choices.</string>
     <string name="complication_stale_explanation_title">About the “!” on the watch face</string>
     <string name="complication_stale_explanation_body">When “!” appears after the battery percentage on the watch face, the displayed phone battery level may be outdated. This happens when more than five minutes have passed since the last update or the phone and watch clocks differ. Check the connection and clocks, then use Sync now if needed.</string>
 </resources>

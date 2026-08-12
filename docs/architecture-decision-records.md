@@ -1,8 +1,8 @@
 # ADR（アーキテクチャ決定記録）
 
 文書ID: ADR-INDEX  
-版: 0.1  
-最終更新: 2026-08-09
+版: 0.2
+最終更新: 2026-08-12
 
 ## 運用
 
@@ -174,3 +174,15 @@ handoff_notes: ""
 - **イベント互換性**: 満充電イベントは低残量イベントとは別の固定DataItem pathを使い、phone-stateのbooleanはBN-004以前のpayloadで欠落可能な任意fieldとしてfalseへfallbackする。
 - **理由**: ADR-015の検証済み単一writer/冪等要求モデルを再利用し、99/100の揺れを充電セッション状態で一元管理できる。新権限、外部サービス、署名、application ID変更を要しない。
 - **結果**: Mobile/Wear Proto、domain、通知outbox、message contract、日英UI、単体/contract/E2E/必須実機試験を更新する。
+
+## ADR-017 Mobileへ同意制御付きAdMob下部バナーを導入する
+
+- **状態**: Accepted（2026-08-12、人間がAdMob表示とproduction application/banner IDを明示）
+- **文脈**: 既存v1.0は広告SDKと広告ID処理を禁止していたが、人間からMobile画面最下部へのGoogle AdMob広告導入が明示され、production application IDとbanner ad-unit IDが提示された。Wearの小画面や通知面へ広告を広げず、privacy、invalid traffic、foldable layoutを制御する必要がある。
+- **決定**: Google Mobile Ads SDKとUMP SDKをMobileだけに導入する。Mobileの単一画面は`Scaffold.bottomBar`に画面幅追従のanchored adaptive bannerを1枠配置する。起動ごとにUMP同意情報を更新し、`canRequestAds=true`の後だけMobile Ads SDKを1回初期化して広告を要求する。privacy options entry pointが必要な場合は日英の再表示操作を提供する。
+- **variant分離**: debugはGoogle公式demo application ID `ca-app-pub-3940256099942544~3347511713`とbanner ID `ca-app-pub-3940256099942544/9214589741`だけを組み込む。releaseだけがhuman提示のapplication ID `ca-app-pub-9265284608955761~9984708322`とbanner ID `ca-app-pub-9265284608955761/2408053327`を組み込む。
+- **データ境界**: SDK manifest mergeによる`INTERNET`、`ACCESS_NETWORK_STATE`、`AD_ID`を許容する。Battery Notifier自身は広告ID、端末ID、クリック、同意文字列をProto DataStore、ログ、Data Layerへ保存・送信せず、独自analytics/attributionを追加しない。
+- **失敗時**: 同意または広告処理の失敗は広告なしへ縮退し、監視、設定、同期、通知へ影響させない。Composition離脱時または広告不可への変更時は`AdView.destroy()`を呼ぶ。
+- **代替**: standard bannerは幅適応が弱く、inline bannerはスクロール末尾固定という要求と異なる。production IDをdebugでも使う案はinvalid traffic riskのため採用しない。同意なしの常時初期化・要求はprivacy gateを満たさない。
+- **既存仕様との関係**: PRD-001、NFR-012/013、PPS-001の広告禁止をBN-010のMobile限定範囲だけ置換する。Wear、広告以外の外部サービス、分析、クラッシュ収集を禁止する原則は維持する。
+- **結果**: Mobile依存・manifest・UI・日英resource・自動試験を追加する。production配布前にAdMob Privacy & messaging、対象年齢/child-directed設定、privacy policy、Google Play Data safety/広告申告、ID所有を人間が承認する。

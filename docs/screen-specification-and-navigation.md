@@ -1,9 +1,9 @@
 # 画面仕様書・画面遷移図
 
 文書ID: UIS-001  
-版: 0.2
+版: 0.3
 状態: Draft  
-最終更新: 2026-08-09
+最終更新: 2026-08-12
 
 ## 1. Mobile画面一覧
 
@@ -62,7 +62,16 @@
 
 - 端末内に保存する項目、端末間で送る項目、収集しない項目。
 - 通知・FGS権限の説明とシステム設定への導線。
+- AdMob/UMPによる外部データ処理と、UMPが必要と判定した場合の`プライバシー設定 / Privacy options`導線。
 - アプリ版、schemaVersion、オープンソースライセンス。
+
+### M-008 Mobile下部広告（BN-010）
+
+- 現在の単一Mobile Activityでは、スクロールする設定・同期コンテンツの外側にある`Scaffold.bottomBar`へanchored adaptive bannerを1枠配置する。
+- banner幅は固定端末サイズではなく、その時点の利用可能な画面幅から求める。fold/unfold、分割画面、回転などで幅が変わった場合は新しい幅に適合させる。
+- 同意確認中、`canRequestAds=false`、SDK初期化前、広告未読込/失敗時は広告Viewと専用余白を表示しない。
+- banner表示中もスクロール末尾、しきい値保存、同期、監視、通知権限、満充電設定、Stale説明へ到達でき、system navigation barを覆わない。
+- UMPがprivacy options entry pointを必要と判定した場合、スクロール内容内に日英の再表示操作を置く。UMP提供フォーム自体へ独自の広告風装飾を追加しない。
 
 ## 3. Wear画面一覧
 
@@ -151,5 +160,6 @@ flowchart TD
 - MobileとWearのランチャーアイコンは[app-icon-specification.md](app-icon-specification.md)の共通図柄を使用する。
 - 最小タップ領域、コントラスト、TalkBack、フォント拡大を確認する。
 - エラーは復旧操作と組にし、内部例外文をそのまま表示しない。
+- 広告の読込失敗はユーザー向けのアプリ障害として表示せず、広告枠を取り除いて本来コンテンツを維持する。
 - 相対時刻は日英の複数形を含めリソース化する。
 - 画面文言の正本は[localization-specification.md](localization-specification.md)とする。

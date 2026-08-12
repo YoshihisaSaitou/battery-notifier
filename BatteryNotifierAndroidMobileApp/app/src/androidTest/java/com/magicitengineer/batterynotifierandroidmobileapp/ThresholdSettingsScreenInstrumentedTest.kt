@@ -86,4 +86,38 @@ class ThresholdSettingsScreenInstrumentedTest {
             assertEquals(21, savedValue)
         }
     }
+
+    @Test
+    fun privacyOptionsActionIsReachableWhenRequired() {
+        var privacyOptionsCalls = 0
+
+        composeRule.setContent {
+            BatteryNotifierAndroidMobileAppTheme {
+                SettingsAndSyncScreen(
+                    settings = ThresholdSettingsState(thresholdPercent = 20),
+                    draftThreshold = 20,
+                    saveState = ThresholdSaveUiState.IDLE,
+                    currentAtOrBelowThreshold = false,
+                    syncState = ManualSyncUiState.IDLE,
+                    monitoringCommandState = MonitoringCommandUiState.IDLE,
+                    notificationPermissionState = NotificationPermissionUiState.ENABLED,
+                    onThresholdChanged = {},
+                    onSaveThreshold = {},
+                    onSync = {},
+                    onMonitoringToggle = {},
+                    onFullChargeNotificationToggle = {},
+                    onNotificationPermissionAction = {},
+                    showPrivacyOptions = true,
+                    onPrivacyOptions = { privacyOptionsCalls += 1 },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(PRIVACY_OPTIONS_BUTTON_TEST_TAG)
+            .performScrollTo()
+            .performClick()
+        composeRule.runOnIdle {
+            assertEquals(1, privacyOptionsCalls)
+        }
+    }
 }

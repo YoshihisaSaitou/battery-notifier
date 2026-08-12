@@ -1,16 +1,16 @@
 # 権限・プライバシー仕様書
 
 文書ID: PPS-001  
-版: 0.1  
+版: 0.2
 状態: Draft  
-最終更新: 2026-08-09
+最終更新: 2026-08-12
 
 ## 1. 基本方針
 
 - 機能に必要な最小限の権限だけを要求する。
 - 権限要求前に目的、拒否時の影響、停止方法を説明する。
 - 電池情報と設定は端末内およびペア端末間だけで扱い、独自サーバーへ送信しない。
-- v1.0では広告、分析、クラッシュ収集SDKを導入しない。
+- v1.0の承認済み例外としてMobileへGoogle Mobile Ads SDKとUMP SDKを導入する。分析SDK、クラッシュ収集SDK、Wear広告は導入しない。
 - ユーザーが監視を停止でき、アプリデータ削除/アンインストールで保存データを削除できる。
 
 ## 2. Mobile権限
@@ -22,6 +22,9 @@
 | `FOREGROUND_SERVICE_SPECIAL_USE` | Manifest、API 34+ | 他typeに該当しない電池監視 | インストール時 |
 | `RECEIVE_BOOT_COMPLETED` | Manifest | 監視有効時の再起動復旧 | インストール時 |
 | `VIBRATE` | Normal | alert channelの振動をOS設定に従い利用 | インストール時。必要性を実装時確認 |
+| `INTERNET` | Manifest/Normal、SDK manifest merge | AdMobの同意情報更新と広告配信 | インストール時 |
+| `ACCESS_NETWORK_STATE` | Manifest/Normal、SDK manifest merge | 広告配信時のネットワーク状態判定 | インストール時 |
+| `com.google.android.gms.permission.AD_ID` | Manifest/Normal、SDK manifest merge | OSと同意状態が許す場合の広告配信。Google Mobile Ads SDK 20.4.0以降が自動宣言 | インストール時 |
 
 電池状態取得自体に危険権限は不要である。位置情報、Bluetooth scan/connect、連絡先、電話、ストレージ、正確なアラームは要求しない。
 
@@ -47,7 +50,8 @@ Data Layer通信はGoogle Play services APIを使用し、独自のBluetooth権�
 | eventId・有効期限 | Yes | Yes | Yes | 通知重複防止 |
 | 通知権限状態 | 派生/必要最小限 | No | 派生/必要最小限 | UI案内 |
 | 位置、アカウント、連絡先 | No | No | No | 収集しない |
-| 広告ID、端末ハードウェアID | No | No | No | 収集しない |
+| 広告ID | アプリ独自保存No。Mobile Ads SDKの処理はあり得る | No | No | 同意、OS設定、Google SDK/AdMob設定に従う広告配信。DataStore、ログ、Data Layerへ保存しない |
+| 端末ハードウェアID | No | No | No | アプリ独自に収集しない |
 
 Data LayerはBluetooth、Wi-Fi、またはGoogle管理のクラウド中継を利用する場合があり、通信はGoogle Play servicesにより保護される。独自サーバーへのアップロードではないが、この可能性をプライバシー説明へ明記する。
 
@@ -81,13 +85,17 @@ Data LayerはBluetooth、Wi-Fi、またはGoogle管理のクラウド中継を�
 - 機能説明、遅延/中断時の影響、ユーザーが開始・停止する動画、`specialUse`の根拠を用意する。
 - 公開前に最新のDevice and Network Abuse policyを再確認する。
 - Data safety欄は実装したSDKと送信経路を監査して回答し、文書だけから自動決定しない。
+- AdMobを含むreleaseの公開前に、Play Consoleの「広告を含む」、Data safety、対象年齢とコンテンツ、プライバシーポリシーURLを人間が確認する。
+- AdMob Privacy & messagingで必要な地域向けメッセージを公開し、production application IDとの対応を人間が確認する。
 
 ## 9. プライバシー表示に含める内容
 
 - 何を監視するか: スマートフォンの電池残量と充電状態。
 - どこへ保存するか: Mobileとペアリング済みWear端末のアプリ領域。
 - どこへ送るか: Wear Data Layer経由のペア端末。経路にGoogle管理中継が使われる場合がある。
-- 何を収集しないか: 位置、アカウント、広告ID、連絡先、閲覧履歴。
+- 何を収集しないか: Battery Notifier自身は位置、アカウント、広告ID、連絡先、閲覧履歴を保存・Wear送信しない。
+- 外部処理: MobileではGoogle Mobile Ads SDK/UMPが同意情報、OS設定、AdMob設定に従って広告配信・測定用データをGoogleへ送る場合がある。広告なしでも電池監視、設定、同期を利用できる。
+- 選択変更: UMPが必要と判定した場合はアプリ内の`プライバシー設定 / Privacy options`から再表示する。
 - 停止/削除方法: 監視停止、アプリデータ削除、アンインストール。
 
 ## 10. 参考
@@ -111,3 +119,20 @@ Data LayerはBluetooth、Wi-Fi、またはGoogle管理のクラウド中継を�
 - 同期する追加データは満充電通知ON/OFF、満充電eventId/sequence/発生時刻/期限だけとする。充電履歴や端末識別子を保存・送信しない。
 - Wear要求のnode IDは実行時routingだけに使い、Protoやログへ保存しない。`requestId`はランダムUUIDで、端末識別に再利用しない。
 - Mobile/Wear Protoは引き続きbackup/transfer対象外とし、不正payloadは値を記録せず分類と件数だけを残す。
+
+## 13. Mobile AdMobバナー（BN-010）
+
+- 対象はMobileの画面下部に固定するanchored adaptive banner 1枠だけとし、Wear、Tile、コンプリケーション、通知には広告SDKも広告表示も追加しない。
+- UMPの`requestConsentInfoUpdate()`を起動ごとに呼び、必要なフォームを処理する。`canRequestAds`がtrueになる前はMobile Ads SDKを初期化せず広告要求を行わない。
+- privacy options entry pointが必要な場合は、Mobile画面からいつでもUMPの選択画面を再表示できるようにする。
+- 同意更新の失敗時は保存済み状態を再評価し、`canRequestAds=false`なら広告なしで動作する。監視・設定・同期・通知を広告障害へ連動させない。
+- debugはGoogle公式demo application/banner ID、releaseだけが人間提示のproduction application/banner IDを使う。production広告を開発者が読み込んだりクリックしたりしない。
+- アプリ独自の広告イベント、クリック追跡、広告ID/端末IDのDataStore保存、ログ出力、Data Layer送信は行わない。
+- 対象年齢、child-directed/under-age tag、AdMobメッセージ公開、Data safety、広告申告、privacy policyの最終内容はproduction配布前のHuman gateとする。
+
+## 14. AdMob参考（2026-08-12確認）
+
+- [Google Mobile Ads SDK Android quick start](https://developers.google.com/admob/android/quick-start)
+- [Anchored adaptive banner](https://developers.google.com/admob/android/banner)
+- [User Messaging Platform SDK](https://developers.google.com/admob/android/privacy)
+- [EEA/UK/Switzerland consent guidance](https://developers.google.com/admob/android/privacy/gdpr)

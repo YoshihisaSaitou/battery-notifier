@@ -1,9 +1,9 @@
 # システムアーキテクチャ設計書
 
 文書ID: SAD-001  
-版: 0.1  
+版: 0.2
 状態: Draft  
-最終更新: 2026-08-09
+最終更新: 2026-08-12
 
 ## 1. アーキテクチャ方針
 
@@ -21,6 +21,9 @@
 flowchart LR
     Battery["Android BatteryManager / ACTION_BATTERY_CHANGED"] --> MobileMonitor["Mobile Battery Monitoring"]
     MobileUI["Mobile Compose UI"] --> MobileApp["Mobile Application Layer"]
+    MobileUI --> AdConsent["UMP consent / privacy options"]
+    AdConsent -->|"canRequestAds"| MobileAds["Google Mobile Ads SDK"]
+    MobileAds --> AdMob["Google AdMob"]
     MobileMonitor --> MobileDomain["Threshold Domain"]
     MobileDomain --> MobileStore["Mobile Proto DataStore"]
     MobileDomain --> MobileNotify["Mobile Notification"]
@@ -49,6 +52,7 @@ Data Layerは配送路であり永続ストレージではない。各端末は�
 | Full-charge Alerting | 充電セッション、満充電arm、通知イベント | `FullChargeAlertState`, `FullChargeReachedEvent` |
 | Wear Synchronization | DTO検証、順序、送受信、再接続 | `BatterySyncEnvelope`, `SyncCursor` |
 | Presentation | 画面状態、鮮度、ローカライズ | `BatteryUiState`, `Freshness` |
+| Mobile Advertising | UMP同意状態、SDK初期化gate、banner lifecycle | `ConsentInformation`, `AdView` |
 
 この規模では各コンテキストを独立Gradleモジュールにせず、パッケージ境界と依存テストで分離する。
 
@@ -59,6 +63,7 @@ Data Layerは配送路であり永続ストレージではない。各端末は�
 - Compose UI、ViewModel、UI state。
 - domain/dataの`Flow`を`StateFlow`へ変換する。
 - Android API呼び出しやDataStore直接アクセスを行わない。
+- 広告表示はMobileのScaffold bottom barへ限定し、`canRequestAds`とSDK初期化完了をUI stateとして受け取る。
 
 ### Application
 
@@ -75,6 +80,7 @@ Data Layerは配送路であり永続ストレージではない。各端末は�
 
 - Proto DataStore、BatteryManager、BroadcastReceiver、Foreground Service。
 - DataClient、WearableListenerService、NotificationManager。
+- Mobile限定のUMP `ConsentInformation`、Google Mobile Ads初期化、anchored adaptive `AdView`。
 - DTOとdomain modelのMapper。
 
 ## 5. Mobile推奨パッケージ
@@ -91,6 +97,7 @@ BatteryNotifierAndroidMobileApp/app/src/main/java/<base-package>/
     datastore/
     wearable/
   platform/
+    ads/
     battery/
     notification/
     service/
@@ -145,6 +152,16 @@ WearからMobile DataStoreを直接更新する境界は作らない。Wearの�
 4. WearのON/OFF操作は専用MessageClient要求としてMobileへ送り、ADR-015と同じMobile単一writer、期待値競合、結果永続化、明示再試行境界を使う。
 5. phone-stateの任意booleanで確定値を同期し、旧Mobile/旧Wearはfalseまたは未知path無視で安全に共存する。
 
+### 7.3 Mobile広告起動と表示（BN-010）
+
+1. `MainActivity`は起動ごとにUMPへ同意情報更新を要求し、必要な同意フォームを表示する。
+2. platform/ads境界は`canRequestAds`とprivacy options requirementだけをPresentationへ公開する。広告IDや同意文字列をdomain、Proto DataStore、Data Layerへ渡さない。
+3. `canRequestAds=true`になった後だけGoogle Mobile Ads SDKを1回初期化する。
+4. SDK初期化完了後だけ、現在幅からanchored adaptive sizeを計算した`AdView`をMobileのbottom barへ構成して1回読み込む。
+5. `canRequestAds=false`への変更またはComposition離脱時は`AdView.destroy()`で資源を解放する。広告エラーは本来機能の状態へ伝播させない。
+
+debug/releaseのapplication IDとbanner IDはbuild variantで分離し、実行時の任意切替や外部設定からproduction IDをdebugへ注入する経路を作らない。
+
 ## 8. 並行処理
 
 - 電池イベント処理は単一`CoroutineScope`と`Mutex`または単一actorで直列化する。
@@ -166,6 +183,8 @@ WearからMobile DataStoreを直接更新する境界は作らない。Wearの�
 | 未対応schema | 直前正常値を保持し、アプリ更新案内 |
 | 通知権限なし | 例外扱いせず、通知不可状態としてUIへ公開 |
 | FGS開始制限 | ユーザー操作からの再開を案内し、バックグラウンドから無理に再試行しない |
+| UMP更新/フォーム失敗 | 保存済み`canRequestAds`を再評価し、falseなら広告なしで継続する |
+| Mobile Ads初期化/読込失敗 | 広告枠を表示せず、本来機能と同期・通知の状態を変更しない |
 
 ## 10. ビルドと品質ゲート
 
@@ -173,5 +192,6 @@ WearからMobile DataStoreを直接更新する境界は作らない。Wearの�
 - domain単体テスト、DataStore/Mapperテスト、Compose UIテスト、Data Layer統合テストを分ける。
 - 両アプリの同期契約に同じfixtureを適用するcontract testを用意する。
 - Pull Request相当の作業完了条件は、仕様更新、テスト、レビュー、`state.yaml`更新である。
+- 広告gateではbuild variant ID分離、同意前0 request、1枠制約、View破棄、Mobile-only依存を静的/自動テストし、production広告を自動試験で要求しない。
 
 詳細決定は[architecture-decision-records.md](architecture-decision-records.md)を参照する。

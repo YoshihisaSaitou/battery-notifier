@@ -22,7 +22,23 @@ android {
     }
 
     buildTypes {
+        debug {
+            manifestPlaceholders["admobApplicationId"] =
+                "ca-app-pub-3940256099942544~3347511713"
+            buildConfigField(
+                "String",
+                "ADMOB_BANNER_AD_UNIT_ID",
+                "\"ca-app-pub-3940256099942544/9214589741\"",
+            )
+        }
         release {
+            manifestPlaceholders["admobApplicationId"] =
+                "ca-app-pub-9265284608955761~9984708322"
+            buildConfigField(
+                "String",
+                "ADMOB_BANNER_AD_UNIT_ID",
+                "\"ca-app-pub-9265284608955761/2408053327\"",
+            )
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -34,11 +50,15 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "11"
-    }
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
     }
 }
 
@@ -69,6 +89,8 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.datastore)
     implementation(libs.play.services.wearable)
+    implementation(libs.play.services.ads)
+    implementation(libs.user.messaging.platform)
     implementation(libs.protobuf.kotlin.lite)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

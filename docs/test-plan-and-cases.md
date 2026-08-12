@@ -1,13 +1,13 @@
 # テスト計画書・テストケース
 
 文書ID: TPC-001  
-版: 0.6
+版: 0.7
 状態: Draft  
-最終更新: 2026-08-11
+最終更新: 2026-08-12
 
 ## 1. 目的
 
-電池しきい値判定、バックグラウンド監視、Mobile/Wear同期、通知、表示、再起動、異常系、必須端末互換性を検証し、v1.0のリリース可否を判断する。
+電池しきい値判定、バックグラウンド監視、Mobile/Wear同期、通知、表示、Mobile広告と同意、再起動、異常系、必須端末互換性を検証し、v1.0のリリース可否を判断する。
 
 ## 2. テストレベル
 
@@ -118,6 +118,9 @@
 | TC-U041 | コンプリケーションprovider manifest | Wearのsource manifestを解析 | `MainComplicationService`がlabel、`BIND_COMPLICATION_PROVIDER`、3対応型に加えて`android:icon="@drawable/ic_complication_provider_app_24"`を宣言する |
 | TC-U042 | コンプリケーションprovider vector | provider vectorとlauncher monochrome vectorを解析 | providerは24dp、108×108 viewport、単一path、白fillで、pathDataがlauncher monochrome layerと一致する |
 | TC-U043 | Stale記号の画面説明contract | Mobile/Wearの日英resourceと画面sourceを解析 | 両画面が末尾で同一条件（5分超、時刻ずれ、値が古い可能性）を説明し、Mobileは`今すぐ同期 / Sync now`、Wearは`同期を再試行 / Retry sync`へ案内する。Kotlinへ文言を直書きしない |
+| TC-U044 | AdMob build variant contract | Mobile Gradle、manifest、BuildConfig設定を解析 | debugはGoogle demo application/banner IDだけ、releaseは指定production application/banner IDだけを組み込み、両variantでID種別が混在しない |
+| TC-U045 | 広告要求gate | 同意不可、同意可能、初期化中、初期化完了、再通知を純粋stateへ入力 | `canRequestAds=true`後に初期化を最大1回開始し、初期化完了後だけbanner表示可能。falseへの変更で表示不可となり、重複callbackでも初期化を重複しない |
+| TC-U046 | AdMob Mobile-only/privacy contract | Mobile/Wear依存、manifest、日英resource、sourceを解析 | Ads/UMP依存とapplication IDはMobileだけ、privacy optionsの日英文字列が揃い、広告ID・クリック・同意文字列のDataStore/Data Layer/log実装を追加していない |
 
 ## 7. 統合・E2Eテストケース
 
@@ -230,6 +233,11 @@
 | TC-E096 | Pixel Watch 4 41/45mmで対応WFFフェイスへコンプリケーションを設定し、通常表示/AOD、日英、TalkBackで21%非充電、20%非充電、20%充電を確認 | 通常、低残量、充電中のGoogle公式Material Symbolと百分率を識別でき、20%充電では充電中が優先される。充電中の可視文字列は表示されず、対象がスマートフォンで充電中であることを読み上げ、tintとambient表示で欠損しない |
 | TC-E097 | Pixel Watch 4 41/45mmの対応ウォッチフェイスでコンプリケーション追加画面を開き、データソース一覧からBattery Notifierを探す | Battery Notifierのlabelとアプリアイコンと同じシルエットの単色アイコンが表示され、選択後はスロット内で状態別アイコンと百分率が表示される |
 | TC-E098 | Pixel 10 Pro Fold外側/内側/分割画面とPixel Watch 4 41/45mmでMobile/Wear画面末尾までスクロールし、日英・最大フォント・TalkBackでStale記号の説明を確認 | 両端末で説明が常時到達可能かつ欠けず、`!`の意味、5分超・時刻ずれ、接続・時刻確認、各端末の手動同期操作を理解できる順序で読み上げる |
+| TC-E099 | debug Mobileを起動して広告要求可能状態にする | Google demo bannerだけが最下部に1枠表示され、Test Ad表示を確認できる。production IDへのrequestとproduction広告のclickは0件 |
+| TC-E100 | UMP debug geography/test deviceで初回、同意、拒否、dismiss、通信失敗を再現 | 必要なformを先に表示し、`canRequestAds=false`ではSDK初期化・広告request・専用余白0件。本来の監視・設定・同期・通知は操作可能 |
+| TC-E101 | Pixel 10 Pro Fold外側/内側/分割画面、日英、最大フォント、TalkBackでdebug demo bannerを表示して幅を変更 | bannerは現在幅に適応して最下部に1枠だけ表示され、system navigationと全スクロール内容・主要操作を覆わず、広告と本来コンテンツを区別できる |
+| TC-E102 | UMPがprivacy optionsをrequiredと返す状態で日英画面の操作を実行し、選択を変更 | 日英の導線が欠けず、UMP formを再表示できる。変更後に`canRequestAds`を再評価し、falseなら表示中AdViewを破棄して広告余白を除去する |
+| TC-E103 | release APK/AABをオフラインで解析し、実広告要求は行わない | merged manifestは指定production application ID、BuildConfigは指定production banner IDを保持し、debug demo IDとの混在、WearへのAds/UMP依存、アプリ独自の広告ID保存/ログ/Data Layer送信がない |
 
 ## 8. 非機能テスト
 
@@ -258,8 +266,10 @@
 - Must要件に紐づくテストがすべてPass。
 - Pixel 10 Pro Fold + Pixel Watch 4実機の必須シナリオがPass。
 - Critical/High不具合0件。
+- debugでGoogle demo広告を確認し、production成果物は静的解析だけでIDを確認する。自動/開発者試験でproduction広告を要求・クリックしない。
 - Medium不具合は回避策、影響、期限を人間が承認。
 - バッテリー消費と通知遅延を人間が承認。
+- production配布時はAdMob同意メッセージ、対象年齢、privacy policy、Data safety、広告申告を人間が承認。
 - テスト証跡と`state.yaml`が更新されている。
 
 ## 10. 中止・再開基準

@@ -1,9 +1,9 @@
 # プロダクト要件定義書
 
 文書ID: PRD-001  
-版: 0.2
+版: 0.3
 状態: Draft  
-最終更新: 2026-08-10
+最終更新: 2026-08-12
 
 ## 1. プロダクト概要
 
@@ -41,6 +41,7 @@ Battery Notifierは、Androidスマートフォンの電池残量を常時監視
 | PR-013 | CodexとClaude Codeがファイルだけで作業を継続できる運用構造を持つ | Must |
 | PR-014 | WearアプリからMobileの通知しきい値変更を要求し、Mobileで確定した結果をWearで確認できる | Must |
 | PR-015 | Mobileが充電中に100%へ到達したときMobileとWearへ各1件通知し、この通知の有効/無効を両アプリから設定できる | Must |
+| PR-016 | Mobile画面の最下部に、同意状態と画面幅へ追従するGoogle AdMobのanchored adaptive bannerを1枠表示する | Must |
 
 ## 5. v1.0スコープ
 
@@ -54,11 +55,12 @@ Battery Notifierは、Androidスマートフォンの電池残量を常時監視
 - 通知許可、監視開始・停止、しきい値、言語追従、診断表示。
 - 再起動、切断、連続更新、異常データへの耐性。
 - 満充電通知の有効/無効設定、充電セッション単位の重複防止、Mobile/Wearローカル通知。
+- Mobileの画面下部に固定するAdMobバナー広告、必要な同意取得、プライバシー選択の再表示。
 
 ### 対象外
 
 - iPhoneとの連携。
-- クラウドアカウント、履歴同期、外部サーバー。
+- クラウドアカウント、履歴同期、AdMobの広告配信・同意管理以外の外部サーバー。
 - 複数スマートフォンの同時監視。
 - 電池使用量の原因分析、予測、充電完了時刻の予測。
 - Watch自身の電池しきい値通知。Watch自身の残量はWear OS標準機能へ委ねる。
@@ -95,6 +97,9 @@ Battery Notifierは、Androidスマートフォンの電池残量を常時監視
 - Mobileは現在のプロジェクト設定で`minSdk 33 / targetSdk 36`、Wearは`minSdk 30 / targetSdk 36`を基準とする。
 - バックグラウンド監視はユーザーが明示的に開始・停止でき、実行中であることを継続通知で示す。
 - Google Playへ配布する場合、foreground serviceの用途申告と審査条件を満たす必要がある。
+- AdMob広告はMobileだけに導入する。Wear、Tile、コンプリケーション、通知へ広告を追加しない。
+- debugビルドはGoogle公式demo IDだけを使用し、releaseビルドだけが人間から提示されたproduction IDを使用する。
+- production配布前に、AdMob Privacy & messaging、対象年齢、プライバシーポリシー、Google PlayのData safetyと広告申告を人間が確認する。
 
 ## 8. 開発・引き継ぎ要件
 
@@ -113,6 +118,7 @@ Battery Notifierは、Androidスマートフォンの電池残量を常時監視
 3. バッテリー消費と通知遅延を人間が確認している。
 4. foreground serviceの配布方針とPlay Console申告内容を人間が承認している。
 5. 重大度Critical/Highの未解決不具合がない。
+6. AdMobのproduction配信を含む場合、同意メッセージ、対象年齢、Data safety、広告申告、プライバシーポリシーを人間が承認している。
 
 ## 10. 未決事項
 

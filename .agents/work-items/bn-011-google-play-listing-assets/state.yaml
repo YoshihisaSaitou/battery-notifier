@@ -1,0 +1,237 @@
+schema_version: 1
+
+work_item:
+  id: "BN-011"
+  slug: "bn-011-google-play-listing-assets"
+  title: "Create Google Play listing icon and feature graphic"
+  scope: >-
+    Create publish-ready default-store-listing app icon and feature graphic
+    assets that preserve the approved Battery Notifier identity and meet the
+    current Google Play image requirements.
+
+status: "awaiting_human"
+current_phase: "human_verification"
+current_role: "human"
+current_actor:
+  type: "human"
+  id: "user"
+
+last_transition:
+  from_phase: "test"
+  to_phase: "human_verification"
+  reason: >-
+    TEST-011-01 passed exact PNG metadata, byte-limit, manifest-hash, alt-text,
+    and deterministic-regeneration checks. Visual preference and actual Play
+    Console upload acceptance remain Human verification.
+
+spec_refs:
+  - "docs/product-requirements.md"
+  - "docs/app-icon-specification.md"
+  - "docs/google-play-listing-assets-specification.md"
+
+affected_components:
+  - "docs"
+
+phase_tasks:
+  specification:
+    status: "complete"
+    tasks:
+      - id: "SPEC-011-01"
+        title: "Define Google Play dimensions, formats, brand constraints, and acceptance criteria"
+        status: "complete"
+  implementation:
+    status: "complete"
+    tasks:
+      - id: "IMP-011-01"
+        title: "Export the Google Play app icon from the approved master"
+        status: "complete"
+      - id: "IMP-011-02"
+        title: "Create the Google Play feature graphic and deterministic final export"
+        status: "complete"
+      - id: "IMP-011-03"
+        title: "Record manifest and provenance"
+        status: "complete"
+  review:
+    status: "complete"
+    tasks:
+      - id: "RV-011-01"
+        title: "Review policy constraints, brand preservation, and cutoff-safe composition"
+        status: "complete"
+  test:
+    status: "complete"
+    tasks:
+      - id: "TEST-011-01"
+        title: "Verify dimensions, channels, formats, file sizes, hashes, and visible quality"
+        status: "complete"
+  human_verification:
+    status: "pending"
+    tasks:
+      - id: "HV-011-01"
+        title: "Approve the listing images and confirm Play Console accepts the uploads"
+        status: "pending"
+
+decisions_needed: []
+
+decisions:
+  - id: "DEC-011-01"
+    status: "resolved"
+    decision: >-
+      Keep the feature graphic text-free so the default graphic can be shared
+      by Japanese and English listings without localization drift.
+    rationale: >-
+      Google Play can show the default-language graphic for translations, and
+      text-free artwork avoids duplicate copy and localization requirements.
+    decided_by: "codex"
+    decided_at: "2026-08-15T22:54:23+09:00"
+
+blockers: []
+
+risks:
+  - id: "RISK-011-01"
+    description: "Google Play may crop the feature graphic differently across promotional surfaces."
+    mitigation: "Keep the focal point and all important elements near the center; use edges only for background accents."
+    disposition: "open_pending_visual_review"
+  - id: "RISK-011-02"
+    description: "Generated artwork may introduce text, trademarks, or misleading device imagery."
+    mitigation: "Use a constrained text-free prompt, inspect the raster, and reject or regenerate any noncompliant output."
+    disposition: "closed_reviewed_no_prohibited_element_observed"
+
+findings: []
+evidence:
+  - id: "EVID-011-01"
+    type: "official_documentation"
+    result: "verified"
+    summary: >-
+      Google Play preview-asset and metadata guidance was checked on 2026-08-15:
+      icon 512 x 512 RGBA PNG at most 1,024 KB; feature graphic 1,024 x 500
+      RGB PNG/JPEG with no alpha, with important content near the center.
+    source: "https://support.google.com/googleplay/android-developer/answer/9866151"
+  - id: "EVID-011-02"
+    type: "implementation"
+    result: "complete"
+    summary: >-
+      Exported the Play icon unchanged from the approved SVG and generated a
+      text-free brand extension for the feature graphic, then center-cropped and
+      flattened it with the deterministic exporter.
+    artifacts:
+      - "docs/assets/google-play/google-play-app-icon.png"
+      - "docs/assets/google-play/google-play-feature-graphic.png"
+      - "docs/assets/google-play/asset-manifest.json"
+      - "docs/assets/google-play/provenance.md"
+      - "scripts/generate-google-play-assets.cjs"
+
+test_results:
+  - id: "CHK-011-01"
+    command: >-
+      bundled node with sharp: node scripts/generate-google-play-assets.cjs
+    result: "pass"
+    summary: >-
+      Icon is PNG 512 x 512, 4 channels with alpha, 7,329 bytes. Feature graphic
+      is PNG 1,024 x 500, 3 channels without alpha, 518,036 bytes. SHA-256 values
+      were written to asset-manifest.json.
+  - id: "CHK-011-02"
+    command: "git diff --check"
+    result: "pass"
+    summary: >-
+      No whitespace errors; only the pre-existing line-ending warning for the
+      user-modified BN-010 state file was reported.
+  - id: "CHK-011-03"
+    command: >-
+      node scripts/generate-google-play-assets.cjs followed by
+      node scripts/validate-google-play-assets.cjs and SHA-256 comparison
+    result: "pass"
+    summary: >-
+      Regeneration preserved both final SHA-256 values. The validator confirmed
+      icon PNG 512 x 512 RGBA at 7,329 bytes and feature PNG 1,024 x 500 RGB at
+      518,036 bytes, with manifest hashes and both alt texts present.
+  - id: "PLAY-CONSOLE-UPLOAD"
+    result: "not_run"
+    summary: "Actual Play Console upload and server-side acceptance require Human action."
+
+loop_control:
+  same_cause_failure_limit: 3
+  phase_return_limit: 5
+  current_failure_signature: null
+  consecutive_same_cause_failures: 0
+  total_phase_returns: 0
+  attempts: []
+  termination_reason: null
+  resume_condition: null
+
+handoff:
+  summary: >-
+    Specification, implementation, review, and automated asset tests passed.
+    Human must review both displayed images, approve or request visual changes,
+    and confirm that Play Console accepts the two uploads. No upload result is
+    inferred from local validation.
+  next_role: "human"
+  first_action: "Inspect both final images and upload them to the default store listing."
+  gate_result: "passed"
+
+next_actions:
+  - "Human reviews and approves or rejects the two final images."
+  - "Human uploads both files to Play Console and records whether they are accepted."
+
+progress_reporting:
+  format_version: 1
+  current:
+    timestamp: "2026-08-15T23:01:15+09:00"
+    work_item: "BN-011"
+    role: "human"
+    phase: "human_verification"
+    actor: "user"
+    status: "awaiting_human"
+    completed:
+      - "Verified the current Google Play icon and feature-graphic requirements."
+      - "Inspected AIS-001 and the approved master icon assets."
+      - "Completed GPLA-001 and AC-035 through AC-038."
+      - "Passed the specification gate and handed BN-011 to implementation."
+      - "Exported the 512 x 512 Play icon from the approved SVG."
+      - "Generated and finalized the 1,024 x 500 text-free feature graphic."
+      - "Recorded the manifest, provenance, prompts, alt text, dimensions, sizes, and hashes."
+      - "Passed CHK-011-01 and CHK-011-02."
+      - "Completed RV-011-01 with no findings."
+      - "Passed TEST-011-01 and CHK-011-03, including deterministic hash stability."
+    in_progress: []
+    next:
+      - "Human reviews the two images and confirms Play Console upload acceptance."
+    checks:
+      - "Google Play official requirements checked on 2026-08-15."
+      - "CHK-011-01: Pass."
+      - "CHK-011-02: Pass."
+      - "CHK-011-03: Pass."
+      - "PLAY-CONSOLE-UPLOAD: Not Run; Human action required."
+    blockers:
+      - "Final visual approval and actual Play Console upload acceptance are pending Human verification."
+  history:
+    - timestamp: "2026-08-15T22:54:23+09:00"
+      event: "specification_started"
+      role: "specification"
+      summary: "Started BN-011 from the human request and current Google Play image guidance."
+    - timestamp: "2026-08-15T22:54:23+09:00"
+      event: "specification_to_implementation_handoff"
+      role: "specification"
+      summary: >-
+        Completed GPLA-001 and AC-035 through AC-038; the specification gate
+        passed with no open decision or blocker.
+    - timestamp: "2026-08-15T22:59:14+09:00"
+      event: "implementation_to_review_handoff"
+      role: "implementation"
+      summary: >-
+        Completed both final PNGs, deterministic export, manifest, and
+        provenance; exact metadata and diff checks passed.
+    - timestamp: "2026-08-15T23:00:09+09:00"
+      event: "review_to_test_handoff"
+      role: "review"
+      summary: >-
+        RV-011-01 found no policy, brand-preservation, or cutoff-composition
+        issue; the review gate passed with no open finding.
+    - timestamp: "2026-08-15T23:01:15+09:00"
+      event: "test_to_human_handoff"
+      role: "test"
+      summary: >-
+        TEST-011-01 passed exact metadata, size, manifest hash, alt-text, and
+        deterministic-regeneration checks; Play Console upload remains Not Run.
+
+updated_at: "2026-08-15T23:01:15+09:00"
+updated_by: "codex"

@@ -10,6 +10,36 @@ import org.w3c.dom.Element
 
 class AdMobConfigurationContractTest {
     @Test
+    fun `UMP EEA geography override is enabled only for debug builds`() {
+        val buildFile = File("build.gradle.kts").readText()
+        val debug = buildTypeBlock(buildFile, "debug")
+        val release = buildTypeBlock(buildFile, "release")
+        val consentManager = File(
+            "src/main/java/com/magicitengineer/batterynotifierandroidmobileapp/" +
+                "platform/ads/GoogleMobileAdsConsentManager.kt",
+        ).readText()
+
+        assertTrue(
+            debug.contains(
+                "buildConfigField(\"boolean\", \"UMP_FORCE_EEA_FOR_TESTING\", \"true\")",
+            ),
+        )
+        assertTrue(
+            release.contains(
+                "buildConfigField(\"boolean\", \"UMP_FORCE_EEA_FOR_TESTING\", \"false\")",
+            ),
+        )
+        assertTrue(consentManager.contains("BuildConfig.UMP_FORCE_EEA_FOR_TESTING"))
+        assertTrue(consentManager.contains("setConsentDebugSettings"))
+        assertTrue(
+            consentManager.contains(
+                "ConsentDebugSettings.DebugGeography.DEBUG_GEOGRAPHY_EEA",
+            ),
+        )
+        assertFalse(consentManager.contains("addTestDeviceHashedId"))
+    }
+
+    @Test
     fun `debug and release keep demo and production identifiers isolated`() {
         val buildFile = File("build.gradle.kts").readText()
         val debug = buildTypeBlock(buildFile, "debug")

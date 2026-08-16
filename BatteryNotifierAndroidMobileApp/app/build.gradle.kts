@@ -25,6 +25,7 @@ android {
         debug {
             manifestPlaceholders["admobApplicationId"] =
                 "ca-app-pub-3940256099942544~3347511713"
+            buildConfigField("boolean", "UMP_FORCE_EEA_FOR_TESTING", "true")
             buildConfigField(
                 "String",
                 "ADMOB_BANNER_AD_UNIT_ID",
@@ -34,6 +35,7 @@ android {
         release {
             manifestPlaceholders["admobApplicationId"] =
                 "ca-app-pub-9265284608955761~9984708322"
+            buildConfigField("boolean", "UMP_FORCE_EEA_FOR_TESTING", "false")
             buildConfigField(
                 "String",
                 "ADMOB_BANNER_AD_UNIT_ID",

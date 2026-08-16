@@ -2,9 +2,11 @@ package com.magicitengineer.batterynotifierandroidmobileapp.platform.ads
 
 import android.app.Activity
 import android.content.Context
+import com.google.android.ump.ConsentDebugSettings
 import com.google.android.ump.ConsentInformation
 import com.google.android.ump.ConsentRequestParameters
 import com.google.android.ump.UserMessagingPlatform
+import com.magicitengineer.batterynotifierandroidmobileapp.BuildConfig
 
 data class MobileAdsConsentState(
     val canRequestAds: Boolean,
@@ -12,13 +14,15 @@ data class MobileAdsConsentState(
 )
 
 class GoogleMobileAdsConsentManager(context: Context) {
-    private val consentInformation = UserMessagingPlatform.getConsentInformation(context)
+    private val applicationContext = context.applicationContext
+    private val consentInformation =
+        UserMessagingPlatform.getConsentInformation(applicationContext)
 
     fun gatherConsent(
         activity: Activity,
         onStateChanged: (MobileAdsConsentState) -> Unit,
     ) {
-        val parameters = ConsentRequestParameters.Builder().build()
+        val parameters = buildConsentRequestParameters()
         consentInformation.requestConsentInfoUpdate(
             activity,
             parameters,
@@ -42,6 +46,21 @@ class GoogleMobileAdsConsentManager(context: Context) {
             publishState(onStateChanged)
         }
     }
+
+    private fun buildConsentRequestParameters(): ConsentRequestParameters =
+        ConsentRequestParameters.Builder()
+            .apply {
+                if (BuildConfig.UMP_FORCE_EEA_FOR_TESTING) {
+                    setConsentDebugSettings(
+                        ConsentDebugSettings.Builder(applicationContext)
+                            .setDebugGeography(
+                                ConsentDebugSettings.DebugGeography.DEBUG_GEOGRAPHY_EEA,
+                            )
+                            .build(),
+                    )
+                }
+            }
+            .build()
 
     private fun publishState(onStateChanged: (MobileAdsConsentState) -> Unit) {
         onStateChanged(

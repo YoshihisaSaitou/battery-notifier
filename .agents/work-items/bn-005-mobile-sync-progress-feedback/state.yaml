@@ -9,21 +9,21 @@ work_item:
     localized in-progress presentation while a user-initiated sync is running,
     including a disabled action and non-text visual progress cue.
 
-status: "awaiting_human"
+status: "done"
 current_phase: "human_verification"
 current_role: "human"
 current_actor:
   type: "human"
-  id: "human"
+  id: "human-user"
 
 last_transition:
-  from_phase: "test"
+  from_phase: "human_verification"
   to_phase: "human_verification"
   reason: >-
-    Targeted regression, Mobile unit tests, lint, diff validation, review, and
-    assembleDebug passed for the updated usage guidance. TC-E090 remains Not Run
-    because installing and visually testing the new APK on the required device
-    was not performed without human direction.
+    The human explicitly reported that BN-005 Human verification was completed.
+    With no defect or change request reported, this is recorded as final Human
+    approval for the identified BN-005 candidate. Exact device, OS, and
+    per-scenario observations not supplied by the human are not inferred.
 
 spec_refs:
   - "docs/product-requirements.md"
@@ -78,12 +78,44 @@ phase_tasks:
   review:
     status: "completed"
   test:
-    status: "completed_with_human_case_pending"
+    status: "completed"
   human_verification:
-    status: "not_started"
+    status: "completed_approved"
 
 decisions_needed: []
 blockers: []
+human_verification:
+  status: "completed_approved"
+  owner: "human"
+  tasks:
+    - id: "HUM-005"
+      title: "Verify the Mobile manual-sync guidance and progress presentation"
+      status: "approved_by_human_attestation"
+  approval:
+    decision: "approved"
+    approver: "human-user"
+    approved_at: "2026-08-16T08:22:20+09:00"
+    build_identity: >-
+      The current BN-005 candidate identified by the test handoff: Mobile
+      application ID com.magicitengineer.batterynotifier, versionCode 2,
+      versionName 1.0, debug signing, based on HEAD
+      342159fa0fe8872058abae648361cb8bc3f730ae plus the recorded BN-005
+      worktree changes; assembled APK SHA-256
+      4F955430BED336424172297C91BEF0141A21E471AD2A2ABBC858A4A3C1AC109E.
+    devices: >-
+      Human verification completion was reported. Exact physical device model,
+      OS build, configuration, and device identifiers were not supplied and are
+      not inferred.
+    observed_result: >-
+      The human explicitly reported that BN-005 Human verification was
+      completed. No defect, negative observation, rejection, or change request
+      was included, so the work item is accepted and closed.
+    battery_impact: >-
+      No separate battery comparison was supplied or claimed for this
+      presentation-only change.
+    notification_latency: >-
+      No separate notification-latency measurement was supplied or claimed for
+      this manual-sync presentation change.
 review_findings:
   - id: "RV-005-01"
     severity: "Medium"
@@ -115,6 +147,17 @@ risks:
       in-progress state for a short specified minimum interval.
 
 evidence:
+  - id: "EVID-005-16"
+    type: "human_verification"
+    result: "approved"
+    summary: >-
+      The human explicitly reported that BN-005 Human verification was
+      completed. The report is recorded as final approval for the identified
+      BN-005 candidate. Exact device, OS, and individual TC-E090 observations
+      were not supplied and are not inferred; agent-executed test history
+      remains separate.
+    recorded_at: "2026-08-16T08:22:20+09:00"
+    recorded_by: "human-user"
   - id: "EVID-005-15"
     type: "build"
     result: "pass"
@@ -249,12 +292,11 @@ test_results:
   - id: "TC-E090"
     status: "not_run"
     evidence: >-
-      The updated worktree debug APK was assembled but not installed or visually
-      tested on Pixel 10 Pro Fold. Installing over the user's app was not
-      performed without human direction. Required next: install the identified
-      APK, then observe the Japanese and English automatic-sync/fallback usage
-      guidance, maximum-font readability, disabled button, progress indicator,
-      syncing action/status text, 500ms minimum display, and result transition.
+      Codex did not install or visually execute TC-E090, so the agent-executed
+      status remains Not Run. On 2026-08-16 the human reported BN-005 Human
+      verification completed; that final approval is recorded separately as
+      EVID-005-16 without inventing device, OS, locale, font, accessibility,
+      timing, or individual scenario observations.
   - id: "MOBILE-UNIT-GATE"
     status: "pass"
     evidence: >-
@@ -285,37 +327,35 @@ loop_control:
 
 handoff:
   summary: >-
-    Automated/Test totals: Pass 4 (TC-U036, Mobile unit gate, Mobile lint,
-    assembleDebug), Fail 0, Blocked 0, Not Run 1 (TC-E090). The updated debug
-    APK is identified. Human verification must check Japanese and English usage
-    guidance plus the existing progress presentation on Pixel 10 Pro Fold.
+    Automated/Test totals remain Pass 4 (TC-U036, Mobile unit gate, Mobile lint,
+    assembleDebug), Fail 0, Blocked 0, with TC-E090 retained as Not Run in the
+    agent execution history. The human subsequently reported BN-005 Human
+    verification completed and supplied no defect or change request. That Human
+    approval closes BN-005 without inferring unreported device or scenario data.
   next_role: "human"
   first_action: >-
-    Install BatteryNotifierAndroidMobileApp/app/build/outputs/apk/debug/app-debug.apk
-    on Pixel 10 Pro Fold and execute TC-E090 in Japanese, English, and maximum
-    font, preserving or replacing existing app data only with human approval.
+    None. BN-005 is closed by final Human approval.
 
-next_actions:
-  - "Human installs the identified worktree APK and executes TC-E090 in Japanese and English."
-  - "Human confirms the longer guidance remains readable at maximum font and records approval or exact observations."
+next_actions: []
 
 progress_reporting:
   format_version: 1
   current:
-    timestamp: "2026-08-09T20:09:19+09:00"
+    timestamp: "2026-08-16T08:22:20+09:00"
     work_item: "BN-005"
     role: "human"
     phase: "human_verification"
-    actor: "human"
-    status: "awaiting_human"
+    actor: "human-user"
+    status: "done"
     completed:
       - "Completed IMP-005-03 Japanese and English usage guidance."
       - "TC-U036, Mobile test, Mobile lint, and git diff --check passed."
       - "Review gate passed with no findings."
       - "assembleDebug passed and the updated APK was identified."
+      - "Human reported BN-005 Human verification completed and supplied no defect or change request."
+      - "HUM-005 completed_approved; BN-005 is closed."
     in_progress: []
-    next:
-      - "Install the identified APK and execute TC-E090 in Japanese, English, and maximum font."
+    next: []
     checks:
       - "Source and specification inspection: observed"
       - "Specification gate: pass; decisions 0, blockers 0"
@@ -325,7 +365,9 @@ progress_reporting:
       - "git diff --check: pass"
       - "Review gate: pass; open findings 0"
       - "assembleDebug: pass"
-      - "TC-E090: not_run; updated APK was not installed for visual verification"
+      - "TC-E090: not_run in agent execution history; Human approval is recorded separately"
+      - "Human verification: approved; completion reported by human-user"
+      - "Exact device, OS, and individual scenario observations: not supplied and not inferred"
     blockers: []
   history:
     - timestamp: "2026-08-09T18:06:42+09:00"
@@ -427,6 +469,15 @@ progress_reporting:
         Pass 4, Fail 0, Blocked 0, Not Run 1. Updated APK build and hash were
         recorded; TC-E090 usage-guidance and progress UI checks require human
         verification on Pixel 10 Pro Fold.
+    - timestamp: "2026-08-16T08:22:20+09:00"
+      event: "human_verification_completed"
+      role: "human"
+      actor: "human-user"
+      summary: >-
+        The human explicitly reported that BN-005 Human verification was
+        completed and supplied no defect or change request. Final Human approval
+        closes BN-005. Exact device, OS, and individual TC-E090 observations were
+        not supplied and are not inferred; agent Not Run history remains intact.
 
-updated_at: "2026-08-09T20:09:19+09:00"
+updated_at: "2026-08-16T08:22:20+09:00"
 updated_by: "codex"

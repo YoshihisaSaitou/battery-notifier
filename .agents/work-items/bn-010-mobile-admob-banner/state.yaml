@@ -11,22 +11,22 @@ work_item:
     in release builds. Keep Wear unchanged and document privacy, distribution,
     localization, testing, and lifecycle behavior.
 
-status: "awaiting_human"
+status: "done"
 current_phase: "human_verification"
 current_role: "human"
 current_actor:
   type: "human"
-  id: "human"
+  id: "human-user"
 
 last_transition:
-  from_phase: "test"
+  from_phase: "human_verification"
   to_phase: "human_verification"
   reason: >-
-    Automated Test evidence passed for TC-U044..046 and TC-E103, the complete
-    Mobile JVM suites, lint, Android-test compilation, and Debug/Release
-    assembly. A Pixel 10 Pro Fold is connected, but it was not modified or used
-    for Human-owned install, consent, ad-network, visual, locale, font-scale, or
-    TalkBack checks. TC-E099..102 remain explicitly Not Run.
+    The human explicitly reported that BN-010 Human verification was completed.
+    With no defect or change request reported, this is recorded as final Human
+    approval for the identified BN-010 worktree candidate. Exact device, OS,
+    individual consent/layout/privacy observations, and measurements not supplied
+    by the human are not inferred.
 
 spec_refs:
   - "docs/product-requirements.md"
@@ -140,6 +140,7 @@ phase_tasks:
       - "Add manifest application ID and Mobile ad/consent integration."
       - "Add bottom banner and localized privacy-options UI."
       - "Add deterministic contract and UI tests."
+      - "IMP-BN010-EEA: force UMP EEA geography only for Debug emulator testing and prove Release isolation."
   review:
     status: "complete"
     tasks:
@@ -150,19 +151,26 @@ phase_tasks:
       - "Run targeted tests, Mobile unit tests, lint, and build variants."
       - "Record emulator/device cases separately from automated evidence."
   human_verification:
-    status: "awaiting_human"
+    status: "complete"
     tasks:
       - "Verify Pixel 10 Pro Fold layouts and consent/privacy flows."
       - "Approve AdMob console messages, privacy policy, Data safety, audience, and release use of production IDs."
 
 decisions_needed:
   - id: "DEC-BN010-001"
-    status: "human_verification_required"
+    status: "approved_by_human"
     decision: >-
       Before production distribution, the human must confirm the AdMob Privacy
       & messaging configuration, child-directed/under-age declarations, app
       privacy policy, Google Play Data safety and ads declarations, and that the
       supplied production IDs belong to this application.
+    resolution: >-
+      The human reported BN-010 Human verification completed and supplied no
+      policy objection or change request. This is recorded as final approval of
+      the Human-owned distribution decision; console screenshots and individual
+      declaration details were not supplied and are not inferred.
+    resolved_at: "2026-08-16T12:32:04+09:00"
+    resolved_by: "human-user"
 
 blockers: []
 
@@ -206,7 +214,7 @@ review_findings:
 risks:
   - id: "RISK-BN010-001"
     severity: "high"
-    status: "open"
+    status: "accepted_with_mitigation"
     description: >-
       A production ad request before required consent or with incomplete AdMob
       console messaging could violate privacy or advertising policy.
@@ -214,26 +222,109 @@ risks:
       Gate SDK initialization and banner requests on UMP canRequestAds, expose
       privacy options when required, use demo IDs in debug, and keep production
       release approval with the human.
+    disposition: >-
+      Automated consent gating and variant isolation passed; the Human completion
+      report supplies final acceptance. Detailed console evidence was not supplied.
   - id: "RISK-BN010-002"
     severity: "medium"
-    status: "open"
+    status: "accepted_with_mitigation"
     description: >-
       A fixed banner could obscure scroll content or system navigation on fold,
       split-screen, maximum-font, or edge-to-edge layouts.
     mitigation: >-
       Place the banner in Scaffold bottomBar using current-width anchored
       adaptive sizing and verify content remains scrollable above it.
+    disposition: >-
+      The inset regression and automated gates passed; final Human verification
+      completed with no layout defect reported. Per-layout observations were not supplied.
   - id: "RISK-BN010-003"
     severity: "medium"
-    status: "open"
+    status: "mitigated"
     description: >-
       Loading or clicking production ads during development can create invalid
       traffic and place the AdMob account at risk.
     mitigation: >-
       Compile Google demo application and banner IDs into debug builds and the
       supplied production IDs into release builds only.
+    disposition: >-
+      Generated Debug and Release BuildConfig values and contract tests prove the
+      identifier isolation; Human verification completed without a policy objection.
 
 evidence:
+  - id: "EV-BN010-019"
+    phase: "human_verification"
+    kind: "human_final_approval"
+    result: "approved"
+    detail: >-
+      The human explicitly reported that BN-010 Mobile bottom AdMob banner Human
+      verification was completed and reported no defect or change request. The
+      approval is recorded against the current BN-010 worktree candidate, whose
+      automated evidence identifies app-debug.apk at 41,949,631 bytes and the
+      unsigned Release APK at 32,116,618 bytes. Exact device model, OS/build,
+      individual TC-E100..102 observations, screenshots, battery measurements,
+      and latency measurements were not supplied and are not inferred. Agent
+      Not Run history for TC-E100..102 remains intact and separate from this
+      final Human approval.
+    recorded_at: "2026-08-16T12:32:04+09:00"
+  - id: "EV-BN010-018"
+    phase: "test"
+    kind: "emulator_runtime_preflight"
+    result: "ready_for_human_with_runtime_warning"
+    detail: >-
+      emulator-5554 runs API 36 sdk_gphone64_x86_64. The EEA-enabled Debug APK
+      installed successfully and MainActivity was visible and resumed. UI
+      hierarchy showed the normal app screen rather than a consent form. UMP
+      logged Web view timed out and Failed to load and cache a form. Consent,
+      decline, dismissal, and unavailable-network interactions were not run; no
+      app-data reset or consentInformation.reset was performed.
+    recorded_at: "2026-08-16T11:52:50+09:00"
+  - id: "EV-BN010-017"
+    phase: "review"
+    kind: "scoped_code_and_evidence_review"
+    result: "pass"
+    detail: >-
+      Role-separated review inspected the three-file production/test delta,
+      generated Debug and Release BuildConfig values, UMP request construction,
+      official debug-geography constraints, regression assertions, automated
+      results, and git diff --check. Open findings: Critical 0, High 0, Medium 0,
+      Low 0. The reviewer is the same codex actor in a separately recorded role,
+      not a separate independent actor.
+    recorded_at: "2026-08-16T11:51:37+09:00"
+  - id: "EV-BN010-016"
+    phase: "implementation"
+    kind: "emulator_deployment"
+    result: "pass"
+    detail: >-
+      app-debug.apk was installed with adb -s emulator-5554 install -r and
+      returned Success. MainActivity is the top resumed activity and process
+      12797 is running. The first am start -W wait reported timeout even though
+      dumpsys subsequently proved the Activity visible and resumed; this is not
+      TC-E100 interaction evidence.
+    recorded_at: "2026-08-16T11:48:17+09:00"
+  - id: "EV-BN010-015"
+    phase: "implementation"
+    kind: "debug_eea_implementation_and_automated_verification"
+    result: "pass"
+    detail: >-
+      Debug BuildConfig enables UMP_FORCE_EEA_FOR_TESTING and the consent
+      manager supplies DEBUG_GEOGRAPHY_EEA through ConsentDebugSettings. Release
+      BuildConfig disables the override. AdMobConfigurationContractTest passed
+      5/5; Mobile Debug and Release unit suites passed 118/118 each; lint passed
+      with 0 errors and 18 warnings; compileDebugAndroidTestKotlin, assembleDebug,
+      and assembleRelease passed. Generated BuildConfig values were directly
+      verified as Debug true and Release false.
+    recorded_at: "2026-08-16T11:48:17+09:00"
+  - id: "EV-BN010-014"
+    phase: "human_verification"
+    kind: "human_change_request"
+    result: "implementation_requested"
+    detail: >-
+      The human requested that the Android Studio emulator be treated as EEA
+      for TC-E100. Repository inspection confirmed that the current adapter did
+      not set ConsentDebugSettings or DEBUG_GEOGRAPHY_EEA. The item returned to
+      Implementation; no production ID, permission, or release behavior change
+      is authorized.
+    recorded_at: "2026-08-16T11:23:22+09:00"
   - id: "EV-BN010-001"
     phase: "specification"
     kind: "human_instruction"
@@ -367,52 +458,64 @@ evidence:
       ADB detected a Pixel 10 Pro Fold and a Wear emulator. No device was
       modified: TC-E099..102 remain Not Run for Human runtime verification.
     recorded_at: "2026-08-12T10:29:04+09:00"
+  - id: "EV-BN010-013"
+    phase: "human_verification"
+    kind: "human_real_device_verification"
+    result: "pass"
+    detail: >-
+      The human reported that the test advertisement was checked on a real
+      device and no problem was observed. The device model, OS/build identity,
+      screenshots, consent permutations, fold/split-screen layouts, locales,
+      font scale, and TalkBack were not supplied and are not inferred.
+    recorded_at: "2026-08-12T13:46:59+09:00"
 
 test_results:
   - id: "TC-U044"
     status: "pass"
-    evidence: "AdMobConfigurationContractTest 4/4 including variant, Mobile-only, and loaded-only navigation-inset contracts"
-    recorded_at: "2026-08-12T10:24:13+09:00"
+    evidence: "AdMobConfigurationContractTest 5/5 including Debug-only UMP EEA, Release isolation, variant IDs, Mobile-only, and loaded-only navigation-inset contracts"
+    recorded_at: "2026-08-16T11:48:17+09:00"
   - id: "TC-U045"
     status: "pass"
     evidence: "MobileAdsGateTest 4/4 including duplicate, revoke/regrant, failure, and late-callback order"
     recorded_at: "2026-08-12T09:42:50+09:00"
   - id: "TC-U046"
     status: "pass"
-    evidence: "AdMobConfigurationContractTest localization and no app tracking/Mobile-only assertions"
-    recorded_at: "2026-08-12T09:42:50+09:00"
+    evidence: "AdMobConfigurationContractTest 5/5 including localization, no app tracking/Mobile-only assertions, and no hashed test-device ID"
+    recorded_at: "2026-08-16T11:48:17+09:00"
   - id: "MOBILE-UNIT-DEBUG"
     status: "pass"
-    evidence: "testDebugUnitTest 116/116; 0 failures, 0 errors, 0 skipped"
-    recorded_at: "2026-08-12T09:49:20+09:00"
+    evidence: "testDebugUnitTest 118/118; 0 failures, 0 errors, 0 skipped"
+    recorded_at: "2026-08-16T11:48:17+09:00"
   - id: "MOBILE-UNIT-RELEASE"
     status: "pass"
-    evidence: "testReleaseUnitTest 116/116; 0 failures, 0 errors, 0 skipped"
-    recorded_at: "2026-08-12T09:49:20+09:00"
+    evidence: "testReleaseUnitTest 118/118; 0 failures, 0 errors, 0 skipped"
+    recorded_at: "2026-08-16T11:48:17+09:00"
   - id: "MOBILE-LINT"
     status: "pass"
-    evidence: "lint Gradle success; XML 0 errors and 25 warnings"
-    recorded_at: "2026-08-12T09:54:26+09:00"
+    evidence: "lint Gradle success; XML 0 errors and 18 warnings"
+    recorded_at: "2026-08-16T11:48:17+09:00"
   - id: "MOBILE-ANDROIDTEST-COMPILE"
     status: "pass"
     evidence: "compileDebugAndroidTestKotlin Gradle success"
-    recorded_at: "2026-08-12T10:12:32+09:00"
+    recorded_at: "2026-08-16T11:48:17+09:00"
   - id: "MOBILE-ASSEMBLE-DEBUG"
     status: "pass"
     evidence: "app/build/outputs/apk/debug/app-debug.apk, 41,949,631 bytes"
-    recorded_at: "2026-08-12T10:12:32+09:00"
+    recorded_at: "2026-08-16T11:48:17+09:00"
   - id: "MOBILE-ASSEMBLE-RELEASE"
     status: "pass"
     evidence: "app/build/outputs/apk/release/app-release-unsigned.apk, 32,116,618 bytes"
-    recorded_at: "2026-08-12T10:12:32+09:00"
+    recorded_at: "2026-08-16T11:48:17+09:00"
   - id: "TC-E099"
-    status: "not_run"
-    evidence: "Pixel 10 Pro Fold detected by ADB, but no build was installed and no debug demo-ad request or Test Ad visual confirmation was performed"
-    recorded_at: "2026-08-12T10:29:04+09:00"
+    status: "pass"
+    evidence: >-
+      Human-provided real-device result: the test advertisement was displayed
+      and no problem was observed. Device/build details were not supplied.
+    recorded_at: "2026-08-12T13:46:59+09:00"
   - id: "TC-E100"
     status: "not_run"
-    evidence: "Requires Human-approved UMP debug geography/test-device consent, decline, dismissal, and unavailable-network runtime scenarios"
-    recorded_at: "2026-08-12T10:29:04+09:00"
+    evidence: "Debug-only EEA build installed and resumed on emulator-5554; preflight UMP WebView timed out and normal app UI remained visible; consent, decline, dismissal, and unavailable-network Human interactions remain Not Run"
+    recorded_at: "2026-08-16T11:52:50+09:00"
   - id: "TC-E101"
     status: "not_run"
     evidence: "Pixel 10 Pro Fold detected but not modified; outer, inner, split-screen, font-scale, Japanese/English, and TalkBack inspection remains Human-owned"
@@ -433,7 +536,7 @@ loop_control:
   phase_return_limit: 5
   current_failure_signature: null
   consecutive_same_cause_failures: 0
-  total_phase_returns: 1
+  total_phase_returns: 2
   attempts:
     - attempt: 1
       cause_id: "BN010-KOTLIN-METADATA"
@@ -488,31 +591,27 @@ loop_control:
 
 handoff:
   summary: >-
-    Test gate passed with four feature cases Pass and four runtime/device cases
-    Not Run. The Human must configure UMP/AdMob console policy, install the
-    identified Debug APK on the Pixel 10 Pro Fold, use only the SDK test ad,
-    verify consent/privacy and bottom layout behavior, and explicitly approve
-    or return the work item. The unsigned Release APK is build evidence only.
+    Specification, implementation, review, automated Test, and Human verification
+    are complete. Automated evidence remains Pass for TC-U044..046, Mobile unit,
+    lint, androidTest compilation, Debug/Release assembly, and TC-E103. TC-E099
+    retains its earlier Human real-device Pass. TC-E100..102 retain their agent
+    Not Run history, while the human's later BN-010 completion report is recorded
+    separately as final approval without inferring unreported details.
   next_role: "human"
   first_action: >-
-    Confirm AdMob console/privacy declarations, then install
-    BatteryNotifierAndroidMobileApp/app/build/outputs/apk/debug/app-debug.apk on
-    the Pixel 10 Pro Fold and execute TC-E099 before the remaining runtime cases.
+    None. BN-010 is closed by final Human approval.
 
-next_actions:
-  - "Human: confirm AdMob Privacy & messaging, audience flags, privacy policy, and Google Play ads/Data safety declarations."
-  - "Human: execute TC-E099..102 on Pixel 10 Pro Fold using Debug demo IDs; do not click a production ad."
-  - "Human: record build identity, layouts/locales/accessibility observations, policy decision, and explicit approval or rejection."
+next_actions: []
 
 progress_reporting:
   format_version: 1
   current:
-    timestamp: "2026-08-12T10:29:04+09:00"
+    timestamp: "2026-08-16T12:32:04+09:00"
     work_item: "BN-010"
     role: "human"
     phase: "human_verification"
-    actor: "human"
-    status: "awaiting_human"
+    actor: "human-user"
+    status: "done"
     completed:
       - "Created the BN-010 work item and recorded the human-approved Mobile-only AdMob scope."
       - "Reviewed current official Google Mobile Ads, banner, UMP, and EU consent guidance."
@@ -526,23 +625,39 @@ progress_reporting:
       - "Verified RV-BN010-001 fixed and passed Review with zero open findings."
       - "Passed the Test gate: TC-U044..046 and TC-E103 Pass; TC-E099..102 remain explicitly Not Run."
       - "Detected Pixel 10 Pro Fold and Wear emulator via ADB without modifying either device."
+      - "Human reported that the test advertisement was checked on a real device with no problem; TC-E099 is Pass."
+      - "Implemented Debug-only UMP EEA geography with Release=false isolation and no automatic consent reset."
+      - "Passed AdMobConfigurationContractTest 5/5, Mobile Debug/Release unit tests 118/118 each, lint, androidTest compilation, and Debug/Release assembly."
+      - "Installed app-debug.apk on emulator-5554 and verified MainActivity visible, resumed, and process running."
+      - "Completed role-separated scoped Review with zero open Critical/High/Medium/Low findings."
+      - "Completed emulator runtime preflight: EEA Debug app installed and resumed; no app-data reset was performed."
+      - "Human reported BN-010 Human verification completed and supplied no defect or change request."
+      - "DEC-BN010-001 approved by Human completion report; BN-010 is closed."
     in_progress: []
-    next:
-      - "Human confirms AdMob/UMP policy setup and executes TC-E099..102 on Pixel 10 Pro Fold with the Debug demo-ad build."
+    next: []
     checks:
       - "Official Google documentation review: reviewed."
       - "Specification traceability search: pass."
       - "Implementation transition matrix recorded before production-code changes."
       - "Targeted TC-U044..046: pass, 7/7."
-      - "Mobile JVM test: pass, Debug 116/116 and Release 116/116."
-      - "Mobile lint: pass, 0 errors and 25 warnings."
+      - "AdMobConfigurationContractTest: pass, 5/5."
+      - "Mobile JVM test: pass, Debug 118/118 and Release 118/118."
+      - "Mobile lint: pass, 0 errors and 18 warnings."
       - "compileDebugAndroidTestKotlin: pass."
       - "assembleDebug: pass."
       - "assembleRelease: pass."
-      - "TC-E099..102: not_run; runtime/device evidence required."
-      - "Test gate: pass; Human handoff ready."
-    blockers:
-      - "Human runtime/device and distribution-policy approval are pending."
+      - "TC-E099: pass from Human-provided real-device evidence."
+      - "TC-E100..102: not_run in agent execution history; Human completion is recorded separately."
+      - "TC-E100 implementation prerequisite: pass; Debug EEA override installed and resumed on emulator-5554."
+      - "Scoped Review: pass; open Critical/High/Medium/Low findings 0/0/0/0."
+      - "Emulator deployment: pass; app-debug.apk installed and MainActivity resumed on emulator-5554."
+      - "UMP runtime preflight: warning; Web view timed out and no consent form was displayed."
+      - "TC-E100: not_run in agent execution history; no individual Human result was supplied or inferred."
+      - "Phase return count: 2/5; no corrective attempt counted before implementation."
+      - "Human verification: approved; completion reported by human-user."
+      - "TC-E100..102: not_run in agent execution history; final Human approval is recorded separately."
+      - "Exact device, OS/build, individual scenario observations, battery, and latency measurements: not supplied and not inferred."
+    blockers: []
   history:
     - timestamp: "2026-08-12T09:17:27+09:00"
       event: "specification_started"
@@ -607,7 +722,60 @@ progress_reporting:
         Run. A Pixel 10 Pro Fold and Wear emulator were detected but not
         modified. Human owns console policy, installation, network/consent,
         visual/accessibility checks, and final approval.
+    - timestamp: "2026-08-12T13:46:59+09:00"
+      event: "human_test_ad_verified"
+      role: "human"
+      actor: "human"
+      result: >-
+        Human reported that the test advertisement was checked on a real device
+        with no problem. TC-E099 changed from Not Run to Pass. No device/build
+        details or results for TC-E100..102 were inferred.
+    - timestamp: "2026-08-16T11:23:22+09:00"
+      event: "human_verification_to_implementation_return"
+      role: "human"
+      actor: "human"
+      result: >-
+        The human requested Android Studio emulator EEA treatment for TC-E100.
+        Inspection found the required UMP debug geography absent, so BN-010
+        returned to Implementation and total_phase_returns increased to 2/5.
+        TC-E099 evidence is retained; TC-E100..102 remain Not Run.
+    - timestamp: "2026-08-16T11:48:17+09:00"
+      event: "implementation_to_review_eea_handoff"
+      role: "implementation"
+      actor: "codex"
+      result: >-
+        Debug-only UMP EEA geography and Release=false isolation were implemented.
+        Targeted and full automated gates passed; the Debug APK was installed
+        and MainActivity resumed on emulator-5554. TC-E100 interactions remain
+        Not Run pending Review, Test, and Human execution.
+    - timestamp: "2026-08-16T11:51:37+09:00"
+      event: "review_to_test_eea_handoff"
+      role: "review"
+      actor: "codex"
+      result: >-
+        Scoped role-separated Review passed with zero open findings. Debug EEA
+        and Release isolation are correct; Test now owns runtime preflight and
+        must leave unperformed TC-E100 Human interactions as Not Run or Blocked.
+    - timestamp: "2026-08-16T11:52:50+09:00"
+      event: "test_to_human_eea_handoff"
+      role: "test"
+      actor: "codex"
+      result: >-
+        EEA-enabled Debug APK installation and resumed-Activity checks passed on
+        emulator-5554. UMP WebView timed out and no form was displayed, so
+        TC-E100 remains Not Run. No emulator app data was cleared; Human owns
+        retry/reset choice and all consent interactions.
+    - timestamp: "2026-08-16T12:32:04+09:00"
+      event: "human_verification_completed"
+      role: "human"
+      actor: "human-user"
+      result: >-
+        The human explicitly reported that BN-010 Human verification was
+        completed and supplied no defect or change request. Final Human approval
+        closes BN-010. Exact device, OS/build, individual TC-E100..102 results,
+        screenshots, battery measurements, and latency measurements were not
+        supplied and are not inferred; agent Not Run history remains intact.
 
 last_updated:
-  timestamp: "2026-08-12T10:29:04+09:00"
+  timestamp: "2026-08-16T12:32:04+09:00"
   actor: "codex"

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-15T22:54:23+09:00",
+  "specification": "docs/google-play-listing-assets-specification.md",
+  "assets": {
+    "appIcon": {
+      "file": "docs/assets/google-play/google-play-app-icon.png",
+      "format": "png",
+      "width": 512,
+      "height": 512,
+      "channels": 4,
+      "hasAlpha": true,
+      "sizeBytes": 7329,
+      "sha256": "9ce788987655e5c54030b17a51bc0092d7e5aa0232ce93ee80169445e1445b4c",
+      "source": "docs/assets/app-icon-master.svg",
+      "requirement": "512 x 512 px, 32-bit PNG with alpha, at most 1,024 KB"
+    },
+    "featureGraphic": {
+      "file": "docs/assets/google-play/google-play-feature-graphic.png",
+      "format": "png",
+      "width": 1024,
+      "height": 500,
+      "channels": 3,
+      "hasAlpha": false,
+      "sizeBytes": 518036,
+      "sha256": "0de66ad258feef4eba75b01ceb057dcd2e934283448812695e9d6713d3a91d28",
+      "source": "docs/assets/google-play/feature-graphic-source.png",
+      "requirement": "1,024 x 500 px, 24-bit PNG without alpha, at most 15 MB",
+      "altText": {
+        "ja": "スマートフォンの電池状態がWear OSへ同期され、設定した残量で通知されることを表すグラフィック",
+        "en": "Graphic showing phone battery status syncing to Wear OS with an alert at the selected level"
+      }
+    }
+  },
+  "provenance": "docs/assets/google-play/provenance.md",
+  "generator": "scripts/generate-google-play-assets.cjs"
+}

@@ -1,0 +1,398 @@
+schema_version: 1
+
+work_item:
+  id: "BN-012"
+  slug: "bn-012-release-r8-optimization"
+  title: "Enable R8 and resource optimization for Mobile and Wear releases"
+  scope: >-
+    Enable R8 code optimization and resource shrinking for the Mobile and Wear
+    release variants, preserve debug behavior, generate retrace mapping evidence,
+    and verify both independent Gradle projects without changing runtime contracts.
+
+status: "awaiting_human"
+current_phase: "human_verification"
+current_role: "human"
+current_actor:
+  type: "human"
+  id: "user"
+
+last_transition:
+  from_phase: "test"
+  to_phase: "human_verification"
+  reason: >-
+    TEST-012-01 and TC-E104 passed independent cached Gradle reruns and artifact
+    verification. TC-E105 requires correctly versioned, signed optimized releases
+    and mandatory real devices, so it remains Human-owned and Blocked.
+
+spec_refs:
+  - "docs/product-requirements.md"
+  - "docs/functional-requirements.md"
+  - "docs/release-build-optimization-specification.md"
+  - "docs/test-plan-and-cases.md"
+
+affected_components:
+  - "BatteryNotifierAndroidMobileApp"
+  - "BatteryNotifierAndroidWearApp"
+  - "docs"
+
+phase_tasks:
+  specification:
+    status: "complete"
+    tasks:
+      - id: "SPEC-012-01"
+        title: "Define release optimization contract, exclusions, acceptance criteria, and tests"
+        status: "complete"
+      - id: "SPEC-012-02"
+        title: "Align normative document metadata and documentation index"
+        status: "complete"
+  implementation:
+    status: "complete"
+    tasks:
+      - id: "IMP-012-01"
+        title: "Enable R8 code optimization and resource shrinking for Mobile release"
+        status: "complete"
+      - id: "IMP-012-02"
+        title: "Enable R8 code optimization and resource shrinking for Wear release"
+        status: "complete"
+      - id: "IMP-012-03"
+        title: "Add deterministic release optimization contract tests"
+        status: "complete"
+  review:
+    status: "complete"
+    tasks:
+      - id: "RV-012-01"
+        title: "Review R8 scope, keep rules, generated metadata, and user-change preservation"
+        status: "complete"
+  test:
+    status: "complete"
+    tasks:
+      - id: "TEST-012-01"
+        title: "Run Mobile and Wear automated gates sequentially and inspect release artifacts"
+        status: "complete"
+  human_verification:
+    status: "pending"
+    tasks:
+      - id: "HV-012-01"
+        title: "Smoke-test optimized release candidates on required real devices"
+        status: "pending"
+
+decisions_needed: []
+
+decisions:
+  - id: "DEC-012-01"
+    status: "resolved"
+    decision: >-
+      Apply R8 and resource shrinking only to release variants in both independent
+      applications; debug variants remain unoptimized.
+    rationale: >-
+      This follows the human request and Android's release-only optimization guidance
+      while preserving the existing development and test workflow.
+    decided_by: "human-user"
+    decided_at: "2026-08-16T20:35:53+09:00"
+  - id: "DEC-012-02"
+    status: "resolved"
+    decision: >-
+      Use proguard-android-optimize.txt, AGP full mode defaults, and the AGP 8.13
+      optimized resource shrinking pipeline. Add no blanket keep rule without a
+      reproducible R8 or runtime failure.
+    rationale: >-
+      Broad keep rules would silently reduce optimization and are not supported by
+      current evidence.
+    decided_by: "codex"
+    decided_at: "2026-08-16T20:35:53+09:00"
+
+blockers:
+  - id: "BLOCK-012-01"
+    scope: "TC-E105"
+    status: "open"
+    condition: >-
+      The local optimized AABs are unsigned and both working-tree versionCode values
+      are 1; mandatory real-device release candidates are not yet identified.
+    unblock_requirement: >-
+      Human produces approved distinct-version Mobile/Wear candidates signed by the
+      same release certificate series and runs them on Pixel 10 Pro Fold and Pixel Watch 4.
+
+findings:
+  - id: "RV-012-001"
+    severity: "Low"
+    status: "closed_fixed_verified"
+    location: "docs/functional-requirements.md:1-5; docs/documentation-index.md"
+    violated_requirement: "AGENTS.md documentation traceability and RBO-001 discoverability"
+    scenario: >-
+      RBO-001 and NFR-021 were added on 2026-08-16, but FRS-001 still reports version
+      0.7 and last update 2026-08-12, while the documentation index omits RBO-001.
+    required_outcome: >-
+      Update FRS-001 metadata and add RBO-001 to the document index with the current
+      index update date; do not alter the approved optimization behavior.
+    fix_evidence: >-
+      FRS-001 now reports version 0.8 and 2026-08-16. documentation-index.md now
+      reports 2026-08-16 and links RBO-001 with its release optimization scope.
+    verification: >-
+      Review re-read both files and ran scoped diff checks. The metadata and index
+      entry match RBO-001, and no behavior or implementation changed.
+
+risks:
+  - id: "RISK-012-01"
+    description: "R8 can remove or rename code reached through reflection or platform callbacks."
+    mitigation: >-
+      Build both release variants, retain generated mapping files, run full affected
+      automated gates, and require optimized-release runtime smoke tests.
+    disposition: "open_pending_verification"
+  - id: "RISK-012-02"
+    description: "The working tree contains pre-existing user changes in both app build files and IDE configuration."
+    mitigation: >-
+      Limit edits to the release blocks and project Gradle properties; preserve versionCode,
+      IDE, signing, release-directory, and root ignore changes unchanged.
+    disposition: "controlled"
+  - id: "RISK-012-03"
+    description: >-
+      The verified local optimized AABs are unsigned and both current working-tree
+      versionCode values are 1, while the compatibility matrix requires distinct
+      Mobile even and Wear odd versionCode series for one Play listing.
+    mitigation: >-
+      Before TC-E105 or Play upload, Human produces Mobile/Wear optimized candidates
+      with approved distinct version codes and the same approved release signing
+      certificate series, then retains the mapping generated by those exact builds.
+    disposition: "open_pending_human_release_build"
+
+evidence:
+  - id: "EVID-012-01"
+    type: "official_documentation"
+    result: "verified"
+    summary: >-
+      Android release optimization guidance was checked on 2026-08-16. For AGP below
+      9.3 it recommends isMinifyEnabled=true, isShrinkResources=true, and
+      proguard-android-optimize.txt; AGP 8.12/8.13 requires the optimized resource
+      shrinking property to opt into the new pipeline.
+    source: "https://developer.android.com/topic/performance/app-optimization/enable-app-optimization?hl=ja"
+  - id: "EVID-012-02"
+    type: "repository_inspection"
+    result: "verified"
+    summary: >-
+      Both release variants had isMinifyEnabled=false, no isShrinkResources setting,
+      and template-only app ProGuard files. No specification or history recorded a
+      compatibility reason for disabling R8.
+  - id: "EVID-012-03"
+    type: "implementation"
+    result: "complete"
+    summary: >-
+      Mobile and Wear release blocks now enable minification and resource shrinking;
+      both project properties opt into AGP 8.13 optimized resource shrinking. Debug,
+      application IDs, versionCode working-tree values, signing files, and IDE changes
+      were not modified by BN-012.
+    artifacts:
+      - "BatteryNotifierAndroidMobileApp/app/build.gradle.kts"
+      - "BatteryNotifierAndroidMobileApp/gradle.properties"
+      - "BatteryNotifierAndroidWearApp/app/build.gradle.kts"
+      - "BatteryNotifierAndroidWearApp/gradle.properties"
+      - "BatteryNotifierAndroidMobileApp/app/src/test/java/com/magicitengineer/batterynotifierandroidmobileapp/ReleaseOptimizationContractTest.kt"
+      - "BatteryNotifierAndroidWearApp/app/src/test/java/com/magicitengineer/batterynotifierandroidwearapp/ReleaseOptimizationContractTest.kt"
+  - id: "EVID-012-04"
+    type: "release_artifact"
+    result: "verified"
+    summary: >-
+      Mobile mapping.txt is 50,816,131 bytes and AAB is 7,100,022 bytes; Wear
+      mapping.txt is 38,720,748 bytes and AAB is 5,017,402 bytes. Both AABs contain
+      BUNDLE-METADATA/com.android.tools.build.obfuscation/proguard.map and
+      BUNDLE-METADATA/com.android.tools/r8.json.
+    artifacts:
+      - "BatteryNotifierAndroidMobileApp/app/build/outputs/mapping/release/mapping.txt"
+      - "BatteryNotifierAndroidMobileApp/app/build/outputs/bundle/release/app-release.aab"
+      - "BatteryNotifierAndroidWearApp/app/build/outputs/mapping/release/mapping.txt"
+      - "BatteryNotifierAndroidWearApp/app/build/outputs/bundle/release/app-release.aab"
+  - id: "EVID-012-05"
+    type: "review"
+    result: "pass"
+    summary: >-
+      RV-012-01 reviewed the scoped build configuration, project properties, contract
+      tests, mappings, AAB metadata, documentation, and pre-existing working-tree
+      changes. Mobile/Wear AAB mapping entries exactly match their local mapping SHA-256.
+      RV-012-001 was fixed and verified. Open findings by severity: 0/0/0/0.
+  - id: "EVID-012-06"
+    type: "test"
+    result: "pass_with_human_gate"
+    summary: >-
+      Test reran Mobile and Wear test/lint/assembleRelease/bundleRelease sequentially:
+      Mobile BUILD SUCCESSFUL in 27s and Wear BUILD SUCCESSFUL in 15s. Artifact hashes,
+      embedded mapping equality, and r8.json were reverified. Both local AABs have zero
+      JAR signature entries and are test evidence only, not publish-ready candidates.
+
+test_results:
+  - id: "TC-U047-MOBILE"
+    command: >-
+      .\gradlew.bat :app:testDebugUnitTest --tests
+      com.magicitengineer.batterynotifierandroidmobileapp.ReleaseOptimizationContractTest
+    result: "pass"
+    summary: "3/3 release optimization contract tests passed."
+  - id: "TC-U047-WEAR"
+    command: >-
+      .\gradlew.bat :app:testDebugUnitTest --tests
+      com.magicitengineer.batterynotifierandroidwearapp.ReleaseOptimizationContractTest
+    result: "pass"
+    summary: "3/3 release optimization contract tests passed."
+  - id: "CHK-012-MOBILE-GATE"
+    command: ".\gradlew.bat test lint assembleRelease bundleRelease"
+    result: "pass"
+    summary: >-
+      BUILD SUCCESSFUL in 22m 16s. Debug and Release JVM suites passed 121/121 each;
+      lint reported 0 Fatal, 0 Error, 25 warnings; optimized APK/AAB were produced.
+  - id: "CHK-012-WEAR-GATE"
+    command: ".\gradlew.bat test lint assembleRelease bundleRelease"
+    result: "pass"
+    summary: >-
+      BUILD SUCCESSFUL in 27m 40s. Debug and Release JVM suites passed 96/96 each;
+      lint reported 0 Fatal, 0 Error, 31 warnings; optimized APK/AAB were produced.
+  - id: "CHK-012-AAB-METADATA"
+    command: "jar tf each release AAB and inspect mapping/mapping hashes"
+    result: "pass"
+    summary: >-
+      Both mappings are non-empty and both AABs contain proguard.map and r8.json.
+      Mobile mapping/AAB SHA-256: D992D1F8A98437ED739FE3874AB98D374F3509D467D690330E1B317E9047601E /
+      E625AD90CEA95C7ADB155A4A59F5872E82367D01F2A2F94F98292625AC8F285B.
+      Wear mapping/AAB SHA-256: 0705CE2DD1C7B226DCF1D5AB8EE3C25BD116028BC4CB0373E36555EDD1D3C1C1 /
+      15A495773E3CBF7DC7D4165D0D831012731B0F50C486596D701635165149C308.
+  - id: "TC-E105"
+    result: "blocked"
+    summary: >-
+      Optimized-release real-device smoke testing is Human-owned. The current local
+      AABs are unsigned and Mobile/Wear both have working-tree versionCode 1; Human
+      must create approved distinct-version, same-signing candidates before execution.
+  - id: "TC-E104"
+    command: >-
+      Mobile then Wear: .\gradlew.bat test lint assembleRelease bundleRelease;
+      inspect mapping.txt, AAB proguard.map/r8.json, hashes, and signature entries
+    result: "pass"
+    summary: >-
+      Test rerun passed in 27s Mobile and 15s Wear. Mobile Debug/Release JVM 121/121
+      each and Wear 96/96 each remain Pass; lint has 0 Fatal/Errors. Embedded mapping
+      SHA-256 equals local mapping for both AABs. Signature entry count is 0 for both.
+
+loop_control:
+  same_cause_failure_limit: 3
+  phase_return_limit: 5
+  current_failure_signature: null
+  consecutive_same_cause_failures: 0
+  total_phase_returns: 1
+  attempts:
+    - id: "PHASE-RETURN-012-01"
+      type: "phase_return"
+      from_phase: "review"
+      to_phase: "specification"
+      finding: "RV-012-001"
+      failure_signature: "RBO-001 missing from documentation index and FRS-001 metadata stale"
+      root_cause_hypothesis: "Specification deliverables were added without updating their catalog and header metadata."
+      corrective_change: "Updated FRS-001 header metadata and added RBO-001 to documentation-index.md."
+      result: "pass_verified"
+      recorded_at: "2026-08-16T21:36:57+09:00"
+  termination_reason: null
+  resume_condition: null
+
+handoff:
+  summary: >-
+    TEST-012-01 and TC-E104 pass. Both release variants run R8/resource shrinking,
+    automated suites and lint pass, and each AAB embeds its exact mapping plus r8.json.
+    The local AABs are unsigned test evidence and both working-tree versionCodes are 1.
+    Human must create approved distinct-version, same-signing optimized candidates and
+    run TC-E105 on Pixel 10 Pro Fold with Pixel Watch 4 before BN-012 can be Done.
+  next_role: "human"
+  first_action: >-
+    Produce correctly versioned and consistently signed optimized Mobile/Wear release
+    candidates, retaining each exact mapping, then run TC-E105.
+  gate_result: "passed"
+
+next_actions:
+  - "Human assigns distinct approved Mobile/Wear versionCodes and common release signing."
+  - "Human retains the exact mapping.txt for each signed optimized candidate."
+  - "Human runs TC-E105 on Pixel 10 Pro Fold and Pixel Watch 4 and approves or rejects BN-012."
+
+progress_reporting:
+  format_version: 1
+  current:
+    timestamp: "2026-08-16T21:42:07+09:00"
+    work_item: "BN-012"
+    role: "human"
+    phase: "human_verification"
+    actor: "user"
+    status: "awaiting_human"
+    completed:
+      - "Verified the human request and current Mobile/Wear release configuration."
+      - "Checked current Android R8 guidance for AGP 8.13."
+      - "Completed RBO-001, NFR-021, AC-039 through AC-041, and TC-U047/TC-E104/TC-E105."
+      - "Passed the Specification gate and handed BN-012 to Implementation."
+      - "Enabled R8 and optimized resource shrinking in both release variants."
+      - "Passed TC-U047 Mobile 3/3 and Wear 3/3."
+      - "Passed both full Gradle gates and verified non-empty mapping/AAB metadata."
+      - "Passed the Implementation gate and handed BN-012 to Review."
+      - "Resolved RV-012-001 in Specification by aligning FRS-001 metadata and the documentation index."
+      - "Verified RV-012-001 fixed and passed RV-012-01 with open findings 0/0/0/0."
+      - "Passed TEST-012-01 and TC-E104 with independent Test reruns and artifact checks."
+    in_progress: []
+    next:
+      - "Human prepares signed/distinct-version optimized candidates and runs TC-E105."
+    checks:
+      - "Repository R8 decision search: no prior disabling rationale found."
+      - "Official Android R8 guidance: verified on 2026-08-16."
+      - "TC-U047 Mobile: pass 3/3."
+      - "TC-U047 Wear: pass 3/3."
+      - "Mobile test/lint/assembleRelease/bundleRelease: pass."
+      - "Wear test/lint/assembleRelease/bundleRelease: pass."
+      - "Both release mappings and AAB R8 metadata: pass."
+      - "Review artifact hash equality: pass for Mobile and Wear."
+      - "RV-012-001: Low, open; documentation metadata/index only."
+      - "RV-012-001 fix: FRS-001/index checks pass; review verification pending."
+      - "RV-012-01: pass; open Critical/High/Medium/Low 0/0/0/0."
+      - "TC-E104: pass."
+      - "Mobile Test rerun: pass in 27s."
+      - "Wear Test rerun: pass in 15s."
+      - "TC-E105: blocked pending signed, distinct-version candidates and required devices."
+      - "Local optimized AAB signing: unsigned test evidence; 0 signature entries each."
+    blockers:
+      - "TC-E105 requires Human-prepared signed Mobile/Wear candidates with distinct approved versionCodes and mandatory real devices."
+  history:
+    - timestamp: "2026-08-16T20:35:53+09:00"
+      event: "specification_started"
+      role: "specification"
+      summary: >-
+        Started BN-012 from the human request, preserving existing user changes and
+        scoping optimization to Mobile/Wear release variants.
+    - timestamp: "2026-08-16T20:37:59+09:00"
+      event: "specification_to_implementation_handoff"
+      role: "specification"
+      summary: >-
+        Completed RBO-001 and its acceptance/test traceability with no open decision
+        or blocker; the Specification gate passed.
+    - timestamp: "2026-08-16T21:35:05+09:00"
+      event: "implementation_to_review_handoff"
+      role: "implementation"
+      summary: >-
+        Completed IMP-012-01 through IMP-012-03. Both full Gradle gates and R8
+        mapping/AAB metadata checks passed; optimized-release Human runtime smoke
+        testing remains Not Run.
+    - timestamp: "2026-08-16T21:36:57+09:00"
+      event: "review_to_specification_return"
+      role: "review"
+      summary: >-
+        RV-012-001 Low found stale FRS-001 metadata and a missing RBO-001 index entry.
+        Implementation and artifact evidence passed; total phase returns is now 1/5.
+    - timestamp: "2026-08-16T21:38:07+09:00"
+      event: "specification_to_review_fix_handoff"
+      role: "specification"
+      summary: >-
+        SPEC-012-02 updated FRS-001 to version 0.8 dated 2026-08-16 and added RBO-001
+        to the documentation index; no behavior or implementation changed.
+    - timestamp: "2026-08-16T21:39:07+09:00"
+      event: "review_to_test_handoff"
+      role: "review"
+      summary: >-
+        RV-012-001 was fixed and verified. RV-012-01 passed with zero open findings;
+        Test owns independent TC-E104 verification and Human owns TC-E105.
+    - timestamp: "2026-08-16T21:42:07+09:00"
+      event: "test_to_human_handoff"
+      role: "test"
+      summary: >-
+        TEST-012-01 and TC-E104 passed cached full-gate reruns and exact embedded
+        mapping checks. TC-E105 is Blocked pending Human-prepared signed/distinct-version
+        candidates and Pixel 10 Pro Fold plus Pixel Watch 4 execution.
+
+updated_at: "2026-08-16T21:42:07+09:00"
+updated_by: "codex"

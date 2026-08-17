@@ -1,9 +1,9 @@
 # 機能要件仕様書
 
 文書ID: FRS-001  
-版: 0.7
+版: 0.8
 状態: Draft  
-最終更新: 2026-08-12
+最終更新: 2026-08-16
 
 ## 1. 前提
 
@@ -155,6 +155,7 @@
 | NFR-018 | 同意が未確定・拒否・取得不能でも、広告以外の全Mobile機能を利用でき、広告要求を開始しない |
 | NFR-019 | debug成果物にproduction広告IDを含めず、release成果物だけが指定production IDを含む。自動・エミュレーター・開発者による確認でproduction広告を読み込んだりクリックしたりしない |
 | NFR-020 | バナー表示中もPixel 10 Pro Foldの外側/内側/分割画面、日英、最大フォント、TalkBackでスクロール内容と主要操作が欠けず、広告領域をコンテンツと誤認させる独自UIを重ねない |
+| NFR-021 | Mobile/WearのreleaseビルドはR8のコード圧縮・最適化・難読化とリソース縮小を有効にし、各公開ビルドに対応するReTrace mappingを生成する。debugビルドは最適化せず、最適化後も既存の機能・Data Layer・通知・同意・広告分離契約を維持する |
 
 ## 4. 受け入れ条件
 
@@ -194,6 +195,9 @@
 | AC-032 | FR-078, FR-079, NFR-018 | Given 初回または同意更新が必要なMobile、When 起動して同意を許可・拒否・dismiss・通信失敗の各状態にする、Then UMP更新と必要なフォームを先に処理し、`canRequestAds=false`ではSDK初期化・広告要求・広告余白がなく本来機能を利用でき、privacy optionsが必要な場合は日英の再表示操作を利用できる |
 | AC-033 | FR-080, NFR-019 | Given debug/release成果物、When manifestとbanner IDを検査、Then debugはGoogle demo application/banner IDだけ、releaseは指定production application/banner IDだけを保持し、開発中にproduction広告要求を行わない |
 | AC-034 | FR-082, NFR-012, NFR-013 | Given Mobile広告を導入済み、When Mobile/Wearのmanifest、DataStore、Data Layer、ログ契約を検査、Then広告SDKとUMPはMobileだけにあり、広告ID・端末ID・クリックをアプリ独自に保存・送信・記録せず、分析/クラッシュSDKを追加していない |
+| AC-039 | NFR-021 | Given Mobile/Wearのrelease設定、When Gradle設定を検査、Then両方でR8コード最適化とリソース縮小、最適化済み既定ルール、AGP 8.13の最適化リソース縮小パイプラインが有効で、debug設定と既存IDは変更されていない |
+| AC-040 | NFR-021 | Given Mobile/Wearのrelease候補、When各プロジェクトでJVM test、lint、assembleRelease、bundleReleaseを実行、Thenすべて成功し、各releaseの非空mapping.txtとAAB内のR8 mapping metadataを確認できる |
+| AC-041 | NFR-006, NFR-021 | Given最適化済みMobile/Wear release候補、When必須実機で起動、永続化、監視、同期、通知、Wear表示、Mobile同意・広告gateを確認、Thenクラッシュ、ANR、機能欠落、debug/release ID混在がなく、開発確認中のproduction広告要求・clickは0件である |
 
 ## 5. トレーサビリティ
 

@@ -15,7 +15,7 @@ android {
         applicationId = "com.magicitengineer.batterynotifier"
         minSdk = 33
         targetSdk = 36
-        versionCode = 2
+        versionCode = 10001
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -41,7 +41,8 @@ android {
                 "ADMOB_BANNER_AD_UNIT_ID",
                 "\"ca-app-pub-9265284608955761/2408053327\"",
             )
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

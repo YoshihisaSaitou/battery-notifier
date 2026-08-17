@@ -1,6 +1,6 @@
 # Battery Notifier ドキュメント索引
 
-最終更新: 2026-08-09
+最終更新: 2026-08-16
 文書状態: Draft
 
 ## 目的
@@ -35,6 +35,7 @@
 | [data-design.md](data-design.md) | ドメインモデル、DataStore、同期データ形式 |
 | [localization-specification.md](localization-specification.md) | 日本語・英語対応 |
 | [permissions-and-privacy-specification.md](permissions-and-privacy-specification.md) | 権限、データ取扱い、Play要件 |
+| [release-build-optimization-specification.md](release-build-optimization-specification.md) | Mobile/WearのRelease R8最適化、リソース縮小、mapping、検証契約 |
 | [test-plan-and-cases.md](test-plan-and-cases.md) | テスト方針、端末試験、テストケース |
 | [compatibility-matrix.md](compatibility-matrix.md) | OS・端末・画面・接続の互換性 |
 | [architecture-decision-records.md](architecture-decision-records.md) | ADR一覧と決定内容 |

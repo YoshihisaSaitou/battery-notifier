@@ -1,13 +1,13 @@
 # テスト計画書・テストケース
 
 文書ID: TPC-001  
-版: 0.7
+版: 0.8
 状態: Draft  
-最終更新: 2026-08-12
+最終更新: 2026-08-16
 
 ## 1. 目的
 
-電池しきい値判定、バックグラウンド監視、Mobile/Wear同期、通知、表示、Mobile広告と同意、再起動、異常系、必須端末互換性を検証し、v1.0のリリース可否を判断する。
+電池しきい値判定、バックグラウンド監視、Mobile/Wear同期、通知、表示、Mobile広告と同意、release最適化、再起動、異常系、必須端末互換性を検証し、v1.0のリリース可否を判断する。
 
 ## 2. テストレベル
 
@@ -121,6 +121,7 @@
 | TC-U044 | AdMob build variant contract | Mobile Gradle、manifest、BuildConfig設定を解析 | debugはGoogle demo application/banner IDだけ、releaseは指定production application/banner IDだけを組み込み、両variantでID種別が混在しない |
 | TC-U045 | 広告要求gate | 同意不可、同意可能、初期化中、初期化完了、再通知を純粋stateへ入力 | `canRequestAds=true`後に初期化を最大1回開始し、初期化完了後だけbanner表示可能。falseへの変更で表示不可となり、重複callbackでも初期化を重複しない |
 | TC-U046 | AdMob Mobile-only/privacy contract | Mobile/Wear依存、manifest、日英resource、sourceを解析 | Ads/UMP依存とapplication IDはMobileだけ、privacy optionsの日英文字列が揃い、広告ID・クリック・同意文字列のDataStore/Data Layer/log実装を追加していない |
+| TC-U047 | Release optimization contract | Mobile/Wearのapp build scriptとproject Gradle propertiesを解析 | 両releaseでminifyとresource shrink、最適化済み既定ルール、AGP 8.13最適化resource shrinkが有効で、full mode無効化と不要な広域keep ruleがない |
 
 ## 7. 統合・E2Eテストケース
 
@@ -238,6 +239,13 @@
 | TC-E101 | Pixel 10 Pro Fold外側/内側/分割画面、日英、最大フォント、TalkBackでdebug demo bannerを表示して幅を変更 | bannerは現在幅に適応して最下部に1枠だけ表示され、system navigationと全スクロール内容・主要操作を覆わず、広告と本来コンテンツを区別できる |
 | TC-E102 | UMPがprivacy optionsをrequiredと返す状態で日英画面の操作を実行し、選択を変更 | 日英の導線が欠けず、UMP formを再表示できる。変更後に`canRequestAds`を再評価し、falseなら表示中AdViewを破棄して広告余白を除去する |
 | TC-E103 | release APK/AABをオフラインで解析し、実広告要求は行わない | merged manifestは指定production application ID、BuildConfigは指定production banner IDを保持し、debug demo IDとの混在、WearへのAds/UMP依存、アプリ独自の広告ID保存/ログ/Data Layer送信がない |
+
+### 7.9 Release最適化
+
+| ID | 前提・操作 | 期待結果 |
+|---|---|---|
+| TC-E104 | Mobile/WearでJVM test、lint、assembleRelease、bundleReleaseを順次実行し、mappingとAAB metadataを検査 | 両プロジェクトの全コマンドが成功し、各releaseに非空mapping.txtがあり、各AABが対応するR8 mapping metadataを含む |
+| TC-E105 | 最適化済みrelease候補をPixel 10 Pro FoldとPixel Watch 4へ導入し、起動、設定永続化、監視、手動/自動同期、通知、Wear画面/Tile/Complication、Mobile UMP/広告gateを確認 | クラッシュ、ANR、Android entry pointやresourceの欠落、同期/通知回帰がなく、production広告を要求・clickせずにHumanがrelease候補を承認できる |
 
 ## 8. 非機能テスト
 

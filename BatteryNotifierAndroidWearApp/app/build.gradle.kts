@@ -15,7 +15,7 @@ android {
         applicationId = "com.magicitengineer.batterynotifier"
         minSdk = 30
         targetSdk = 36
-        versionCode = 3
+        versionCode = 20001
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -23,7 +23,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
